@@ -12,6 +12,6 @@
 
 lorom
 
-; --- M0: no hooks yet. The build is byte-identical to vanilla. ---------------
 ; Hooks are included here, one line each, e.g.:
 ; incsrc "hooks/awareness_detect.asm"
+incsrc "hooks/intro_skip.asm"       ; A0: boot straight to the title screen

@@ -16,6 +16,20 @@ Acceptance is a command that must pass or a named human check.
 | M0-7 | Human confirms ROM verifies and tools run | **human** | `make build`, `make test` | **todo** |
 | M0-GATE | Human approves M0 | **human** | `/gate` | **todo** |
 
+## A0: Placeholder overhaul  (ready for gate)
+
+| ID | Task | Owner | Acceptance | Status |
+|---|---|---|---|---|
+| A0-1 | Format research + inventory (`docs/gfx/formats.md`, `INVENTORY.md`) | engine/art | `python tools/gfx_inventory.py` | done |
+| A0-2 | Placeholder generator, guides, briefs, gallery | art | `make gfx`; `build/gfx_gallery.html` | done |
+| A0-3 | Insertion pipeline + compressor + ledger rows | engine | `make build`; `gfx_compress.py --selftest` | done |
+| A0-4 | Vanilla leak detector + scene tests | qa | `make leakcheck` clean; `make leakcheck-control` finds leaks | done |
+| A0-5 | Boot straight to a readable title (intro skip hook, HUSH logo placeholder) | engine/art | `tests/gfx/scenes_boot.lua` | done |
+| A0-6 | A0 report | director | `docs/gfx/A0_report.md` | done |
+| A0-7 | Critic review of the A0 diff | critic | no blocking findings | **todo** |
+| A0-GATE | Human reviews gallery, report, leak output | **human** | `/gate` | **todo** |
+| A0-CUT | Engine: remove overworld / map / attract / mirror warp (see report) | engine | after the gate | todo |
+
 ## M1: One test room (blocked on M0 gate)
 
 | ID | Task | Owner | Acceptance | Status |

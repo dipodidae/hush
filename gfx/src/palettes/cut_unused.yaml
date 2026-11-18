@@ -1,0 +1,371 @@
+note: 'Magenta: palettes for scenes HUSH cuts or never shows. If one appears on screen it is a bug. Colours are RGB hex; the build converts to
+  BGR555.'
+groups:
+  pal_shield_00:
+    decision: unused
+    rom_rows: [$1BD648]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0]
+  pal_shield_01:
+    decision: unused
+    rom_rows: [$1BD650]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0]
+  pal_shield_02:
+    decision: unused
+    rom_rows: [$1BD658]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0]
+  pal_unused_00:
+    decision: unused
+    rom_rows: [$1BD6EE, $1BD6FC]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_dungeonmap_sprites_00:
+    decision: cut
+    rom_rows: [$1BD70A, $1BD718, $1BD726]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_dungeonmap_bg_00:
+    decision: cut
+    rom_rows: [$1BE544, $1BE554, $1BE564, $1BE574, $1BE584, $1BE594, $1BE5A4, $1BE5B4, $1BE5C4, $1BE5D4, $1BE5E4, $1BE5F4]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+  pal_owanim_01:
+    decision: cut
+    rom_rows: [$1BE612]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_02:
+    decision: cut
+    rom_rows: [$1BE620]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_03:
+    decision: cut
+    rom_rows: [$1BE62E]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_04:
+    decision: cut
+    rom_rows: [$1BE63C]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_05:
+    decision: cut
+    rom_rows: [$1BE64A]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_06:
+    decision: cut
+    rom_rows: [$1BE658]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_07:
+    decision: cut
+    rom_rows: [$1BE666]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_08:
+    decision: cut
+    rom_rows: [$1BE674]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_09:
+    decision: cut
+    rom_rows: [$1BE682]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_0A:
+    decision: cut
+    rom_rows: [$1BE690]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_0B:
+    decision: cut
+    rom_rows: [$1BE69E]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_0C:
+    decision: cut
+    rom_rows: [$1BE6AC]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owanim_0D:
+    decision: cut
+    rom_rows: [$1BE6BA]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owmain_00:
+    decision: cut
+    rom_rows: [$1BE6C8, $1BE6D6, $1BE6E4, $1BE6F2, $1BE700]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owmain_01:
+    decision: cut
+    rom_rows: [$1BE70E, $1BE71C, $1BE72A, $1BE738, $1BE746]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owmain_02:
+    decision: cut
+    rom_rows: [$1BE754, $1BE762, $1BE770, $1BE77E, $1BE78C]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owmain_03:
+    decision: cut
+    rom_rows: [$1BE79A, $1BE7A8, $1BE7B6, $1BE7C4, $1BE7D2]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owmain_04:
+    decision: cut
+    rom_rows: [$1BE7E0, $1BE7EE, $1BE7FC, $1BE80A, $1BE818]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_00:
+    decision: cut
+    rom_rows: [$1BE86C, $1BE87A, $1BE888]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_01:
+    decision: cut
+    rom_rows: [$1BE896, $1BE8A4, $1BE8B2]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_02:
+    decision: cut
+    rom_rows: [$1BE8C0, $1BE8CE, $1BE8DC]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_04:
+    decision: cut
+    rom_rows: [$1BE914, $1BE922, $1BE930]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_05:
+    decision: cut
+    rom_rows: [$1BE93E, $1BE94C, $1BE95A]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_06:
+    decision: cut
+    rom_rows: [$1BE968, $1BE976, $1BE984]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_07:
+    decision: cut
+    rom_rows: [$1BE992, $1BE9A0, $1BE9AE]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_08:
+    decision: cut
+    rom_rows: [$1BE9BC, $1BE9CA, $1BE9D8]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_09:
+    decision: cut
+    rom_rows: [$1BE9E6, $1BE9F4, $1BEA02]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_0A:
+    decision: cut
+    rom_rows: [$1BEA10, $1BEA1E, $1BEA2C]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_0B:
+    decision: cut
+    rom_rows: [$1BEA3A, $1BEA48, $1BEA56]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_0C:
+    decision: cut
+    rom_rows: [$1BEA64, $1BEA72, $1BEA80]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_0D:
+    decision: cut
+    rom_rows: [$1BEA8E, $1BEA9C, $1BEAAA]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_0E:
+    decision: cut
+    rom_rows: [$1BEAB8, $1BEAC6, $1BEAD4]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_0F:
+    decision: cut
+    rom_rows: [$1BEAE2, $1BEAF0, $1BEAFE]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_10:
+    decision: cut
+    rom_rows: [$1BEB0C, $1BEB1A, $1BEB28]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_11:
+    decision: cut
+    rom_rows: [$1BEB36, $1BEB44, $1BEB52]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_12:
+    decision: cut
+    rom_rows: [$1BEB60, $1BEB6E, $1BEB7C]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_owaux_13:
+    decision: cut
+    rom_rows: [$1BEB8A, $1BEB98, $1BEBA6]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_Palettes_LWMAP:
+    decision: cut
+    rom_rows: [$0ADB27, $0ADB37, $0ADB47, $0ADB57, $0ADB67, $0ADB77, $0ADB87, $0ADB97, $0ADBA7, $0ADBB7, $0ADBC7, $0ADBD7, $0ADBE7, $0ADBF7, $0ADC07,
+      $0ADC17]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+  pal_Palettes_DWMAP:
+    decision: cut
+    rom_rows: [$0ADC27, $0ADC37, $0ADC47, $0ADC57, $0ADC67, $0ADC77, $0ADC87, $0ADC97, $0ADCA7, $0ADCB7, $0ADCC7, $0ADCD7, $0ADCE7, $0ADCF7, $0ADD07,
+      $0ADD17]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+  pal_Palettes_Triforce:
+    decision: cut
+    rom_rows: [$0CC425]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+  pal_Palettes_BlueThunder1:
+    decision: cut
+    rom_rows: [$0EF4EB]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_Palettes_BlueThunder2:
+    decision: cut
+    rom_rows: [$0EF4F9]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_Palettes_BlueThunder3:
+    decision: cut
+    rom_rows: [$0EF507]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_Palettes_BlueThunder4:
+    decision: cut
+    rom_rows: [$0EF515]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_Palettes_BlueThunder5:
+    decision: cut
+    rom_rows: [$0EF523]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040']
+  pal_Palettes_GanonTowerFlash:
+    decision: cut
+    rom_rows: [$0EF531, $0EF541, $0EF551, $0EF561, $0EF571]
+    colours:
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]
+    - [FF00FF, '101010', FF66FF, B000B0, FF00FF, FF99FF, '400040', FF00FF]

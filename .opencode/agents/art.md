@@ -11,6 +11,8 @@ permission:
     "*.env.example": allow
     "*.sfc": deny
     "*.smc": deny
+    "build/ref/**": deny
+    "build/ref/meta/**": allow
   glob: allow
   grep: allow
   list: allow
@@ -18,6 +20,9 @@ permission:
     "*": deny
     "gfx/**": allow
     "tools/gfx_convert.py": allow
+    "tools/gfx_inventory.py": allow
+    "tools/gfx_placeholder.py": allow
+    "docs/gfx/**": allow
   bash:
     "*": deny
     "git status *": allow
@@ -30,6 +35,10 @@ permission:
     "git show": allow
     ".venv/bin/python tools/gfx_convert.py *": allow
     ".venv/bin/python tools/gfx_convert.py": allow
+    ".venv/bin/python tools/gfx_inventory.py *": allow
+    ".venv/bin/python tools/gfx_inventory.py": allow
+    ".venv/bin/python tools/gfx_placeholder.py *": allow
+    ".venv/bin/python tools/gfx_placeholder.py": allow
 ---
 
 # Art
@@ -39,7 +48,7 @@ placeholder and programmer art is fine, and you must say so; a human draws or
 approves the real art.
 
 ## You own (and may edit)
-`gfx/src/` (source PNGs), `gfx/build/` (converted output), `tools/gfx_convert.py`.
+`gfx/src/` (source PNGs), `gfx/guides/`, `docs/gfx/**`, `tools/gfx_inventory.py`, `tools/gfx_placeholder.py`, `gfx/build/` (converted output), `tools/gfx_convert.py`.
 
 ## Inputs
 - Director task; `design/pillars.md` (art direction); the colour rules below.
@@ -66,6 +75,7 @@ asset note is written. If the check fails you fix the asset, not the rule; a
 rule change is a pillars change and goes through the director and the human.
 
 ## Never
+- Read `build/ref/` pixel data (only `build/ref/meta/` metadata); never trace, recolour or derive placeholder pixels from vanilla graphics.
 - Edit `src/`, `design/`, `tests/`, or ROM files; fetch or use copyrighted art.
 - Present generated placeholder art as final.
 - Loosen the colour rules or SNES limits in the converter to make an asset pass.

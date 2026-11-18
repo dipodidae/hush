@@ -42,6 +42,10 @@ Full design: `design/pillars.md`. Room specs: `design/rooms/*.yaml`
   data into docs beyond the few bytes of a replaced instruction in a hook header.
 - Secrets live in `.env.local` (gitignored). Never commit credentials.
 - `vendor/` (reference disassemblies) is read-only and gitignored.
+- Vanilla graphics may be extracted only into `build/ref/` (gitignored), for
+  reference metadata and the leak check. Never commit them, copy them into
+  `gfx/`, or trace, recolor or derive placeholder pixels from them. Placeholders
+  take only metadata (dimensions, tile positions, frame counts, bit depth).
 
 ## Working rules
 
@@ -68,7 +72,8 @@ Full design: `design/pillars.md`. Room specs: `design/rooms/*.yaml`
 AGENTS.md  README.md  Makefile
 src/main.asm  src/hooks/  src/FREESPACE.md      engine agent only
 design/pillars.md  design/rooms/                designer only
-gfx/src  gfx/build  tools/gfx_convert.py        art agent only
+gfx/src  gfx/guides  gfx/build  tools/gfx_*.py   art agent (gfx_refdump/leakcheck: qa; gfx_insert/compress: engine)
+docs/gfx/                                       inventory, formats (engine), leak report (qa), A0 report
 tests/ (lib, smoke, solutions, chaos, states)   qa agent only
 docs/ram_map.md  docs/backlog.md  docs/bugs.md  RAM map (cited) / director / qa
 tools/  (build, run_test, validate_specs, check_freespace, gfx_convert, setup)
@@ -88,6 +93,7 @@ dist/                                           BPS output only
 | `make test` | smoke + solution tests, headless; prints a pass/fail table |
 | `make chaos` | fuzz tests in `tests/chaos/` |
 | `make check` | build + validate + test |
+| `make leakcheck` | scan VRAM/CGRAM dumps of every HUSH scene for vanilla tiles/palettes (part of `make test` once A0 phase 4 is green) |
 
 Tests that need a savestate are skipped (not failed) until the human creates
 `tests/states/test_room.mss`; `make test STRICT=1` fails on skips.
@@ -98,9 +104,9 @@ Tests that need a savestate are skipped (not failed) until the human creates
 |---|---|---|---|
 | `director` | primary | plan, backlog, gates, scope | `docs/backlog.md` |
 | `designer` | subagent | pillars, room specs, difficulty curve | `design/` |
-| `engine` | subagent | all ASM, ROM space ledger | `src/` (+ `docs/ram_map.md` rows) |
-| `art` | subagent | graphics conversion, colour rules | `gfx/`, `tools/gfx_convert.py` |
-| `qa` | subagent | tests, replays, chaos, bug reports | `tests/`, `docs/bugs.md` |
+| `engine` | subagent | all ASM, ROM space ledger, gfx insertion | `src/` (+ `docs/ram_map.md` rows), `tools/build.py`, `tools/gfx_insert.py`, `tools/gfx_compress.py`, `Makefile`, `docs/gfx/formats.md` |
+| `art` | subagent | graphics conversion, colour rules, A0 inventory + placeholders | `gfx/`, `docs/gfx/**`, `tools/gfx_convert.py`, `gfx_inventory.py`, `gfx_placeholder.py` |
+| `qa` | subagent | tests, replays, chaos, bug reports, leak detector | `tests/`, `docs/bugs.md`, `tools/gfx_refdump.py`, `tools/gfx_leakcheck.py`, `docs/gfx/leak_report.md` |
 | `critic` | subagent | read-only review vs pillars and specs | nothing |
 
 Commands: `/build`, `/test`, `/chaos`, `/gate` (`.opencode/commands/`).
@@ -113,10 +119,11 @@ starts. The director stops and asks at every gate.
 | M | Scope | Gate |
 |---|---|---|
 | **M0** | Harness: toolchain, scaffold, build pipeline, headless tests, agents | Human confirms the ROM verifies, `make build`/`make test` run, and has made `tests/states/test_room.mss` |
+| **A0** | Placeholder overhaul: every visible graphic replaced by an original placeholder (inventory, generator, ROM insertion, vanilla-leak detector) | Human reviews `build/gfx_gallery.html`, `docs/gfx/A0_report.md` and `make leakcheck` output |
 | **M1** | One test room with one guard and the Shade Knife | Human fun check: is one guard + knife fun for 10 minutes? |
 | **M2** | Five teaching rooms | Human plays all five; curve and readability OK |
 | **M3** | Art: guards, tools, awareness icons, palette | Human reviews in-emulator; colour rules pass |
 | **M4** | Full tower (~20 rooms + heist room) + chaos suite | Human playthrough; chaos suite green |
 | **M5** | Instant respawn, polish, BPS release | Human approves `dist/hush.bps` |
 
-Current milestone: **M0** (done when the human approves its gate).
+Current milestone: **A0** (done when the human approves its gate). M0 gate still open (needs `tests/states/test_room.mss`).

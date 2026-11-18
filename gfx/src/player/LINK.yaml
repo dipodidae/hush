@@ -1,0 +1,2076 @@
+id: LINK
+kind: player
+role: player
+decision: redraw
+priority: P0
+what_it_is: 'Link''s body/head/aux frames; 16 tiles wide. Frames below come from LinkOAM_*Addresses (bank_00.asm:3462-4106).
+  HUSH: the player is the shadow thief (violet).'
+reuse_as: null
+where_it_appears:
+- every scene with the player
+bpp: 4
+size_tiles:
+- 16
+- 56
+size_px:
+- 128
+- 448
+tile_order: row-major, 16 tiles per row
+palette:
+  family: link
+  note: 4bpp player sheet (indices 1-15)
+  indices:
+    1: '#0B0A1E outline'
+    2: '#4B2E8C cloak dark'
+    3: '#7048C8 cloak'
+    4: '#A878F0 violet main'
+    5: '#C9ABFF violet light'
+    6: '#ECE8FF face dot / eyes'
+    7: '#231F4F boots / shade'
+    8: '#E3D4FF blade edge / highlight'
+    9: '#6E64B4 belt / trim'
+    10: '#5E3AA8 violet mid dark'
+    11: '#8B63DD violet mid'
+    12: '#B58FFF violet bright'
+    13: '#3B2470 cloak deepest'
+    14: '#D8C7FF pale violet'
+    15: '#F4EEFF near white'
+slot:
+  rom: $108000
+  compressed: false
+  capacity_bytes: 28672
+insert: true
+fit:
+  level: 0
+  placeholder_bytes: 28672
+  level_meaning: 0 labelled tiles, 1 bordered tiles, 2 flat, 3 empty
+frames:
+- name: head block @tile 0x00 (col 0, row 0)
+  rect_px:
+  - 0
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x00A'
+  - '0x00B'
+  - '0x00C'
+  - '0x00D'
+  - '0x00E'
+  - '0x00F'
+- name: head block @tile 0x02 (col 2, row 0)
+  rect_px:
+  - 16
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x005'
+  - '0x006'
+  - '0x007'
+  - '0x008'
+  - '0x009'
+  - '0x015'
+- name: head block @tile 0x04 (col 4, row 0)
+  rect_px:
+  - 32
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x000'
+  - '0x001'
+  - '0x002'
+  - '0x003'
+  - '0x004'
+  - '0x011'
+- name: head block @tile 0x06 (col 6, row 0)
+  rect_px:
+  - 48
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x016'
+  - '0x017'
+  - '0x047'
+  - '0x048'
+  - '0x08C'
+  - '0x116'
+- name: head block @tile 0x08 (col 8, row 0)
+  rect_px:
+  - 64
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x051'
+  - '0x052'
+  - '0x08B'
+- name: head block @tile 0x0a (col 10, row 0)
+  rect_px:
+  - 80
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x07E'
+  - '0x07F'
+  - '0x12A'
+- name: head block @tile 0x0c (col 12, row 0)
+  rect_px:
+  - 96
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x114'
+- name: head block @tile 0x0e (col 14, row 0)
+  rect_px:
+  - 112
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x0AD'
+- name: head block @tile 0x2e (col 14, row 2)
+  rect_px:
+  - 112
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x053'
+  - '0x056'
+  - '0x088'
+  - '0x08A'
+  - '0x0F2'
+  - '0x0F3'
+- name: head block @tile 0x84 (col 4, row 8)
+  rect_px:
+  - 32
+  - 64
+  - 16
+  - 16
+  anim_indices:
+  - '0x0DC'
+  - '0x0DE'
+  - '0x110'
+- name: head block @tile 0x86 (col 6, row 8)
+  rect_px:
+  - 48
+  - 64
+  - 16
+  - 16
+  anim_indices:
+  - '0x033'
+  - '0x0DA'
+  - '0x104'
+  - '0x105'
+  - '0x115'
+- name: head block @tile 0x88 (col 8, row 8)
+  rect_px:
+  - 64
+  - 64
+  - 16
+  - 16
+  anim_indices:
+  - '0x030'
+  - '0x098'
+- name: head block @tile 0x8a (col 10, row 8)
+  rect_px:
+  - 80
+  - 64
+  - 16
+  - 16
+  anim_indices:
+  - '0x03C'
+- name: head block @tile 0x8c (col 12, row 8)
+  rect_px:
+  - 96
+  - 64
+  - 16
+  - 16
+  anim_indices:
+  - '0x03D'
+- name: head block @tile 0x8e (col 14, row 8)
+  rect_px:
+  - 112
+  - 64
+  - 16
+  - 16
+  anim_indices:
+  - '0x08D'
+  - '0x12B'
+- name: head block @tile 0xa0 (col 0, row 10)
+  rect_px:
+  - 0
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x014'
+  - '0x06A'
+- name: head block @tile 0xa2 (col 2, row 10)
+  rect_px:
+  - 16
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x010'
+  - '0x06F'
+- name: head block @tile 0xa4 (col 4, row 10)
+  rect_px:
+  - 32
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x040'
+- name: head block @tile 0xa6 (col 6, row 10)
+  rect_px:
+  - 48
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x041'
+  - '0x042'
+- name: head block @tile 0xa8 (col 8, row 10)
+  rect_px:
+  - 64
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x03F'
+- name: head block @tile 0xd0 (col 0, row 13)
+  rect_px:
+  - 0
+  - 104
+  - 16
+  - 16
+  anim_indices:
+  - '0x03B'
+- name: head block @tile 0xd3 (col 3, row 13)
+  rect_px:
+  - 24
+  - 104
+  - 16
+  - 16
+  anim_indices:
+  - '0x046'
+- name: head block @tile 0xd5 (col 5, row 13)
+  rect_px:
+  - 40
+  - 104
+  - 16
+  - 16
+  anim_indices:
+  - '0x049'
+  - '0x04C'
+- name: head block @tile 0xd7 (col 7, row 13)
+  rect_px:
+  - 56
+  - 104
+  - 16
+  - 16
+  anim_indices:
+  - '0x043'
+- name: head block @tile 0x106 (col 6, row 16)
+  rect_px:
+  - 48
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x099'
+- name: head block @tile 0x108 (col 8, row 16)
+  rect_px:
+  - 64
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x09A'
+  - '0x09B'
+- name: head block @tile 0x10e (col 14, row 16)
+  rect_px:
+  - 112
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x09C'
+  - '0x09F'
+- name: head block @tile 0x120 (col 0, row 18)
+  rect_px:
+  - 0
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x09D'
+  - '0x0A0'
+- name: head block @tile 0x122 (col 2, row 18)
+  rect_px:
+  - 16
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x09E'
+  - '0x0A1'
+- name: head block @tile 0x12e (col 14, row 18)
+  rect_px:
+  - 112
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x111'
+- name: head block @tile 0x140 (col 0, row 20)
+  rect_px:
+  - 0
+  - 160
+  - 16
+  - 16
+  anim_indices:
+  - '0x12D'
+- name: head block @tile 0x142 (col 2, row 20)
+  rect_px:
+  - 16
+  - 160
+  - 16
+  - 16
+  anim_indices:
+  - '0x12E'
+- name: head block @tile 0x146 (col 6, row 20)
+  rect_px:
+  - 48
+  - 160
+  - 16
+  - 16
+  anim_indices:
+  - '0x02B'
+  - '0x02E'
+  - '0x0BE'
+  - '0x0C2'
+  - '0x0C5'
+  - '0x0C9'
+- name: head block @tile 0x148 (col 8, row 20)
+  rect_px:
+  - 64
+  - 160
+  - 16
+  - 16
+  anim_indices:
+  - '0x02C'
+  - '0x02F'
+  - '0x0BF'
+  - '0x0C3'
+  - '0x0C6'
+  - '0x0CA'
+- name: head block @tile 0x14e (col 14, row 20)
+  rect_px:
+  - 112
+  - 160
+  - 16
+  - 16
+  anim_indices:
+  - '0x128'
+- name: head block @tile 0x162 (col 2, row 22)
+  rect_px:
+  - 16
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x112'
+- name: head block @tile 0x16a (col 10, row 22)
+  rect_px:
+  - 80
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x05E'
+  - '0x05F'
+  - '0x060'
+  - '0x061'
+  - '0x062'
+- name: head block @tile 0x16c (col 12, row 22)
+  rect_px:
+  - 96
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x063'
+  - '0x064'
+  - '0x065'
+  - '0x066'
+  - '0x067'
+  - '0x068'
+- name: head block @tile 0x16e (col 14, row 22)
+  rect_px:
+  - 112
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x059'
+  - '0x05A'
+  - '0x05B'
+  - '0x05C'
+  - '0x05D'
+- name: head block @tile 0x220 (col 0, row 34)
+  rect_px:
+  - 0
+  - 272
+  - 16
+  - 16
+  anim_indices:
+  - '0x0AA'
+  - '0x0AC'
+- name: head block @tile 0x222 (col 2, row 34)
+  rect_px:
+  - 16
+  - 272
+  - 16
+  - 16
+  anim_indices:
+  - '0x07D'
+- name: head block @tile 0x224 (col 4, row 34)
+  rect_px:
+  - 32
+  - 272
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A3'
+- name: head block @tile 0x250 (col 0, row 37)
+  rect_px:
+  - 0
+  - 296
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A9'
+  - '0x0AB'
+- name: head block @tile 0x252 (col 2, row 37)
+  rect_px:
+  - 16
+  - 296
+  - 16
+  - 16
+  anim_indices:
+  - '0x080'
+- name: head block @tile 0x254 (col 4, row 37)
+  rect_px:
+  - 32
+  - 296
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A7'
+  - '0x0A8'
+- name: head block @tile 0x280 (col 0, row 40)
+  rect_px:
+  - 0
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0DB'
+  - '0x0E5'
+  - '0x0E6'
+  - '0x0E7'
+  - '0x0E8'
+  - '0x0E9'
+- name: head block @tile 0x282 (col 2, row 40)
+  rect_px:
+  - 16
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0DD'
+  - '0x0DF'
+  - '0x0EA'
+  - '0x0EB'
+  - '0x0EC'
+  - '0x0ED'
+- name: head block @tile 0x284 (col 4, row 40)
+  rect_px:
+  - 32
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0D8'
+  - '0x0E0'
+  - '0x0E1'
+  - '0x0E2'
+  - '0x0E3'
+  - '0x0E4'
+- name: head block @tile 0x2e2 (col 2, row 46)
+  rect_px:
+  - 16
+  - 368
+  - 16
+  - 16
+  anim_indices:
+  - '0x0F5'
+  - '0x0F6'
+  - '0x0F7'
+  - '0x0FB'
+  - '0x0FC'
+  - '0x0FD'
+- name: head block @tile 0x30c (col 12, row 48)
+  rect_px:
+  - 96
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x117'
+- name: head block @tile 0x30e (col 14, row 48)
+  rect_px:
+  - 112
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x0FE'
+- name: head block @tile 0x320 (col 0, row 50)
+  rect_px:
+  - 0
+  - 400
+  - 16
+  - 16
+  anim_indices:
+  - '0x101'
+  - '0x102'
+  - '0x10D'
+  - '0x10E'
+  - '0x10F'
+- name: head block @tile 0x322 (col 2, row 50)
+  rect_px:
+  - 16
+  - 400
+  - 16
+  - 16
+  anim_indices:
+  - '0x103'
+- name: head block @tile 0x324 (col 4, row 50)
+  rect_px:
+  - 32
+  - 400
+  - 16
+  - 16
+  anim_indices:
+  - '0x113'
+- name: head block @tile 0x326 (col 6, row 50)
+  rect_px:
+  - 48
+  - 400
+  - 16
+  - 16
+  anim_indices:
+  - '0x119'
+  - '0x11A'
+- name: head block @tile 0x32a (col 10, row 50)
+  rect_px:
+  - 80
+  - 400
+  - 16
+  - 16
+  anim_indices:
+  - '0x11E'
+  - '0x11F'
+  - '0x120'
+- name: head block @tile 0x342 (col 2, row 52)
+  rect_px:
+  - 16
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x11B'
+  - '0x11C'
+  - '0x11D'
+- name: head block @tile 0x348 (col 8, row 52)
+  rect_px:
+  - 64
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x121'
+  - '0x122'
+  - '0x123'
+  - '0x124'
+- name: body block @tile 0x00 (col 0, row 0)
+  rect_px:
+  - 0
+  - 0
+  - 16
+  - 16
+  anim_indices:
+  - '0x03C'
+  - '0x03D'
+  - '0x03E'
+  - '0x0FE'
+  - '0x100'
+  - '0x114'
+- name: body block @tile 0x20 (col 0, row 2)
+  rect_px:
+  - 0
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x00A'
+  - '0x00D'
+  - '0x06C'
+- name: body block @tile 0x22 (col 2, row 2)
+  rect_px:
+  - 16
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x00B'
+  - '0x00E'
+  - '0x0BD'
+  - '0x0C4'
+- name: body block @tile 0x24 (col 4, row 2)
+  rect_px:
+  - 32
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x00C'
+  - '0x00F'
+  - '0x0BE'
+  - '0x0C5'
+- name: body block @tile 0x26 (col 6, row 2)
+  rect_px:
+  - 48
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x005'
+- name: body block @tile 0x28 (col 8, row 2)
+  rect_px:
+  - 64
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x006'
+  - '0x008'
+  - '0x075'
+  - '0x0B6'
+- name: body block @tile 0x2a (col 10, row 2)
+  rect_px:
+  - 80
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x007'
+  - '0x009'
+  - '0x0B7'
+  - '0x0BA'
+- name: body block @tile 0x2c (col 12, row 2)
+  rect_px:
+  - 96
+  - 16
+  - 16
+  - 16
+  anim_indices:
+  - '0x002'
+  - '0x004'
+  - '0x0AE'
+- name: body block @tile 0x40 (col 0, row 4)
+  rect_px:
+  - 0
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x001'
+  - '0x003'
+  - '0x0AF'
+- name: body block @tile 0x42 (col 2, row 4)
+  rect_px:
+  - 16
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x000'
+- name: body block @tile 0x44 (col 4, row 4)
+  rect_px:
+  - 32
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x018'
+  - '0x01C'
+- name: body block @tile 0x46 (col 6, row 4)
+  rect_px:
+  - 48
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x019'
+  - '0x01D'
+  - '0x079'
+  - '0x082'
+- name: body block @tile 0x48 (col 8, row 4)
+  rect_px:
+  - 64
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x01A'
+  - '0x01E'
+  - '0x04A'
+  - '0x04D'
+  - '0x07A'
+  - '0x07C'
+- name: body block @tile 0x4a (col 10, row 4)
+  rect_px:
+  - 80
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x01B'
+  - '0x01F'
+  - '0x081'
+  - '0x086'
+- name: body block @tile 0x4c (col 12, row 4)
+  rect_px:
+  - 96
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x015'
+  - '0x069'
+- name: body block @tile 0x4e (col 14, row 4)
+  rect_px:
+  - 112
+  - 32
+  - 16
+  - 16
+  anim_indices:
+  - '0x055'
+  - '0x058'
+- name: body block @tile 0x60 (col 0, row 6)
+  rect_px:
+  - 0
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x016'
+  - '0x048'
+  - '0x051'
+  - '0x0A6'
+- name: body block @tile 0x62 (col 2, row 6)
+  rect_px:
+  - 16
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x011'
+  - '0x04F'
+  - '0x06E'
+- name: body block @tile 0x64 (col 4, row 6)
+  rect_px:
+  - 32
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x012'
+  - '0x030'
+  - '0x044'
+  - '0x126'
+- name: body block @tile 0x66 (col 6, row 6)
+  rect_px:
+  - 48
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x115'
+- name: body block @tile 0x68 (col 8, row 6)
+  rect_px:
+  - 64
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A2'
+- name: body block @tile 0x6a (col 10, row 6)
+  rect_px:
+  - 80
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x087'
+  - '0x089'
+- name: body block @tile 0x6c (col 12, row 6)
+  rect_px:
+  - 96
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x088'
+  - '0x08A'
+- name: body block @tile 0x6e (col 14, row 6)
+  rect_px:
+  - 112
+  - 48
+  - 16
+  - 16
+  anim_indices:
+  - '0x053'
+  - '0x056'
+- name: body block @tile 0xaa (col 10, row 10)
+  rect_px:
+  - 80
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x054'
+  - '0x057'
+- name: body block @tile 0xac (col 12, row 10)
+  rect_px:
+  - 96
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x035'
+  - '0x038'
+- name: body block @tile 0xae (col 14, row 10)
+  rect_px:
+  - 112
+  - 80
+  - 16
+  - 16
+  anim_indices:
+  - '0x032'
+- name: body block @tile 0xb0 (col 0, row 11)
+  rect_px:
+  - 0
+  - 88
+  - 16
+  - 16
+  anim_indices:
+  - '0x014'
+  - '0x06A'
+- name: body block @tile 0xb2 (col 2, row 11)
+  rect_px:
+  - 16
+  - 88
+  - 16
+  - 16
+  anim_indices:
+  - '0x010'
+  - '0x06F'
+- name: body block @tile 0xb4 (col 4, row 11)
+  rect_px:
+  - 32
+  - 88
+  - 16
+  - 16
+  anim_indices:
+  - '0x040'
+- name: body block @tile 0xb6 (col 6, row 11)
+  rect_px:
+  - 48
+  - 88
+  - 16
+  - 16
+  anim_indices:
+  - '0x041'
+  - '0x042'
+- name: body block @tile 0xb8 (col 8, row 11)
+  rect_px:
+  - 64
+  - 88
+  - 16
+  - 16
+  anim_indices:
+  - '0x03F'
+- name: body block @tile 0xce (col 14, row 12)
+  rect_px:
+  - 112
+  - 96
+  - 16
+  - 16
+  anim_indices:
+  - '0x033'
+- name: body block @tile 0xe1 (col 1, row 14)
+  rect_px:
+  - 8
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x03B'
+- name: body block @tile 0xe3 (col 3, row 14)
+  rect_px:
+  - 24
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x046'
+- name: body block @tile 0xe5 (col 5, row 14)
+  rect_px:
+  - 40
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x049'
+  - '0x04C'
+- name: body block @tile 0xe7 (col 7, row 14)
+  rect_px:
+  - 56
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x043'
+- name: body block @tile 0xea (col 10, row 14)
+  rect_px:
+  - 80
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x09C'
+  - '0x09F'
+- name: body block @tile 0xec (col 12, row 14)
+  rect_px:
+  - 96
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x09D'
+  - '0x0A0'
+- name: body block @tile 0xee (col 14, row 14)
+  rect_px:
+  - 112
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x09E'
+  - '0x0A1'
+- name: body block @tile 0x100 (col 0, row 16)
+  rect_px:
+  - 0
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x072'
+- name: body block @tile 0x102 (col 2, row 16)
+  rect_px:
+  - 16
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x070'
+- name: body block @tile 0x104 (col 4, row 16)
+  rect_px:
+  - 32
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x071'
+  - '0x127'
+- name: body block @tile 0x10a (col 10, row 16)
+  rect_px:
+  - 80
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x096'
+- name: body block @tile 0x10c (col 12, row 16)
+  rect_px:
+  - 96
+  - 128
+  - 16
+  - 16
+  anim_indices:
+  - '0x097'
+  - '0x098'
+- name: body block @tile 0x124 (col 4, row 18)
+  rect_px:
+  - 32
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x08E'
+  - '0x08F'
+  - '0x090'
+  - '0x091'
+- name: body block @tile 0x126 (col 6, row 18)
+  rect_px:
+  - 48
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x099'
+  - '0x09A'
+- name: body block @tile 0x128 (col 8, row 18)
+  rect_px:
+  - 64
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x09B'
+- name: body block @tile 0x12b (col 11, row 18)
+  rect_px:
+  - 88
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x110'
+- name: body block @tile 0x12d (col 13, row 18)
+  rect_px:
+  - 104
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x111'
+- name: body block @tile 0x144 (col 4, row 20)
+  rect_px:
+  - 32
+  - 160
+  - 16
+  - 16
+  anim_indices:
+  - '0x12D'
+- name: body block @tile 0x14c (col 12, row 20)
+  rect_px:
+  - 96
+  - 160
+  - 16
+  - 16
+  anim_indices:
+  - '0x129'
+- name: body block @tile 0x160 (col 0, row 22)
+  rect_px:
+  - 0
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x092'
+  - '0x093'
+  - '0x094'
+  - '0x095'
+- name: body block @tile 0x164 (col 4, row 22)
+  rect_px:
+  - 32
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x112'
+- name: body block @tile 0x166 (col 6, row 22)
+  rect_px:
+  - 48
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x017'
+  - '0x0CC'
+- name: body block @tile 0x168 (col 8, row 22)
+  rect_px:
+  - 64
+  - 176
+  - 16
+  - 16
+  anim_indices:
+  - '0x013'
+  - '0x031'
+- name: body block @tile 0x180 (col 0, row 24)
+  rect_px:
+  - 0
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x025'
+  - '0x08C'
+  - '0x08D'
+- name: body block @tile 0x182 (col 2, row 24)
+  rect_px:
+  - 16
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x026'
+- name: body block @tile 0x184 (col 4, row 24)
+  rect_px:
+  - 32
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x027'
+- name: body block @tile 0x186 (col 6, row 24)
+  rect_px:
+  - 48
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x020'
+  - '0x0E0'
+- name: body block @tile 0x188 (col 8, row 24)
+  rect_px:
+  - 64
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x021'
+  - '0x023'
+  - '0x0E1'
+  - '0x0E3'
+- name: body block @tile 0x18a (col 10, row 24)
+  rect_px:
+  - 80
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x022'
+  - '0x024'
+  - '0x0E2'
+  - '0x0E4'
+- name: body block @tile 0x18c (col 12, row 24)
+  rect_px:
+  - 96
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x02A'
+  - '0x02D'
+- name: body block @tile 0x18e (col 14, row 24)
+  rect_px:
+  - 112
+  - 192
+  - 16
+  - 16
+  anim_indices:
+  - '0x02C'
+  - '0x02F'
+- name: body block @tile 0x1a0 (col 0, row 26)
+  rect_px:
+  - 0
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x12C'
+- name: body block @tile 0x1a2 (col 2, row 26)
+  rect_px:
+  - 16
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x034'
+- name: body block @tile 0x1a4 (col 4, row 26)
+  rect_px:
+  - 32
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x036'
+  - '0x039'
+- name: body block @tile 0x1a6 (col 6, row 26)
+  rect_px:
+  - 48
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x037'
+  - '0x03A'
+- name: body block @tile 0x1a8 (col 8, row 26)
+  rect_px:
+  - 64
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x04B'
+  - '0x04E'
+- name: body block @tile 0x1aa (col 10, row 26)
+  rect_px:
+  - 80
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x045'
+- name: body block @tile 0x1ac (col 12, row 26)
+  rect_px:
+  - 96
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x047'
+- name: body block @tile 0x1ae (col 14, row 26)
+  rect_px:
+  - 112
+  - 208
+  - 16
+  - 16
+  anim_indices:
+  - '0x05E'
+- name: body block @tile 0x1c0 (col 0, row 28)
+  rect_px:
+  - 0
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x05F'
+  - '0x061'
+- name: body block @tile 0x1c2 (col 2, row 28)
+  rect_px:
+  - 16
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x060'
+  - '0x062'
+- name: body block @tile 0x1c4 (col 4, row 28)
+  rect_px:
+  - 32
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x063'
+  - '0x066'
+- name: body block @tile 0x1c6 (col 6, row 28)
+  rect_px:
+  - 48
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x064'
+  - '0x067'
+- name: body block @tile 0x1c8 (col 8, row 28)
+  rect_px:
+  - 64
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x065'
+  - '0x068'
+- name: body block @tile 0x1ca (col 10, row 28)
+  rect_px:
+  - 80
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x059'
+  - '0x101'
+  - '0x103'
+- name: body block @tile 0x1cc (col 12, row 28)
+  rect_px:
+  - 96
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x05A'
+  - '0x05C'
+  - '0x102'
+  - '0x10E'
+- name: body block @tile 0x1ce (col 14, row 28)
+  rect_px:
+  - 112
+  - 224
+  - 16
+  - 16
+  anim_indices:
+  - '0x05B'
+  - '0x05D'
+  - '0x10D'
+  - '0x10F'
+- name: body block @tile 0x1e2 (col 2, row 30)
+  rect_px:
+  - 16
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x073'
+- name: body block @tile 0x1e4 (col 4, row 30)
+  rect_px:
+  - 32
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x06D'
+- name: body block @tile 0x1e6 (col 6, row 30)
+  rect_px:
+  - 48
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x06B'
+- name: body block @tile 0x1e8 (col 8, row 30)
+  rect_px:
+  - 64
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x076'
+  - '0x08B'
+  - '0x0AD'
+  - '0x0CB'
+  - '0x116'
+  - '0x12A'
+- name: body block @tile 0x1ea (col 10, row 30)
+  rect_px:
+  - 80
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x074'
+  - '0x125'
+- name: body block @tile 0x1ec (col 12, row 30)
+  rect_px:
+  - 96
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x077'
+  - '0x078'
+- name: body block @tile 0x1ee (col 14, row 30)
+  rect_px:
+  - 112
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x118'
+  - '0x12B'
+- name: body block @tile 0x200 (col 0, row 32)
+  rect_px:
+  - 0
+  - 256
+  - 16
+  - 16
+  anim_indices:
+  - '0x07F'
+- name: body block @tile 0x202 (col 2, row 32)
+  rect_px:
+  - 16
+  - 256
+  - 16
+  - 16
+  anim_indices:
+  - '0x07E'
+  - '0x0CD'
+- name: body block @tile 0x206 (col 6, row 32)
+  rect_px:
+  - 48
+  - 256
+  - 16
+  - 16
+  anim_indices:
+  - '0x109'
+  - '0x10C'
+- name: body block @tile 0x20a (col 10, row 32)
+  rect_px:
+  - 80
+  - 256
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A5'
+- name: body block @tile 0x20c (col 12, row 32)
+  rect_px:
+  - 96
+  - 256
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A4'
+- name: body block @tile 0x20e (col 14, row 32)
+  rect_px:
+  - 112
+  - 256
+  - 16
+  - 16
+  anim_indices:
+  - '0x0BF'
+  - '0x0C6'
+- name: body block @tile 0x22c (col 12, row 34)
+  rect_px:
+  - 96
+  - 272
+  - 16
+  - 16
+  anim_indices:
+  - '0x0C1'
+  - '0x0C8'
+- name: body block @tile 0x22e (col 14, row 34)
+  rect_px:
+  - 112
+  - 272
+  - 16
+  - 16
+  anim_indices:
+  - '0x0C2'
+  - '0x0C9'
+- name: body block @tile 0x230 (col 0, row 35)
+  rect_px:
+  - 0
+  - 280
+  - 16
+  - 16
+  anim_indices:
+  - '0x0AA'
+  - '0x0AC'
+- name: body block @tile 0x232 (col 2, row 35)
+  rect_px:
+  - 16
+  - 280
+  - 16
+  - 16
+  anim_indices:
+  - '0x07D'
+- name: body block @tile 0x234 (col 4, row 35)
+  rect_px:
+  - 32
+  - 280
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A3'
+- name: body block @tile 0x246 (col 6, row 36)
+  rect_px:
+  - 48
+  - 288
+  - 16
+  - 16
+  anim_indices:
+  - '0x0C3'
+  - '0x0CA'
+- name: body block @tile 0x248 (col 8, row 36)
+  rect_px:
+  - 64
+  - 288
+  - 16
+  - 16
+  anim_indices:
+  - '0x0C0'
+  - '0x0C7'
+- name: body block @tile 0x24a (col 10, row 36)
+  rect_px:
+  - 80
+  - 288
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B8'
+  - '0x0BB'
+- name: body block @tile 0x24c (col 12, row 36)
+  rect_px:
+  - 96
+  - 288
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B9'
+  - '0x0BC'
+- name: body block @tile 0x24e (col 14, row 36)
+  rect_px:
+  - 112
+  - 288
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B0'
+- name: body block @tile 0x260 (col 0, row 38)
+  rect_px:
+  - 0
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A9'
+  - '0x0AB'
+- name: body block @tile 0x262 (col 2, row 38)
+  rect_px:
+  - 16
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x080'
+- name: body block @tile 0x264 (col 4, row 38)
+  rect_px:
+  - 32
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x0A7'
+  - '0x0A8'
+- name: body block @tile 0x266 (col 6, row 38)
+  rect_px:
+  - 48
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B1'
+- name: body block @tile 0x268 (col 8, row 38)
+  rect_px:
+  - 64
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B3'
+- name: body block @tile 0x26a (col 10, row 38)
+  rect_px:
+  - 80
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B4'
+- name: body block @tile 0x26c (col 12, row 38)
+  rect_px:
+  - 96
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B5'
+- name: body block @tile 0x26e (col 14, row 38)
+  rect_px:
+  - 112
+  - 304
+  - 16
+  - 16
+  anim_indices:
+  - '0x0B2'
+- name: body block @tile 0x286 (col 6, row 40)
+  rect_px:
+  - 48
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0FF'
+- name: body block @tile 0x288 (col 8, row 40)
+  rect_px:
+  - 64
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0DA'
+  - '0x0DB'
+  - '0x0F0'
+  - '0x0F1'
+- name: body block @tile 0x28a (col 10, row 40)
+  rect_px:
+  - 80
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0DC'
+  - '0x0DE'
+- name: body block @tile 0x28c (col 12, row 40)
+  rect_px:
+  - 96
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0DD'
+  - '0x0DF'
+- name: body block @tile 0x28e (col 14, row 40)
+  rect_px:
+  - 112
+  - 320
+  - 16
+  - 16
+  anim_indices:
+  - '0x0D8'
+- name: body block @tile 0x2a0 (col 0, row 42)
+  rect_px:
+  - 0
+  - 336
+  - 16
+  - 16
+  anim_indices:
+  - '0x0D9'
+- name: body block @tile 0x2a2 (col 2, row 42)
+  rect_px:
+  - 16
+  - 336
+  - 16
+  - 16
+  anim_indices:
+  - '0x02B'
+  - '0x02E'
+  - '0x0D4'
+  - '0x0D6'
+- name: body block @tile 0x2a4 (col 4, row 42)
+  rect_px:
+  - 32
+  - 336
+  - 16
+  - 16
+  anim_indices:
+  - '0x0D5'
+  - '0x0D7'
+- name: body block @tile 0x2a6 (col 6, row 42)
+  rect_px:
+  - 48
+  - 336
+  - 16
+  - 16
+  anim_indices:
+  - '0x0D0'
+  - '0x0D2'
+- name: body block @tile 0x2a8 (col 8, row 42)
+  rect_px:
+  - 64
+  - 336
+  - 16
+  - 16
+  anim_indices:
+  - '0x0D1'
+  - '0x0D3'
+- name: body block @tile 0x2aa (col 10, row 42)
+  rect_px:
+  - 80
+  - 336
+  - 16
+  - 16
+  anim_indices:
+  - '0x0CE'
+- name: body block @tile 0x2ac (col 12, row 42)
+  rect_px:
+  - 96
+  - 336
+  - 16
+  - 16
+  anim_indices:
+  - '0x0CF'
+- name: body block @tile 0x2e4 (col 4, row 46)
+  rect_px:
+  - 32
+  - 368
+  - 16
+  - 16
+  anim_indices:
+  - '0x0EA'
+  - '0x0ED'
+  - '0x107'
+  - '0x10A'
+- name: body block @tile 0x2e6 (col 6, row 46)
+  rect_px:
+  - 48
+  - 368
+  - 16
+  - 16
+  anim_indices:
+  - '0x0EB'
+  - '0x0EE'
+  - '0x108'
+  - '0x10B'
+- name: body block @tile 0x2e8 (col 8, row 46)
+  rect_px:
+  - 64
+  - 368
+  - 16
+  - 16
+  anim_indices:
+  - '0x0EC'
+  - '0x0EF'
+- name: body block @tile 0x2ea (col 10, row 46)
+  rect_px:
+  - 80
+  - 368
+  - 16
+  - 16
+  anim_indices:
+  - '0x0E5'
+  - '0x104'
+  - '0x106'
+- name: body block @tile 0x2ec (col 12, row 46)
+  rect_px:
+  - 96
+  - 368
+  - 16
+  - 16
+  anim_indices:
+  - '0x0E6'
+  - '0x0E8'
+  - '0x105'
+- name: body block @tile 0x2ee (col 14, row 46)
+  rect_px:
+  - 112
+  - 368
+  - 16
+  - 16
+  anim_indices:
+  - '0x0E7'
+  - '0x0E9'
+- name: body block @tile 0x300 (col 0, row 48)
+  rect_px:
+  - 0
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x0F2'
+  - '0x0F8'
+- name: body block @tile 0x302 (col 2, row 48)
+  rect_px:
+  - 16
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x0F3'
+  - '0x0F9'
+- name: body block @tile 0x304 (col 4, row 48)
+  rect_px:
+  - 32
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x0F4'
+  - '0x0FA'
+- name: body block @tile 0x306 (col 6, row 48)
+  rect_px:
+  - 48
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x0F5'
+  - '0x0FB'
+- name: body block @tile 0x308 (col 8, row 48)
+  rect_px:
+  - 64
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x0F6'
+  - '0x0FC'
+- name: body block @tile 0x30a (col 10, row 48)
+  rect_px:
+  - 80
+  - 384
+  - 16
+  - 16
+  anim_indices:
+  - '0x0F7'
+  - '0x0FD'
+- name: body block @tile 0x31c (col 12, row 49)
+  rect_px:
+  - 96
+  - 392
+  - 16
+  - 16
+  anim_indices:
+  - '0x117'
+- name: body block @tile 0x328 (col 8, row 50)
+  rect_px:
+  - 64
+  - 400
+  - 16
+  - 16
+  anim_indices:
+  - '0x119'
+  - '0x11A'
+- name: body block @tile 0x32e (col 14, row 50)
+  rect_px:
+  - 112
+  - 400
+  - 16
+  - 16
+  anim_indices:
+  - '0x11F'
+  - '0x120'
+- name: body block @tile 0x340 (col 0, row 52)
+  rect_px:
+  - 0
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x11E'
+- name: body block @tile 0x344 (col 4, row 52)
+  rect_px:
+  - 32
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x11B'
+- name: body block @tile 0x346 (col 6, row 52)
+  rect_px:
+  - 48
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x11C'
+  - '0x11D'
+- name: body block @tile 0x34a (col 10, row 52)
+  rect_px:
+  - 80
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x121'
+  - '0x123'
+- name: body block @tile 0x34c (col 12, row 52)
+  rect_px:
+  - 96
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x122'
+  - '0x124'
+- name: body block @tile 0x34e (col 14, row 52)
+  rect_px:
+  - 112
+  - 416
+  - 16
+  - 16
+  anim_indices:
+  - '0x07B'
+  - '0x084'
+- name: body block @tile 0x360 (col 0, row 54)
+  rect_px:
+  - 0
+  - 432
+  - 16
+  - 16
+  anim_indices:
+  - '0x052'
+- name: body block @tile 0x362 (col 2, row 54)
+  rect_px:
+  - 16
+  - 432
+  - 16
+  - 16
+  anim_indices:
+  - '0x050'
+- name: body block @tile 0x364 (col 4, row 54)
+  rect_px:
+  - 32
+  - 432
+  - 16
+  - 16
+  anim_indices:
+  - '0x028'
+- name: body block @tile 0x366 (col 6, row 54)
+  rect_px:
+  - 48
+  - 432
+  - 16
+  - 16
+  anim_indices:
+  - '0x029'
+- name: body block @tile 0x368 (col 8, row 54)
+  rect_px:
+  - 64
+  - 432
+  - 16
+  - 16
+  anim_indices:
+  - '0x113'
+- name: body block @tile 0x36e (col 14, row 54)
+  rect_px:
+  - 112
+  - 432
+  - 16
+  - 16
+  anim_indices:
+  - '0x12E'
+- name: aux block @tile 0xd2 (col 2, row 13)
+  rect_px:
+  - 16
+  - 104
+  - 16
+  - 16
+  anim_indices:
+  - '0x000'
+- name: aux block @tile 0xd9 (col 9, row 13)
+  rect_px:
+  - 72
+  - 104
+  - 16
+  - 16
+  anim_indices:
+  - '0x004'
+- name: aux block @tile 0xe9 (col 9, row 14)
+  rect_px:
+  - 72
+  - 112
+  - 16
+  - 16
+  anim_indices:
+  - '0x002'
+- name: aux block @tile 0xf0 (col 0, row 15)
+  rect_px:
+  - 0
+  - 120
+  - 16
+  - 16
+  anim_indices:
+  - '0x001'
+- name: aux block @tile 0xf9 (col 9, row 15)
+  rect_px:
+  - 72
+  - 120
+  - 16
+  - 16
+  anim_indices:
+  - '0x003'
+- name: aux block @tile 0x12a (col 10, row 18)
+  rect_px:
+  - 80
+  - 144
+  - 16
+  - 16
+  anim_indices:
+  - '0x00D'
+  - '0x00E'
+  - '0x00F'
+  - '0x010'
+- name: aux block @tile 0x13a (col 10, row 19)
+  rect_px:
+  - 80
+  - 152
+  - 16
+  - 16
+  anim_indices:
+  - '0x015'
+  - '0x016'
+  - '0x017'
+  - '0x018'
+- name: aux block @tile 0x1e0 (col 0, row 30)
+  rect_px:
+  - 0
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x011'
+  - '0x012'
+  - '0x013'
+  - '0x014'
+- name: aux block @tile 0x1e1 (col 1, row 30)
+  rect_px:
+  - 8
+  - 240
+  - 16
+  - 16
+  anim_indices:
+  - '0x005'
+  - '0x006'
+- name: aux block @tile 0x1f0 (col 0, row 31)
+  rect_px:
+  - 0
+  - 248
+  - 16
+  - 16
+  anim_indices:
+  - '0x009'
+  - '0x00A'
+  - '0x00B'
+  - '0x00C'
+- name: aux block @tile 0x1f1 (col 1, row 31)
+  rect_px:
+  - 8
+  - 248
+  - 16
+  - 16
+  anim_indices:
+  - '0x007'
+  - '0x008'
+- name: aux block @tile 0x33c (col 12, row 51)
+  rect_px:
+  - 96
+  - 408
+  - 16
+  - 16
+  anim_indices:
+  - '0x019'
+  - '0x01A'
+placeholder_notice: PLACEHOLDER generated by tools/gfx_placeholder.py. Replace the pixels; keep size, grid and palette.

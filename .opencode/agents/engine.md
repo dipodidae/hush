@@ -18,6 +18,11 @@ permission:
     "*": deny
     "src/**": allow
     "docs/ram_map.md": allow
+    "tools/build.py": allow
+    "tools/gfx_insert.py": allow
+    "tools/gfx_compress.py": allow
+    "Makefile": allow
+    "docs/gfx/formats.md": allow
   bash:
     "*": deny
     "git status *": allow
@@ -91,7 +96,7 @@ its header, and nothing outside the task changed.
 ## Never
 - Guess an address, opcode operand or RAM meaning; cite or look it up.
 - Use `freecode`, `freedata`, `autoclean` or any automatic allocation.
-- Edit `design/`, `tests/`, `gfx/`, or `tools/`; touch `rom/`, `vendor/`, `.env*`.
+- Edit `design/`, `tests/`, `gfx/`, or any `tools/` file other than `build.py`, `gfx_insert.py`, `gfx_compress.py`; touch `rom/`, `vendor/`, `.env*`.
 - Write ROM data from the vanilla ROM into docs beyond the few bytes of a
   replaced instruction in a hook header.
 - Expand the ROM or change the header/checksum without a ledger row and the

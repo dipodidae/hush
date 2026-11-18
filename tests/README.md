@@ -6,6 +6,7 @@ Run everything: `make test`. Single script: `.venv/bin/python tools/run_test.py 
 |---|---|---|
 | `smoke/` | boot, RAM reads, determinism | `boot` no; the others yes |
 | `solutions/` | one replay per room: plays `solution_inputs` and asserts the room is cleared | yes (per room) |
+| `gfx/` | scripted scenes that dump VRAM/CGRAM for `make leakcheck` (`tests/lib/gfx.lua`) | no (made from this build) |
 | `chaos/` | seeded fuzzing (see its README) | yes |
 | `lib/hush.lua` | shared helpers | - |
 | `states/` | savestates you create by hand (gitignored) | - |

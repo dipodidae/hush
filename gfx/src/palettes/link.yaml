@@ -1,0 +1,33 @@
+note: Link/player palettes (15 colours = 7 + 8 per palette; index meanings in gfx/src/player/LINK.yaml). Violet only. Colours are RGB hex; the
+  build converts to BGR555.
+groups:
+  pal_Palettes_GreenMail:
+    decision: redraw
+    rom_rows: [$1BD308, $1BD316]
+    colours:
+    - [0B0A1E, 4B2E8C, 7048C8, A878F0, C9ABFF, ECE8FF, 231F4F]
+    - [E3D4FF, 6E64B4, 5E3AA8, 8B63DD, B58FFF, 3B2470, D8C7FF, F4EEFF]
+  pal_Palettes_BlueMail:
+    decision: redraw
+    rom_rows: [$1BD326, $1BD334]
+    colours:
+    - [0B0A1E, 4B2E8C, 7048C8, A878F0, C9ABFF, ECE8FF, 231F4F]
+    - [E3D4FF, 6E64B4, 5E3AA8, 8B63DD, B58FFF, 3B2470, D8C7FF, F4EEFF]
+  pal_Palettes_RedMail:
+    decision: redraw
+    rom_rows: [$1BD344, $1BD352]
+    colours:
+    - [0B0A1E, 4B2E8C, 7048C8, A878F0, C9ABFF, ECE8FF, 231F4F]
+    - [E3D4FF, 6E64B4, 5E3AA8, 8B63DD, B58FFF, 3B2470, D8C7FF, F4EEFF]
+  pal_Palettes_Bunny:
+    decision: redraw
+    rom_rows: [$1BD362, $1BD370]
+    colours:
+    - [0B0A1E, 4B2E8C, 7048C8, A878F0, C9ABFF, ECE8FF, 231F4F]
+    - [E3D4FF, 6E64B4, 5E3AA8, 8B63DD, B58FFF, 3B2470, D8C7FF, F4EEFF]
+  pal_Palettes_Zap:
+    decision: redraw
+    rom_rows: [$1BD380, $1BD38E]
+    colours:
+    - [0B0A1E, 4B2E8C, 7048C8, A878F0, C9ABFF, ECE8FF, 231F4F]
+    - [E3D4FF, 6E64B4, 5E3AA8, 8B63DD, B58FFF, 3B2470, D8C7FF, F4EEFF]

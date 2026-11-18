@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """HUSH build pipeline.
 
-  build.py build   verify ROM -> copy to build/hush.sfc -> asar src/main.asm
+  build.py build   verify ROM -> copy to build/hush.sfc -> asar src/main.asm -> insert gfx/src (A0)
   build.py patch   build, then flips -> dist/hush.bps (vanilla -> build)
 
 Fails loudly on any asar warning or error. Never writes the ROM anywhere
@@ -32,6 +32,14 @@ def run_freespace_check(rom_check: bool) -> None:
         die("freespace check failed (see above).")
 
 
+def insert_graphics() -> None:
+    """A0: PNG/palette sources in gfx/src/ -> ROM (tools/gfx_insert.py). Fails the build on any problem."""
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "gfx_insert.py"), "apply", str(BUILT_ROM)], cwd=ROOT)
+    if r.returncode != 0:
+        BUILT_ROM.unlink(missing_ok=True)
+        die("graphics insertion failed (see above). Build failed; build/hush.sfc removed.")
+
+
 def build() -> None:
     verify_vanilla()
     print("ROM ok: headerless, 1 MiB, CRC32 777AAC2F")
@@ -58,7 +66,8 @@ def build() -> None:
         BUILT_ROM.unlink(missing_ok=True)
         die(f"asar reported problems (exit {r.returncode}). Build failed; build/hush.sfc removed.")
 
-    run_freespace_check(rom_check=True)  # actual bytes written must be in the ledger
+    insert_graphics()
+    run_freespace_check(rom_check=True)  # actual bytes written (asar + graphics) must be in the ledger
     print(f"built {BUILT_ROM.relative_to(ROOT)}")
 
 

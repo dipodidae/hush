@@ -1,0 +1,28 @@
+note: Shade Knife blade colours (violet). Colours are RGB hex; the build converts to BGR555.
+groups:
+  pal_sword_00:
+    decision: reuse-as
+    rom_rows: [$1BD630]
+    colours:
+    - [A878F0, C9ABFF, 4B2E8C]
+  pal_sword_01:
+    decision: reuse-as
+    rom_rows: [$1BD636]
+    colours:
+    - [A878F0, C9ABFF, 4B2E8C]
+  pal_sword_02:
+    decision: reuse-as
+    rom_rows: [$1BD63C]
+    colours:
+    - [A878F0, C9ABFF, 4B2E8C]
+  pal_sword_03:
+    decision: reuse-as
+    rom_rows: [$1BD642]
+    colours:
+    - [A878F0, C9ABFF, 4B2E8C]
+  pal_sword_04:
+    decision: reuse-as
+    rom_rows: [$1BD6E0, $1BD6E6]
+    colours:
+    - [A878F0, C9ABFF, 4B2E8C]
+    - [A878F0, C9ABFF, 4B2E8C, ECE8FF]

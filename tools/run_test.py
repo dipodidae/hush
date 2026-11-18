@@ -38,10 +38,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import BUILD_DIR, BUILT_ROM, ROOT, die  # noqa: E402
 
 TESTS_DIR = ROOT / "tests"
-RESULTS_DIR = BUILD_DIR / "test-results"
+RESULTS_DIR = Path(os.environ["HUSH_RESULTS"]).resolve() if os.environ.get("HUSH_RESULTS") else BUILD_DIR / "test-results"
 DEFAULT_STATE = TESTS_DIR / "states" / "test_room.mss"
 DEFAULT_TIMEOUT = 60
-SUITES = ("smoke", "solutions", "chaos")
+SUITES = ("smoke", "solutions", "chaos", "gfx")
+# HUSH_ROM overrides the ROM under test (used for the leak detector's vanilla-graphics control build)
+ROM_UNDER_TEST = Path(os.environ["HUSH_ROM"]).resolve() if os.environ.get("HUSH_ROM") else BUILT_ROM
 NOISE = re.compile(r"^\[(CPU|SA1)\] Uninitialized memory read: \$[0-9A-Fa-f]+$")
 
 # Pre-seeded MesenCE settings. Only what the harness needs: Lua io/os access.
@@ -128,7 +130,7 @@ def run_one(script: Path, state: Path | None, timeout: int | None, keep_home: bo
         "--testRunner", "--doNotSaveSettings", "--enableStdout", f"--timeout={timeout}",
         "--snes.ramPowerOnState=AllZeros",  # reproducible cold boots (default is Random)
         "--snes.port1.type=SnesController",  # a fresh config has no controller; setInput needs one
-        str(script.resolve()), str(BUILT_ROM),
+        str(script.resolve()), str(ROM_UNDER_TEST),
     ]
 
     t0 = time.monotonic()
@@ -208,8 +210,8 @@ def main() -> int:
 
     if not args.scripts and not args.suite:
         ap.error("give a script or --suite")
-    if not BUILT_ROM.exists():
-        die("build/hush.sfc not found. Run `make build` first.")
+    if not ROM_UNDER_TEST.exists():
+        die(f"{ROM_UNDER_TEST} not found. Run `make build` first.")
 
     scripts = collect(args.suite, args.scripts)
     if not scripts:

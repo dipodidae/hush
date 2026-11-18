@@ -1,0 +1,294 @@
+note: Universal HUSH sprite palette (index meanings in any gfx/src/sprite/*.yaml). 8-colour rows repeat 1-7 as colours 9-15. Colours are RGB hex;
+  the build converts to BGR555.
+groups:
+  pal_sprite_00:
+    decision: redraw
+    rom_rows: [$1BD218]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_00_right:
+    decision: redraw
+    rom_rows: [$1BD226]
+    colours:
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_01:
+    decision: redraw
+    rom_rows: [$1BD236]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_01_right:
+    decision: redraw
+    rom_rows: [$1BD244]
+    colours:
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_02:
+    decision: redraw
+    rom_rows: [$1BD254, $1BD262]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_03:
+    decision: redraw
+    rom_rows: [$1BD272, $1BD280]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_04:
+    decision: redraw
+    rom_rows: [$1BD290, $1BD29E]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_05:
+    decision: redraw
+    rom_rows: [$1BD2AE, $1BD2BC]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_06:
+    decision: redraw
+    rom_rows: [$1BD2CC, $1BD2DA]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_sprite_07:
+    decision: redraw
+    rom_rows: [$1BD2EA, $1BD2F8]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_00:
+    decision: redraw
+    rom_rows: [$1BD39E]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_01:
+    decision: redraw
+    rom_rows: [$1BD3AC]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_02:
+    decision: redraw
+    rom_rows: [$1BD3BA]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_03:
+    decision: redraw
+    rom_rows: [$1BD3C8]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_04:
+    decision: redraw
+    rom_rows: [$1BD3D6]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_05:
+    decision: redraw
+    rom_rows: [$1BD3E4]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_06:
+    decision: redraw
+    rom_rows: [$1BD3F2]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_07:
+    decision: redraw
+    rom_rows: [$1BD400]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_08:
+    decision: redraw
+    rom_rows: [$1BD40E]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_09:
+    decision: redraw
+    rom_rows: [$1BD41C]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_0A:
+    decision: redraw
+    rom_rows: [$1BD42A]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spritepal0_0B:
+    decision: redraw
+    rom_rows: [$1BD438]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_00:
+    decision: redraw
+    rom_rows: [$1BD446]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_01:
+    decision: redraw
+    rom_rows: [$1BD454]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_02:
+    decision: redraw
+    rom_rows: [$1BD462]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_03:
+    decision: redraw
+    rom_rows: [$1BD470]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_04:
+    decision: redraw
+    rom_rows: [$1BD47E]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_05:
+    decision: redraw
+    rom_rows: [$1BD48C]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_06:
+    decision: redraw
+    rom_rows: [$1BD49A]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_07:
+    decision: redraw
+    rom_rows: [$1BD4A8]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_08:
+    decision: redraw
+    rom_rows: [$1BD4B6]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_09:
+    decision: redraw
+    rom_rows: [$1BD4C4]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_environment_0A:
+    decision: redraw
+    rom_rows: [$1BD4D2]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_00:
+    decision: redraw
+    rom_rows: [$1BD4E0]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_01:
+    decision: redraw
+    rom_rows: [$1BD4EE]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_02:
+    decision: redraw
+    rom_rows: [$1BD4FC]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_03:
+    decision: redraw
+    rom_rows: [$1BD50A]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_04:
+    decision: redraw
+    rom_rows: [$1BD518]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_05:
+    decision: redraw
+    rom_rows: [$1BD526]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_06:
+    decision: redraw
+    rom_rows: [$1BD534]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_07:
+    decision: redraw
+    rom_rows: [$1BD542]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_08:
+    decision: redraw
+    rom_rows: [$1BD550]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_09:
+    decision: redraw
+    rom_rows: [$1BD55E]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_0A:
+    decision: redraw
+    rom_rows: [$1BD56C]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_0B:
+    decision: redraw
+    rom_rows: [$1BD57A]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_0C:
+    decision: redraw
+    rom_rows: [$1BD588]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_0D:
+    decision: redraw
+    rom_rows: [$1BD596]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_0E:
+    decision: redraw
+    rom_rows: [$1BD5A4]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_0F:
+    decision: redraw
+    rom_rows: [$1BD5B2]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_10:
+    decision: redraw
+    rom_rows: [$1BD5C0]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_11:
+    decision: redraw
+    rom_rows: [$1BD5CE]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_12:
+    decision: redraw
+    rom_rows: [$1BD5DC]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_13:
+    decision: redraw
+    rom_rows: [$1BD5EA]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_14:
+    decision: redraw
+    rom_rows: [$1BD5F8]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_15:
+    decision: redraw
+    rom_rows: [$1BD606]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_16:
+    decision: redraw
+    rom_rows: [$1BD614]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+  pal_spriteaux_17:
+    decision: redraw
+    rom_rows: [$1BD622]
+    colours:
+    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]

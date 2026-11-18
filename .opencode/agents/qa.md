@@ -18,6 +18,9 @@ permission:
     "*": deny
     "tests/**": allow
     "docs/bugs.md": allow
+    "tools/gfx_refdump.py": allow
+    "tools/gfx_leakcheck.py": allow
+    "docs/gfx/leak_report.md": allow
   bash:
     "*": deny
     "git status *": allow
@@ -40,6 +43,11 @@ permission:
     "make validate": allow
     ".venv/bin/python tools/run_test.py *": allow
     ".venv/bin/python tools/run_test.py": allow
+    "make leakcheck": allow
+    ".venv/bin/python tools/gfx_refdump.py *": allow
+    ".venv/bin/python tools/gfx_refdump.py": allow
+    ".venv/bin/python tools/gfx_leakcheck.py *": allow
+    ".venv/bin/python tools/gfx_leakcheck.py": allow
 ---
 
 # QA
