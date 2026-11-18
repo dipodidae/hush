@@ -1,0 +1,30 @@
+# Room spec template. Copy to design/rooms/<id>.yaml (id must equal the file name).
+# Specs change BEFORE code. `make validate` checks this schema.
+# Files starting with "_" are templates and are not validated as rooms.
+
+id: r01                      # [a-z0-9_]+, must equal the file name stem
+status: draft                # draft | specified | built
+                             #   built => solution_inputs must exist on disk
+floor: 1                     # 1..3 (the final heist room is floor 3, id "final")
+teaches: >-                  # the ONE idea this room teaches
+  One sentence.
+layout: >-                   # prose: walls, cover, exits, where Link enters, one screen
+  Describe the single-screen layout.
+lighting: dark               # lit | dark  (lit = larger guard detection range)
+
+guards:                      # may be empty
+  - type: lantern_guard      # guard kind (free text; keep names consistent across rooms)
+    patrol: >-               # prose or list of tile waypoints, e.g. [[4,3],[10,3]]
+      Walks left-right along the north wall, pauses 1s at each end.
+    facing: down             # up | down | left | right (initial facing)
+
+tools_given: []              # any of: shade_knife, hush_darts, ink_pots
+
+intended_solution: >-        # prose: the route a human is supposed to find
+  Step by step.
+solution_inputs: tests/solutions/r01.inputs   # replay in hush input-script format
+par_time_sec: 20             # target clear time for a competent player
+ghost_possible: false        # can the room be cleared without any takedown?
+
+must_not:                    # shortcuts that must NOT work (QA tests each)
+  - Walking past the guard without being seen.

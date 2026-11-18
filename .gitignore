@@ -1,0 +1,36 @@
+# --- Copyrighted / derived ROM material: NEVER commit ---
+rom/
+build/
+*.sfc
+*.smc
+*.srm
+*.ips
+*.ups
+# the only distributable is dist/*.bps
+dist/*
+!dist/.gitkeep
+!dist/*.bps
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Local tooling (rebuilt by `make setup`) ---
+.venv/
+.tools/
+vendor/
+__pycache__/
+*.pyc
+
+# --- Savestates are made from the user's ROM; keep them local ---
+tests/states/*.mss
+tests/states/*.mst
+
+# --- Editor / OS ---
+.DS_Store
+*.swp
+.idea/
+.vscode/
