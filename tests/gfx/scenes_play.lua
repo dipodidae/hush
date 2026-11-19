@@ -1,4 +1,4 @@
--- GFX scenes reached from the in-game dev state (build/dev_states/gfx_house.mss, made by
+-- GFX scenes reached from the in-game dev state (build/dev_states/gfx_room.mss, made by
 -- tests/gfx/scenes_boot.lua from THIS build) by setting save-data WRAM and pressing buttons:
 -- HUD at several health values, each tool in use, pause menu, death screen.
 -- RAM used (all cited in vendor/alttp-disassembly/Zelda_3_SRM.log / Zelda_3_RAM.log):
@@ -13,10 +13,10 @@ local gfx = require("gfx")
 local function poke(addr, v) emu.write(addr - 0x7E0000, v, emu.memType.snesWorkRam) end
 local function peek(addr) return emu.read(addr - 0x7E0000, emu.memType.snesWorkRam, false) end
 
-hush.test("gfx scenes: HUD, tools, pause, death (from gfx_house state)", function()
-  hush.load_state("build/dev_states/gfx_house.mss")
+hush.test("gfx scenes: HUD, tools, pause, death (from gfx_room state)", function()
+  hush.load_state("build/dev_states/gfx_room.mss")
   hush.wait(30)
-  hush.assert(hush.read("game_mode") == 0x07, "state is not in the house (module " .. hush.read("game_mode") .. ")")
+  hush.assert(hush.read("game_mode") == 0x07, "state is not in a room (module " .. hush.read("game_mode") .. ")")
 
   -- HUD at several health values (hearts row, half hearts, second heart row)
   for _, v in ipairs({ { 0x18, 0x18, "hud_3_full" }, { 0x18, 0x0C, "hud_3_half" }, { 0xA0, 0xA0, "hud_20_full" }, { 0x28, 0x04, "hud_low" } }) do

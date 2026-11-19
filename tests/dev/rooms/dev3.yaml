@@ -1,0 +1,43 @@
+id: dev3
+status: draft
+seq: 3
+floor: 2
+teaches: >-
+  Dev room 3: final dev room, two guards, ink pots.
+layout: >-
+  Wide corridor split by a wall with a gap; two guards.
+grid:
+  - "################"
+  - "################"
+  - "#..............#"
+  - "#S......#......#"
+  - "#.......#......#"
+  - "#...a...#......#"
+  - "#.......#...b..#"
+  - "#.......#......#"
+  - "#..............#"
+  - "#.......#......#"
+  - "#.......#.....X#"
+  - "#.......#......#"
+  - "#..............#"
+  - "################"
+lighting: dark
+guards:
+  - type: lantern_guard
+    patrol: west guard
+    facing: right
+    id: a
+    move: still
+  - type: lantern_guard
+    patrol: east guard
+    facing: left
+    id: b
+    move: patrol
+tools_given: [ink_pots]
+intended_solution: >-
+  Sneak through the gap.
+solution_inputs: tests/solutions/dev3.inputs
+par_time_sec: 10
+ghost_possible: false
+must_not:
+  - Walking through the wall.

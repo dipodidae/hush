@@ -74,15 +74,12 @@ FinishTitle:
     JSL HideSprites
     RTL
 
-; HideSprites (free block $0CC10C): Y = $F0 for all 128 OAM buffer entries ($0801,$0805..$09FD).
+; HideSprites (free block $0CC10C): now a JML to Hush_HideSprites (new_game.asm, bank 07), which holds the
+; original body. The freed bytes of the block hold Hush_TitleStart, the target of the START hook at
+; $0CC130 (new_game.asm): JSL Hush_NewGame, then RTL back to the main loop.
 org $0CC10C
 HideSprites:
-    REP #$10
-    LDX.w #$01FC
-    LDA.b #$F0
-.next
-    STA.w $0801,X
-    DEX #4
-    BPL .next
-    SEP #$10
+    JML Hush_HideSprites
+Hush_TitleStart:
+    JSL Hush_NewGame
     RTL

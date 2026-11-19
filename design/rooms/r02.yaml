@@ -1,0 +1,52 @@
+# r02: floor 1, seq 2. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r02
+status: specified
+seq: 2
+floor: 1
+teaches: >-
+  Patrol timing: cross a guard's lane while his back is turned or he is far away.
+layout: >-
+  Link starts bottom left (1,11); the exit is top right (13-14, row 2). A one-cell-high corridor
+  (row 5, cols 1-14) holds one patrolling guard. The only way north is through a two-cell gap
+  (cols 7-8) in the walls above and below the corridor, so you must cross the corridor.
+grid:
+  - "################"
+  - "################"
+  - "#............XX#"
+  - "#..............#"
+  - "#######..#######"
+  - "#..a...........#"
+  - "#######..#######"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#S.............#"
+  - "#..............#"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Walks east-west along row 5 (cols 1-14), starting at (3,5) facing east; pauses about 1 s
+      at each end wall and turns round.
+    facing: right
+    id: a
+    move: patrol
+
+tools_given: []
+
+intended_solution: >-
+  1. Walk to the waiting spot (7,11), two cells below the gap (a spot right under the gap can be
+  seen diagonally through it). 2. Watch the guard: when he has walked past col 9 heading east
+  (his back is to the gap) go north (7,11) -> (7,3) in one move; or cross when he is at the far
+  west or east end and facing the wall. 3. From (7,3) walk to (13,2) and the exit.
+solution_inputs: tests/solutions/r02.inputs
+par_time_sec: 15
+ghost_possible: true
+
+must_not:
+  - "Crossing the corridor while the guard is within 5 cells of the gap and facing it must get you Suspicious."
+  - "Waiting at (7,11) (two cells south of the gap) must NOT get you seen while the guard walks past (walls block the line)."
+  - "Touching the guard in the corridor must end in a catch."

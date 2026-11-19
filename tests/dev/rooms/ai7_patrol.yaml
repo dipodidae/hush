@@ -1,0 +1,44 @@
+# DEV room for the E2 AI tests (tests/dev/rooms; compiled into build/hush_dev.sfc, tests tagged `-- @rom dev`).
+id: ai7_patrol
+status: draft
+seq: 7
+floor: 1
+teaches: >-
+  AI test: a patrolling guard turns around at the wall; a still guard never moves.
+layout: >-
+  Engine test layout, see the E2 tests.
+grid:
+  - "################"
+  - "################"
+  - "#S.............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#.a............#"
+  - "#.........X.b..#"
+  - "################"
+lighting: dark
+guards:
+  - type: lantern_guard
+    patrol: walks east-west along its row
+    facing: right
+    id: a
+    move: patrol
+  - type: lantern_guard
+    patrol: stands, faces north
+    facing: up
+    id: b
+    move: still
+tools_given: []
+intended_solution: >-
+  Engine test room: nothing to solve.
+solution_inputs: tests/solutions/ai7_patrol.inputs
+par_time_sec: 10
+ghost_possible: true
+must_not:
+  - Anything: engine test room.

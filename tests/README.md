@@ -4,17 +4,17 @@ Run everything: `make test`. Single script: `.venv/bin/python tools/run_test.py 
 
 | Dir | What | Needs savestate? |
 |---|---|---|
-| `smoke/` | boot, RAM reads, determinism | `boot` no; the others yes |
-| `solutions/` | one replay per room: plays `solution_inputs` and asserts the room is cleared | yes (per room) |
+| `smoke/` | boot, new game, room advance/restart/ending, every room loads, walk to the exit, guard facing (E1); `visual_tiles.lua` (E3: tilemap/VRAM tile ids per cell kind, `$7F2000` = grid, palette sets, OBJ palettes identical); **`ai_*.lua` (E2): vision, line of sight, sword, darts, ink pots, caught -> restart, awareness timers, patrol, real-input stealth** (they run on the dev ROM, `-- @rom dev`); **`guard_draw.lua` (E4): the custom guard drawing against the GFX_BC sheet contract (tiles, flips, positions, palette, 5 OAM entries, lantern flicker, culling window; real ROM, build/hush.sym)**; RAM reads and determinism | only `read_link` and `determinism` |
+| `solutions/` | **`all_rooms.lua`: every one of the 21 rooms played from its recorded `<id>.inputs` on the real ROM (post-new-game state + debug jump per room): exit reached, hush_room advanced (final: back to the title), Link never caught; `must_not.lua`: the specs' `must_not` lines as tests**; regenerate with `tools/solve_rooms.py` (see `solutions/README.md`) | no |
 | `gfx/` | scripted scenes that dump VRAM/CGRAM for `make leakcheck` (`tests/lib/gfx.lua`) | no (made from this build) |
 | `chaos/` | seeded fuzzing (see its README) | yes |
-| `lib/hush.lua` | shared helpers | - |
+| `lib/hush.lua` (also `snapshot()` / `restore()`: in-memory savestates), `lib/bot.lua` (also `jump_to_room_synced`), `lib/ai.lua` | shared helpers; `bot` = new game, `walk_to(px,py)`, BFS `walk_exit`, `jump_to_room`, `teleport`, room metadata from `build/rooms_gen.lua` (or `build/dev/rooms_gen.lua` for dev-ROM tests: `HUSH_ROOMS_LUA`); `ai` = E2 helpers (`enter(room id)`, `state(slot)`, `link_to(slot, dx, dy)`, `restart()`) | - |
 | `states/` | savestates you create by hand (gitignored) | - |
-| `dev/` | utilities, not tests (`make_dev_state.lua`) | no |
+| `dev/` | utilities, not tests (`record_room.lua` and `trace_room.lua` = the solution recorder / per-frame tracer driven by `tools/solve_rooms.py`, `ram_at_room_start.lua`, `make_dev_state.lua`, `dump_collision.lua`, `room_load_timing.lua`, `guard_behaviour.lua` (vanilla AI, E1), `cpu_load.lua` (scanline where the logic ends), `guard_cost.lua` (CPU cycles per guard per frame, draw and AI; E4), `oam_probe.lua` (visible OAM entries of a room; E4), `sword_reach.lua`, `ai_probe.lua`, `probe_gfx.lua`) and `dev/rooms/*.yaml`, the engine dev room set: compiled into the **dev ROM** `build/hush_dev.sfc` (`make build-dev`, run by `make test`) and used as the main ROM's rooms while `design/rooms` has no rooms or with `HUSH_ROOMS_DIR=tests/dev/rooms` | no |
 
 Scripts tagged `-- @requires-state` are **skipped** (not failed) when
 `tests/states/test_room.mss` is missing. `make test STRICT=1` fails on skips.
-Header tags: `-- @requires-state`, `-- @timeout <sec>`.
+Header tags: `-- @requires-state`, `-- @timeout <sec>`, **`-- @rom dev`** (run on `build/hush_dev.sfc`: the same code and graphics but the rooms of `tests/dev/rooms`, so the test does not depend on what `design/rooms` contains; `bot.rooms()` then returns the dev rooms).
 
 ## Writing a test
 

@@ -1,0 +1,71 @@
+# r12: floor 2, seq 12. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r12
+status: specified
+seq: 12
+floor: 2
+teaches: >-
+  Lit rooms + darts: with 8-cell sight the only safe shooting spot is 9 or more cells away;
+  shoot through each door from the far side of the hall.
+layout: >-
+  LIT. A wall at col 9 splits the room; it has three one-cell doors at rows 4, 7 and 10. Behind
+  each door, 4 cells in, a still guard faces west at the door: a at (13,4), b at (13,7), c at
+  (13,10). The west hall (cols 1-8) is where you start, at (1,7). The exit is the south-east
+  corner (14,12). From col 3 or less a guard is 10 cells away, outside his 8-cell sight; from
+  col 5 or more he sees you through his door.
+grid:
+  - "################"
+  - "################"
+  - "#........#.....#"
+  - "#........#.....#"
+  - "#............a.#"
+  - "#........#.....#"
+  - "#........#.....#"
+  - "#S...........b.#"
+  - "#........#.....#"
+  - "#........#.....#"
+  - "#............c.#"
+  - "#........#.....#"
+  - "#........#....X#"
+  - "################"
+lighting: lit
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Stands still at (13,4) facing west, straight at the north door (9,4). Sees 8 cells (to col
+      5 along row 4).
+    facing: left
+    id: a
+    move: still
+  - type: lantern_guard
+    patrol: >-
+      Stands still at (13,7) facing west, straight at the middle door (9,7).
+    facing: left
+    id: b
+    move: still
+  - type: lantern_guard
+    patrol: >-
+      Stands still at (13,10) facing west, straight at the south door (9,10).
+    facing: left
+    id: c
+    move: still
+
+tools_given: []
+
+intended_solution: >-
+  1. Stay in cols 1-4 of the west hall (more than 8 cells from every guard; the wall blocks
+  everything else). Walk to (3,4), face east and fire a dart through the door (9,4): guard a
+  falls asleep. 2. Walk down to (3,7), face east, dart guard b through (9,7). 3. Walk down to
+  (3,10), face east, dart guard c through (9,10). 4. All three sleep for about 8 s (a, the
+  first, wakes about 8 s after step 1): from (3,10) walk east along row 10 through the south
+  door (9,10), step down col 10 to row 12 and east along row 12 to the exit (14,12), about 3.5
+  s. Do not stand at col 5 or further east before the guards are asleep.
+solution_inputs: tests/solutions/r12.inputs
+par_time_sec: 40
+ghost_possible: false
+
+must_not:
+  - "Standing at (5,4), (5,7) or (5,10) (8 cells from a guard, in line with his door) must get you Suspicious (lit range 8)."
+  - "Standing at (3,4), (3,7) or (3,10) must NOT get you seen (10 cells away, outside the lit range of 8)."
+  - "Walking through any door while its guard is awake must get you Suspicious."
+  - "Dart count: the three darts needed must not use up the 8 darts (8 per room); a missed dart (wrong row) must be retryable."

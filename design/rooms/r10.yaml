@@ -1,0 +1,59 @@
+# r10: floor 2, seq 10. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r10
+status: specified
+seq: 10
+floor: 2
+teaches: >-
+  Ink Pots: a pot makes a 3x3 patch of smoke after a ~2.5 s fuse and for 5 s no guard can see
+  through it or into it; stand in it and ambush a guard you cannot otherwise get past.
+layout: >-
+  A one-cell corridor along row 9 from the start (1,9) to the exit (14,9), with no side pockets.
+  One patrol guard walks it from the east end towards you. You cannot hide, cannot pass and
+  cannot see round a corner: the pot is your hiding place.
+grid:
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "#S...........aX#"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Walks west-east along row 9 (cols 1-14). Starts at (13,9) facing east, reaches the east
+      wall, pauses about 1 s, then walks west towards you (arrives in about 4-5 s), pauses at
+      the west wall, and repeats.
+    facing: right
+    id: a
+    move: patrol
+
+tools_given: [ink_pots]
+
+intended_solution: >-
+  1. At the start (1,9) press east once to face east, select the Ink Pots (bomb slot) and place
+  a pot within about 2 s (the guard comes into sight after about 4 s and the smoke needs 2.6 s
+  to appear). 2. The pot explodes into smoke after about 2.5 s and the smoke lasts 5 s; he
+  cannot see into it. Stay at (1,9)-(2,9) inside the smoke (it spans cols 1-3). 3. When the
+  guard walks up to you (he is still Unaware, he cannot see you) and is 1-1.5 cells away, press
+  B (Shade Knife) to kill him. If you wait too long he reaches you and an alert ends the room.
+  4. Walk east along the corridor to the exit (14,9).
+solution_inputs: tests/solutions/r10.inputs
+par_time_sec: 20
+ghost_possible: false
+
+must_not:
+  - "Walking east to meet the guard without ink must get you Suspicious and then caught: there is nowhere to hide in the corridor."
+  - "The knife must not kill the guard if you stab after he has become Suspicious (he stays alive)."
+  - "Standing outside the smoke when the guard comes within 5 cells in front of you must get you Suspicious."
+  - "The smoke must lapse 300 frames after it appears: standing in it for more than about 5 s leaves you visible (the guard comes after that)."
+  - "Throwing the pot facing up (the default facing) must not protect the corridor; face east first."

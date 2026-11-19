@@ -17,6 +17,9 @@ Script header tags (in Lua comments, first 20 lines):
   -- @requires-state     skip (not fail) if the savestate file does not exist;
                          default state is tests/states/test_room.mss
   -- @timeout <seconds>  override the default timeout (60)
+  -- @rom dev            run on build/hush_dev.sfc (rooms of tests/dev/rooms; `make build-dev`) instead of
+                         build/hush.sfc, so the test does not depend on design/rooms. HUSH_ROOMS_LUA points
+                         the Lua helpers (bot.rooms) at that build's build/dev/rooms_gen.lua.
 
 Exit code: 0 if nothing failed. Skips do not fail unless --strict / HUSH_STRICT=1.
 """
@@ -35,7 +38,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BUILD_DIR, BUILT_ROM, ROOT, die  # noqa: E402
+from common import BUILD_DIR, BUILT_ROM, DEV_BUILD_DIR, DEV_BUILT_ROM, ROOT, die  # noqa: E402
 
 TESTS_DIR = ROOT / "tests"
 RESULTS_DIR = Path(os.environ["HUSH_RESULTS"]).resolve() if os.environ.get("HUSH_RESULTS") else BUILD_DIR / "test-results"
@@ -92,6 +95,13 @@ def mesen_cmd() -> list[str]:
 def run_one(script: Path, state: Path | None, timeout: int | None, keep_home: bool = False) -> Result:
     name = test_name(script)
     tags = parse_tags(script)
+    rom = ROM_UNDER_TEST
+    rooms_lua = BUILD_DIR / "rooms_gen.lua"
+    if tags.get("rom") == "dev":
+        rom = DEV_BUILT_ROM
+        rooms_lua = DEV_BUILD_DIR / "rooms_gen.lua"
+        if not rom.exists():
+            return Result(name, "FAIL", 0.0, f"{rom.relative_to(ROOT)} missing (run `make build-dev`)", None, tags)
     out_dir = RESULTS_DIR / name
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -125,12 +135,13 @@ def run_one(script: Path, state: Path | None, timeout: int | None, keep_home: bo
         HUSH_ROOT=str(ROOT),
         HUSH_OUT=str(out_dir),
         HUSH_STATE=str(state.resolve()) if state else "",
+        HUSH_ROOMS_LUA=str(rooms_lua),
     )
     cmd = mesen_cmd() + [
         "--testRunner", "--doNotSaveSettings", "--enableStdout", f"--timeout={timeout}",
         "--snes.ramPowerOnState=AllZeros",  # reproducible cold boots (default is Random)
         "--snes.port1.type=SnesController",  # a fresh config has no controller; setInput needs one
-        str(script.resolve()), str(ROM_UNDER_TEST),
+        str(script.resolve()), str(rom),
     ]
 
     t0 = time.monotonic()
@@ -184,6 +195,23 @@ def collect(suites: list[str], scripts: list[str]) -> list[Path]:
     return found
 
 
+CASE_PREFIXES = ("SOLUTION:", "MUST_NOT:")   # per-case lines printed by tests/solutions/*.lua (one script, many cases)
+
+
+def print_cases(results: list[Result]) -> None:
+    """Show the per-case report lines of multi-case tests (tests/solutions): the table has one row per script."""
+    lines = []
+    for r in results:
+        p = r.out_dir / "stdout.txt" if r.out_dir else None
+        if p and p.exists():
+            lines += [ln for ln in p.read_text().splitlines() if ln.startswith(CASE_PREFIXES)]
+    if lines:
+        print()
+        print("per-case report:")
+        for ln in lines:
+            print("  " + ln)
+
+
 def print_table(results: list[Result]) -> None:
     if not results:
         return
@@ -210,7 +238,8 @@ def main() -> int:
 
     if not args.scripts and not args.suite:
         ap.error("give a script or --suite")
-    if not ROM_UNDER_TEST.exists():
+    needs_main = not args.scripts or any(parse_tags(Path(s)).get("rom") != "dev" for s in args.scripts)
+    if needs_main and not ROM_UNDER_TEST.exists():
         die(f"{ROM_UNDER_TEST} not found. Run `make build` first.")
 
     scripts = collect(args.suite, args.scripts)
@@ -233,6 +262,7 @@ def main() -> int:
                 if text.strip():
                     print(f"--- {fname} ---\n{text.rstrip()}\n---")
     print_table(results)
+    print_cases(results)
     strict = args.strict or os.environ.get("HUSH_STRICT") == "1"
     bad = [r for r in results if r.status in ("FAIL", "TIMEOUT") or (strict and r.status == "SKIP")]
     if any(r.status == "SKIP" for r in results) and not strict:

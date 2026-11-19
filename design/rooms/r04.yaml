@@ -1,0 +1,59 @@
+# r04: floor 1, seq 4. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r04
+status: specified
+seq: 4
+floor: 1
+teaches: >-
+  Ambush: hide where a patrol cannot see you, let him walk past, then stab him in the back.
+layout: >-
+  A one-cell-high corridor (row 7, cols 1-14) to the exit (14,7); you start inside the deep
+  pocket's mouth at (4,8). One guard patrols it, so you cannot walk past him. Two side pockets
+  hang off the corridor: a deep two-cell pocket below it at col 4 (rows 8-9) and a decoy one-
+  cell pocket above it at col 10 (row 6).
+grid:
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "##########.#####"
+  - "#............aX#"
+  - "####S###########"
+  - "####.###########"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Walks west along row 7 from (13,7), pauses about 1 s at the west wall (col 1), turns round
+      and walks back east, repeating; the whole corridor is his lane.
+    facing: left
+    id: a
+    move: patrol
+
+tools_given: []
+
+intended_solution: >-
+  1. From the start (4,8) (you have about 2.5 s before the guard's sight reaches this cell) step
+  down to (4,9), the bottom of the deep pocket (two cells below the corridor, hidden by the
+  walls). 2. Wait while the guard walks west past the pocket (about 3 s); do not peek out. 3.
+  When he has gone past col 3 (his back is to you), step up to (4,7) and follow him west; he
+  pauses 1 s at the west wall facing it: walk to one cell behind him and press B (Shade Knife).
+  4. Walk east along the corridor to the exit (14,7). (Ghost line: skip the stab, wait in the
+  pocket until he has passed, and walk east at once; you outrun his 5-cell sight while he pauses
+  at the wall. The stab is the safer, faster teaching route.)
+solution_inputs: tests/solutions/r04.inputs
+par_time_sec: 15
+ghost_possible: true
+
+must_not:
+  - "The shallow decoy pocket at (10,6) is not a hiding place: a guard walking the corridor sees one cell off it (inside his cone)."
+  - "Standing anywhere in the corridor while the guard approaches (within 5 cells) must get you Suspicious."
+  - "Hiding at (4,9) must NOT get you seen while the guard walks past the pocket."
+  - "Squeezing past the guard in the corridor is impossible (touching him ends in a catch)."
+  - "Leaving the pocket while the guard is still east of col 6 and walking toward him must get you Suspicious."

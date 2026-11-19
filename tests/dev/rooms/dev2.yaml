@@ -1,0 +1,33 @@
+id: dev2
+status: draft
+seq: 2
+floor: 1
+teaches: >-
+  Dev room 2: pillars and two exit cells.
+layout: >-
+  Pillars form a small maze; two exits on the east wall.
+grid:
+  - "################"
+  - "################"
+  - "#..............#"
+  - "#.pp.....pp....#"
+  - "#.pp.....pp....#"
+  - "#S.............#"
+  - "#......pp......#"
+  - "#......pp......#"
+  - "#..............#"
+  - "#.pp.....pp...X#"
+  - "#.pp.....pp...X#"
+  - "#..............#"
+  - "#..............#"
+  - "################"
+lighting: lit
+guards: []
+tools_given: [hush_darts]
+intended_solution: >-
+  Walk to the exit.
+solution_inputs: tests/solutions/dev2.inputs
+par_time_sec: 10
+ghost_possible: true
+must_not:
+  - Walking through pillars.

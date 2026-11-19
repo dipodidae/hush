@@ -5,11 +5,33 @@
 id: r01                      # [a-z0-9_]+, must equal the file name stem
 status: draft                # draft | specified | built
                              #   built => solution_inputs must exist on disk
+seq: 1                       # play order, 1..N unique and contiguous over all rooms; last = final heist room
 floor: 1                     # 1..3 (the final heist room is floor 3, id "final")
 teaches: >-                  # the ONE idea this room teaches
   One sentence.
 layout: >-                   # prose: walls, cover, exits, where Link enters, one screen
   Describe the single-screen layout.
+grid:                        # exactly 14 rows x 16 chars; one char = one 16x16 px cell of the visible
+                             # 256x224 window. QUOTE every row (a bare # starts a YAML comment).
+                             #   #  solid wall      .  floor        S  player start (exactly one)
+                             #   X  exit cell (>=1; touching any X ends the room)
+                             #   p  pillar / cover (solid, same as #, may be drawn differently)
+                             #   a-h  a guard standing on floor (each letter at most once; must match guards[].id)
+                             # Rows 0,1 (hidden under the HUD) and 13, columns 0 and 15 must be all #.
+  - "################"
+  - "################"
+  - "#..............#"
+  - "#S.............#"
+  - "#..............#"
+  - "#.....a........#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#.............X#"
+  - "#..............#"
+  - "#..............#"
+  - "################"
 lighting: dark               # lit | dark  (lit = larger guard detection range)
 
 guards:                      # may be empty
@@ -17,6 +39,8 @@ guards:                      # may be empty
     patrol: >-               # prose or list of tile waypoints, e.g. [[4,3],[10,3]]
       Walks left-right along the north wall, pauses 1s at each end.
     facing: down             # up | down | left | right (initial facing)
+    id: a                    # one letter a-h; marks this guard's cell in the grid
+    move: still              # patrol | still
 
 tools_given: []              # any of: shade_knife, hush_darts, ink_pots
 

@@ -87,6 +87,7 @@ dist/                                           BPS output only
 | Command | Does |
 |---|---|
 | `make setup` | install local tools (asar, flips, MesenCE) into `.tools/`, venv into `.venv/` |
+| `make rooms` | compile `design/rooms/*.yaml` (or `HUSH_ROOMS_DIR`) with `tools/roomgen.py` into `build/rooms_gen.asm`, `build/rooms_report.txt`, `build/rooms_gen.lua`; `make build` runs it first (E1; see `docs/engine_notes.md`) |
 | `make build` | verify ROM CRC, copy to `build/hush.sfc`, assemble `src/main.asm`; fails on any asar warning; checks the freespace ledger |
 | `make patch` | build, then `dist/hush.bps` via flips |
 | `make validate` | check `design/rooms/*.yaml` against the schema |

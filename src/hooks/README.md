@@ -17,3 +17,19 @@ this header (copy it):
 
 The hook site and any freespace routine must both have rows in
 `src/FREESPACE.md`.
+
+## Index
+
+| File | Hook | Sites |
+|---|---|---|
+| `intro_skip.asm` | A0: boot to the title, no triforce/sword intro; owns `Hush_TitleStart` | `$0CC120`, `$0CC151`, block `$0CC10C` |
+| `camera_lock.asm` | E1: camera never scrolls, no edge transitions | `$02BA31`, `$02885E` |
+| `room_ctrl.asm` | E1: per-frame controller (health, exits, room loads, restart, tools) | `$0287BA` |
+| `new_game.asm` | E1: title START -> new file -> room 1 | `$0CC130` |
+| `../build/rooms_gen.asm` | E1: GENERATED room data, room table, EntranceData rows (not a hook; checked against the ledger) | many, see FREESPACE.md |
+| `guard_ai.asm` | E2: the stealth AI replaces vanilla `Guard_Main` for the soldier sprites `$41-$43` (states, patrol, chase); E4: also the `SpriteData_OAMHarm` rows of those types (5 OAM entries) | `$05C155`, `$0DB0C1` |
+| `guard_vision.asm` | E2: guard -> Link geometry, cone / range / line-of-sight / ink cloud tests (not a hook; free block of bank `$0E`) | - |
+| `guard_hooks.asm` | E2: arrows put an unaware guard to sleep; bombs become ink clouds, no damage | `$06ECB7`, `$089815` |
+| `room_visuals.asm` | E3: tile data of the unused vanilla objects `$07`, `$B8/$92`, `$B9/$93` (wall face, pillar, exit marker) + `UnderworldPaletteSets` rows 1-5 (dark/lit x floor 1-3); data only | `$009EDA`, `$00BAA4`, `$0ED464` |
+| `guard_runtime.asm` | E2: per-frame tick, fast restart, runtime palettes (not a hook; free block of bank `$07`, called from `room_ctrl.asm`) | - |
+| `guard_draw.asm` | E4: the guard drawing `Hush_DrawGuard` (head, lantern, body, icon, shadow = 5 OAM entries from `GFX_BC`; replaces the vanilla soldier draw; not a hook, JSL'd from `guard_ai.asm`; free block of bank `$07`) | - |

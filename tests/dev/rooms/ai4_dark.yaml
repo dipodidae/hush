@@ -1,0 +1,39 @@
+# DEV room for the E2 AI tests (tests/dev/rooms; compiled into build/hush_dev.sfc, tests tagged `-- @rom dev`).
+id: ai4_dark
+status: draft
+seq: 4
+floor: 1
+teaches: >-
+  AI test: one still guard facing east, dark room.
+layout: >-
+  Engine test layout, see the E2 tests.
+grid:
+  - "################"
+  - "################"
+  - "#S.............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#....a.........#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#.............X#"
+  - "################"
+lighting: dark
+guards:
+  - type: lantern_guard
+    patrol: stands still, faces east
+    facing: right
+    id: a
+    move: still
+tools_given: []
+intended_solution: >-
+  Engine test room: nothing to solve.
+solution_inputs: tests/solutions/ai4_dark.inputs
+par_time_sec: 10
+ghost_possible: true
+must_not:
+  - Anything: engine test room.

@@ -49,6 +49,7 @@ used: asar 1.91, Floating IPS v198 (CLI build), MesenCE 2.2.1
 |---|---|
 | `make setup` | install/build local tools into `.tools/` and `.venv/` |
 | `make vendor` | clone the reference disassemblies into `vendor/` at pinned commits |
+| `make rooms` | compile `design/rooms/*.yaml` (or `HUSH_ROOMS_DIR`) with `tools/roomgen.py` into `build/rooms_gen.asm`, `build/rooms_report.txt`, `build/rooms_gen.lua`; `make build` runs it first (E1; see `docs/engine_notes.md`) |
 | `make build` | verify ROM CRC, copy to `build/hush.sfc`, assemble `src/main.asm` (fails on any asar warning), enforce `src/FREESPACE.md` |
 | `make patch` | build, then `dist/hush.bps` with flips |
 | `make validate` | check `design/rooms/*.yaml` against the schema |

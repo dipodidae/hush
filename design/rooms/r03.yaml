@@ -1,0 +1,50 @@
+# r03: floor 1, seq 3. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r03
+status: specified
+seq: 3
+floor: 1
+teaches: >-
+  The Shade Knife: an Unaware guard dies to one stab; walk up behind him and press B.
+layout: >-
+  An L-shaped corridor, one cell wide: east along row 4 from the start (1,4) to col 12, then
+  south down col 12 to the exit (12,11). A still guard stands in the corridor at (6,4) facing
+  east (his back to you). He blocks the corridor completely.
+grid:
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "#S....a......###"
+  - "############.###"
+  - "############.###"
+  - "############.###"
+  - "############.###"
+  - "############.###"
+  - "############.###"
+  - "############X###"
+  - "################"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Stands still at (6,4) facing east, away from the start; never moves.
+    facing: right
+    id: a
+    move: still
+
+tools_given: [shade_knife]
+
+intended_solution: >-
+  1. Walk east along row 4 behind the guard to (4,4)-(5,4) (one cell short of him: 16-30 px from
+  his centre). 2. Face east and press B (Shade Knife): he dies. 3. Walk east to (12,4) and south
+  down the corridor to the exit at (12,11).
+solution_inputs: tests/solutions/r03.inputs
+par_time_sec: 12
+ghost_possible: false
+
+must_not:
+  - "The guard blocks the 1-wide corridor: you cannot get past him without killing him."
+  - "Walking into the guard (touching him) must alert him and end in a catch."
+  - "The knife must kill the guard in one hit while he is Unaware."

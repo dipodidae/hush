@@ -39,7 +39,43 @@ Line numbers refer to the commits pinned in `tools/fetch_vendor.sh`.
 | `sub_submodule` | `$7E00B0` | 1 | Sub-submodule index (submodules of `$11`) | A `WRAM.asm:1199` |
 | `room_id` | `$7E00A0` | 2 | Current dungeon room index (296 rooms; high byte 0 or 1) | A `WRAM.asm:1113` (`.DunRoomIndex`), M `Zelda_3_RAM.log:742` |
 | `floor` | `$7E00A4` | 2 | Current dungeon floor (`0x00` = 1F, `0xFF` = B1, ...) | A `WRAM.asm:1124` (`.DunFloor`) |
+| `bg1_x` | `$7E00E2` | 2 | BG1/BG2 horizontal scroll (HUSH locks it to the room window: room base + 128) | A `WRAM.asm:1586` (`.BG2HPos`; written as the BG1 scroll register) |
+| `bg1_y` | `$7E00E8` | 2 | BG1/BG2 vertical scroll (HUSH: room base + 144) | A `WRAM.asm:1609` (`.BG2VPos`) |
+| `link_dir` | `$7E002F` | 1 | Link facing: 0 up, 2 down, 4 left, 6 right | A `WRAM.asm:347` (`.PlayerHeading`) |
 | `frame_counter` | `$7E001A` | 1 | Frame counter, wraps at 255; used by the determinism test | A `WRAM.asm:193` (`.FrameCounter`), M `Zelda_3_RAM.log:122` |
+
+## HUSH engine variables (E1; written by src/hooks/room_ctrl.asm)
+
+`$7EC900-$7EE7FF` is documented as "seemingly Free RAM (nearly 8K!)" (A `WRAM.asm:8823`). Verified for HUSH: no
+instruction in `vendor/usdasm/bank_*.asm` addresses `$7EC9xx`..`$7EE7xx` (grep of every `$7E[C-E]xxx` operand: only
+`$7EC0xx-$7EC8xx` HUD/palette buffers and the boot-time full-WRAM clear loop `bank_0C.asm:90-112`, which runs once at
+power-on and zeroes them). HUSH owns `$7EC900-$7EC9FF`.
+
+| Name | Address | Bytes | Meaning | Source |
+|---|---|---|---|---|
+| `hush_room` | `$7EC900` | 1 | Current HUSH room index, 0-based (room id = `$128 + hush_room`; entrance row = index). Set by `Hush_LoadRoom`; tests may read it, and poking it does NOT load a room (use `hush_room_req`) | E1 `src/hooks/room_ctrl.asm`; free per the note above |
+| `hush_room_req` | `$7EC901` | 1 | Debug/test room jump: write N+1 and the controller loads room N on the next gameplay frame (module 7, submodule 0), then clears it. 0 = none; values > room count are ignored | E1 `src/hooks/room_ctrl.asm` |
+
+## HUSH stealth AI variables (E2; src/hooks/guard_ai.asm, guard_hooks.asm, guard_runtime.asm)
+
+`spr_aware` is the **debug/test API** of the AI: one byte per sprite slot in the vanilla sprite array `$0D80` (`.SprAIState`, A `WRAM.asm:6879`:
+the "sprite AI state index"; HUSH replaces the whole guard routine, so the array is ours for sprite types `$41-$43`).
+Nothing else in HUSH writes `$0D80`: no other sprite type exists in a HUSH room (probes `$41` with `$0DB0 != 0` are never spawned).
+The other guard variables are listed in the header of `src/hooks/guard_ai.asm`.
+
+| Name | Address | Bytes | Meaning | Source |
+|---|---|---|---|---|
+| `spr_aware` | `$7E0D80` | 16 | Guard awareness per sprite slot: 0 unaware, 1 suspicious (`?`), 2 alert (`!`), 3 asleep (`Z`). Vanilla `Guard_Main` used this array as its AI state (`bank_05.asm:12160-12177`, `.vectors` `$05C2C6`); replaced by E2 | A `WRAM.asm:6879` (`.SprAIState`), M `Zelda_3_RAM.log:3723`, E2 `src/hooks/guard_ai.asm` |
+| `spr_timer_lost` | `$7E0E10` | 16 | Guard "lost sight" timer (suspicious 120, alert 180 frames, decremented by `DoSpriteOAMandTimers`, `bank_06.asm:431-437`) | A `WRAM.asm:7015` (`.SprTimerC`), E2 `guard_ai.asm` |
+| `spr_aux` | `$7E0D90` | 16 | Guard aux byte: 1 = pausing at a wall (state 0); remaining 240-frame chunks of a sleep (state 3) | A `WRAM.asm:6892` (`.SprFrame`, "misc uses"), E2 `guard_ai.asm` (vanilla only clears it with ResetSpriteProperties at spawn, `bank_0D.asm:7926`) |
+| `spr_subtype` | `$7E0E30` | 16 | Sprite sub-type from the sprite list: bits 0-2 facing code (1 left, 2 right, 3 up, 4 down), bit 3 = `move: still` (roomgen) | `bank_09.asm:13607-13651`, `tools/roomgen.py` |
+| `hush_caught` | `$7EC902` | 1 | 1 = a guard caught Link; `Hush_Tick` runs the fast restart on the next gameplay frame and clears it. Tests poke it to trigger a restart | E2 `guard_runtime.asm` |
+| `hush_flash` | `$7EC903` | 1 | Restart flash: 6 .. 1 frames left (screen brightness `$13` = 0), 0 = none | E2 `guard_runtime.asm` |
+| `hush_pal` | `$7EC904` | 1 | 0 = the runtime sprite palettes (alert amber row 6, ink row 1) still have to be written for this room load | E2 `guard_runtime.asm` |
+| `hush_range` | `$7EC906` | 2 | Guard vision range in pixels: 80 dark room, 128 lit room (`Hush_Tick`, from ROOM TABLE +19 bit 0) | E2 `guard_runtime.asm` |
+| `hush_ink_x` | `$7EC908` | 2 | Ink cloud centre X (absolute pixels, the exploded bomb position `$0C18:$0C04`) | E2 `guard_hooks.asm` |
+| `hush_ink_y` | `$7EC90A` | 2 | Ink cloud centre Y (`$0C0E:$0BFA`) | E2 `guard_hooks.asm` |
+| `hush_ink_t` | `$7EC90C` | 2 | Ink cloud frames left (300 at the explosion); 0 = no cloud | E2 `guard_hooks.asm`, `guard_runtime.asm` |
 
 ## Sprite slot arrays (16 slots each, index 0 to 15)
 

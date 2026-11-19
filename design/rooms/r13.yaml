@@ -1,0 +1,67 @@
+# r13: floor 2, seq 13. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r13
+status: specified
+seq: 13
+floor: 2
+teaches: >-
+  Two patrols that cross: read each lane separately, and use the safe corner rooms to wait
+  between crossings.
+layout: >-
+  A plus-shaped pair of one-cell lanes cuts the room into four corner rooms: an east-west lane
+  (row 7) and a north-south lane (col 8) that meet at (8,7). Each lane is walled on both sides
+  with a two-cell crossing gap: the east-west lane at cols 3-4 (rows 6 and 8), the north-south
+  lane at rows 3-4 (cols 7 and 9). You start in the south-west room (1,12); the exit is the
+  north-east room (14,2). Route: south-west room, cross lane row 7 at the west gaps into the
+  north-west room, then cross lane col 8 at the upper gaps into the north-east room.
+grid:
+  - "################"
+  - "################"
+  - "#......#.#....X#"
+  - "#.......b......#"
+  - "#..............#"
+  - "#......#.#.....#"
+  - "###..###.#######"
+  - "#.a............#"
+  - "###..###.#######"
+  - "#......#.#.....#"
+  - "#......#.#.....#"
+  - "#......#.#.....#"
+  - "#S.....#.#.....#"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      East-west lane: walks along row 7 (cols 1-14) from (2,7) facing east; pauses about 1 s at
+      each end and turns round. Passes through the crossing at (8,7).
+    facing: right
+    id: a
+    move: patrol
+  - type: lantern_guard
+    patrol: >-
+      North-south lane: walks along col 8 (rows 2-12) from (8,3) facing south; pauses about 1 s
+      at each end and turns round. Passes through the crossing at (8,7).
+    facing: down
+    id: b
+    move: patrol
+
+tools_given: []
+
+intended_solution: >-
+  1. Wait at the start (1,12) (walls hide the south-west room from the lane) until guard a has
+  walked past col 5 heading east with his back to the gaps. 2. Run (3,12) -> (3,5): up through
+  the gaps (3,8) and (3,6), across his lane, into the north-west room. 3. Wait at (3,3), well
+  back from the upper gap (a spot right beside the gap can be seen diagonally through it), until
+  guard b is walking south in the lower half of his lane (row 9 or lower, back to you) or is
+  paused far from you. 4. Go east through (7,3) across the lane to (10,3), then to the exit at
+  (14,2).
+solution_inputs: tests/solutions/r13.inputs
+par_time_sec: 30
+ghost_possible: true
+
+must_not:
+  - "Crossing the row-7 lane while guard a is within 5 cells of cols 3-4 and facing them must get you Suspicious."
+  - "Crossing the col-8 lane while guard b is within 5 cells of rows 3-4 and facing north must get you Suspicious."
+  - "The corner rooms must hide you: waiting at (1,12) and at (3,3) must NOT get you seen."
+  - "Walking along either lane (inside the 1-cell lanes) must get you caught: there is no room to pass a guard."

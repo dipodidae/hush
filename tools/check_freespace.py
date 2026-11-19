@@ -8,7 +8,7 @@ Static check (always):
 
 --rom check (after asar):
   * every byte that differs between rom/vanilla.sfc and build/hush.sfc lies
-    inside a ledger region.
+    inside a ledger region (a changed run may span adjacent regions).
 
 Exit 0 = clean, 1 = violation.
 """
@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
-    BUILT_ROM, FREESPACE_MD, ROOT, SRC_DIR, VANILLA, VANILLA_SIZE, pc_to_snes, snes_to_pc,
+    BUILD_DIR, BUILT_ROM, FREESPACE_MD, ROOT, SRC_DIR, VANILLA, VANILLA_SIZE, pc_to_snes, snes_to_pc,
 )
 
 ROW = re.compile(
@@ -81,9 +81,14 @@ def find_region(regions: list[Region], pc: int) -> Region | None:
     return None
 
 
+def asm_sources() -> list[Path]:
+    """src/**/*.asm plus generated includes in build/ (tools/roomgen.py -> build/rooms_gen.asm)."""
+    return sorted(SRC_DIR.rglob("*.asm")) + sorted(BUILD_DIR.glob("*_gen.asm"))
+
+
 def check_orgs(regions: list[Region], errors: list[str]) -> int:
     count = 0
-    for path in sorted(SRC_DIR.rglob("*.asm")):
+    for path in asm_sources():
         rel = path.relative_to(ROOT)
         for lineno, raw in enumerate(path.read_text().splitlines(), 1):
             line = raw.split(";", 1)[0]
@@ -110,11 +115,11 @@ def check_orgs(regions: list[Region], errors: list[str]) -> int:
     return count
 
 
-def check_rom_diff(regions: list[Region], errors: list[str]) -> int:
-    if not BUILT_ROM.exists():
-        errors.append("build/hush.sfc missing; cannot diff")
+def check_rom_diff(regions: list[Region], errors: list[str], rom: Path = BUILT_ROM) -> int:
+    if not rom.exists():
+        errors.append(f"{rom} missing; cannot diff")
         return 0
-    a, b = VANILLA.read_bytes(), BUILT_ROM.read_bytes()
+    a, b = VANILLA.read_bytes(), rom.read_bytes()
     if len(b) != len(a):
         errors.append(f"built ROM is {len(b)} bytes; vanilla is {len(a)}. ROM expansion needs a spec + ledger change first")
         n = min(len(a), len(b))
@@ -131,12 +136,20 @@ def check_rom_diff(regions: list[Region], errors: list[str]) -> int:
         while j < n and a[j] != b[j]:
             j += 1
         changed += j - i
-        # The whole run must be inside one region.
-        r = find_region(regions, i)
-        if r is None or j - 1 > r.pc_end:
+        # The whole run must be covered by ledger regions (a run may span several ADJACENT regions,
+        # e.g. a pointer-table tail directly followed by the data it points to).
+        pos, bad = i, None
+        while pos < j:
+            r = find_region(regions, pos)
+            if r is None:
+                bad = pos
+                break
+            pos = r.pc_end + 1
+        if bad is not None:
             if reported < 10:
                 errors.append(
-                    f"ROM bytes ${pc_to_snes(i):06X}-${pc_to_snes(j - 1):06X} ({j - i} bytes) changed outside any FREESPACE.md region"
+                    f"ROM bytes ${pc_to_snes(i):06X}-${pc_to_snes(j - 1):06X} ({j - i} bytes) changed outside any FREESPACE.md region "
+                    f"(first uncovered byte ${pc_to_snes(bad):06X})"
                 )
             reported += 1
         i = j
@@ -148,6 +161,7 @@ def check_rom_diff(regions: list[Region], errors: list[str]) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--rom", action="store_true", help="also diff vanilla vs build/hush.sfc")
+    ap.add_argument("--rom-file", type=Path, default=BUILT_ROM, help="ROM to diff with --rom (default build/hush.sfc; the dev build uses build/hush_dev.sfc)")
     args = ap.parse_args()
 
     errors: list[str] = []
@@ -155,7 +169,7 @@ def main() -> int:
     orgs = check_orgs(regions, errors)
     msg = f"freespace: {len(regions)} region(s), {orgs} org(s) checked"
     if args.rom:
-        changed = check_rom_diff(regions, errors)
+        changed = check_rom_diff(regions, errors, args.rom_file)
         msg += f", {changed} changed byte(s) diffed"
     if errors:
         print("FREESPACE CHECK FAILED", file=sys.stderr)

@@ -2,12 +2,14 @@
 PY := .venv/bin/python
 SHELL := /usr/bin/env bash
 
-.PHONY: help setup vendor build patch test chaos validate check freespace clean refdump leakcheck leakcheck-control gfx gfx-selftest
+.PHONY: help setup vendor rooms build build-dev patch test chaos validate check freespace clean refdump leakcheck leakcheck-control gfx gfx-selftest
 
 help:
 	@echo "make setup     install/build local tools into .tools/ and .venv/ (needs apt for cmake, xvfb, libsdl2)"
 	@echo "make vendor    clone reference disassemblies into vendor/ (gitignored)"
+	@echo "make rooms     compile design/rooms/*.yaml (or HUSH_ROOMS_DIR) into build/rooms_gen.asm + build/rooms_report.txt"
 	@echo "make build     verify ROM, copy to build/hush.sfc, assemble src/main.asm with asar"
+	@echo "make build-dev build/hush_dev.sfc: same code, tests/dev/rooms (the ROM of tests tagged '-- @rom dev')"
 	@echo "make patch     build, then create dist/hush.bps with flips"
 	@echo "make validate  check design/rooms/*.yaml against the schema"
 	@echo "make test      run tests/smoke + tests/solutions headless in MesenCE"
@@ -23,10 +25,17 @@ setup:
 vendor:
 	tools/fetch_vendor.sh
 
-build:
+rooms:
+	$(PY) tools/roomgen.py
+
+build: rooms
 	$(PY) tools/build.py build
 
-patch:
+# the test ROM: same code + graphics, rooms from tests/dev/rooms (independent of design/rooms)
+build-dev:
+	$(PY) tools/build.py build --dev
+
+patch: rooms
 	$(PY) tools/build.py patch
 
 freespace:
@@ -35,7 +44,7 @@ freespace:
 validate:
 	$(PY) tools/validate_specs.py
 
-test: build
+test: build build-dev
 	$(PY) tools/gfx_compress.py --selftest
 	$(PY) tools/run_test.py --suite smoke --suite solutions $(if $(STRICT),--strict)
 	$(MAKE) --no-print-directory leakcheck

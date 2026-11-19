@@ -1,8 +1,6 @@
--- GFX scenes: dungeon rooms with guards. Vanilla Hyrule Castle rooms are used as stand-ins (they have
--- soldiers) until the M1 test room exists. Reached from build/dev_states/gfx_house.mss by selecting a
--- dungeon entrance and re-running the underworld loader: $010E entrance id (docs: EntranceData
--- bank_02.asm:13125; 0x03 -> room $0060, 0x05 -> $0062, 0x0C -> $0063), then module $10 = 6
--- (Module06_UnderworldLoad). Verified: the soldier sprite types (0x41/0x42) appear within ~3 frames.
+-- GFX scenes: HUSH rooms with guards (E1: the real rooms, loaded with the debug jump hush_room_req = N+1,
+-- docs/ram_map.md; vanilla Hyrule Castle rooms are no longer reachable). Reached from the dev state
+-- build/dev_states/gfx_room.mss. Verified: the soldier sprite types (0x41-0x43) are present after the load.
 -- @timeout 240
 package.path = os.getenv("HUSH_ROOT") .. "/tests/lib/?.lua;" .. package.path
 local hush = require("hush")
@@ -19,20 +17,27 @@ local function guards()
   return n
 end
 
-hush.test("gfx scenes: dungeon rooms with guards", function()
-  for _, e in ipairs({ { 3, "guard_room_60" }, { 5, "guard_room_62" }, { 12, "guard_room_63" } }) do
-    hush.load_state("build/dev_states/gfx_house.mss")
+hush.test("gfx scenes: HUSH rooms with guards", function()
+  local m = dofile(hush.ROOT .. "/build/rooms_gen.lua")
+  local picked = {}
+  for i, r in ipairs(m.rooms) do
+    if #r.guards > 0 and #picked < 3 then picked[#picked + 1] = { i - 1, string.format("guard_room_%02d", i) } end
+  end
+  hush.assert(#picked > 0, "no compiled room has a guard")
+  for n, e in ipairs(picked) do
+    hush.load_state("build/dev_states/gfx_room.mss")
     hush.wait(20)
-    poke(0x7E010E, e[1]); poke(0x7E0010, 0x06); poke(0x7E0011, 0x00); poke(0x7E00B0, 0)
+    poke(0x7EC901, e[1] + 1)
     local t = 0
-    while not (hush.read("game_mode") == 0x07 and hush.read("submodule") == 0x00) and t < 300 do hush.wait(5); t = t + 5 end
-    hush.wait(20)
-    hush.assert(hush.read("game_mode") == 0x07, e[2] .. ": not in a dungeon room (module " .. hush.read("game_mode") .. ")")
-    if e[1] ~= 12 then hush.assert(guards() > 0, e[2] .. ": no guard sprites present") end  -- room $63 spawns its soldiers late
+    hush.wait(3)
+    while not (hush.read("game_mode") == 0x07 and hush.read("submodule") == 0x00) and t < 600 do hush.wait(5); t = t + 5 end
+    hush.wait(30)
+    hush.assert(hush.read("game_mode") == 0x07, e[2] .. ": not in a room (module " .. hush.read("game_mode") .. ")")
+    hush.assert(guards() > 0, e[2] .. ": no guard sprites present")
     gfx.snap(e[2])
-    if e[1] == 5 then
+    if n == 1 then
       -- let the guards notice Link (vanilla chase behaviour = the closest stand-in for an alert guard)
-      hush.hold({ "up" }, 90); gfx.snap(e[2] .. "_guards_react")
+      hush.hold({ "down" }, 90); gfx.snap(e[2] .. "_guards_react")
       poke(0x7EF359, 1)
       hush.hold({ "b" }, 3); hush.wait(3); gfx.snap(e[2] .. "_sword_swing")
       hush.wait(120); gfx.snap(e[2] .. "_later")

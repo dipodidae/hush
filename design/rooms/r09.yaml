@@ -1,0 +1,57 @@
+# r09: floor 2, seq 9. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r09
+status: specified
+seq: 9
+floor: 2
+teaches: >-
+  Lit rooms: guards see 8 cells instead of 5, so waiting in the open no longer works; use walls
+  as cover and cross at the one moment his back is turned.
+layout: >-
+  LIT. A wall across row 7 (gap at cols 7-8) splits a south hall (rows 8-12, where you start at
+  (1,12)) from a north hall (rows 2-6) holding the exit (14,5)-(14,6). One guard patrols up and
+  down col 11 of the north hall (rows 2-6); the lane cuts the north hall in two, so you must
+  cross col 11 (on row 6, next to the wall) only while he is walking away from you.
+grid:
+  - "################"
+  - "################"
+  - "#..............#"
+  - "#..............#"
+  - "#..........a...#"
+  - "#.............X#"
+  - "#.............X#"
+  - "#######..#######"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#S.............#"
+  - "################"
+lighting: lit
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Walks up and down col 11 between rows 2 and 6, starting at (11,4) facing up; pauses about
+      1 s at each end and turns round. In a lit room he sees 8 cells.
+    facing: up
+    id: a
+    move: patrol
+
+tools_given: []
+
+intended_solution: >-
+  1. Walk east along row 12 to col 8 and up to (8,8) just below the gap (the wall hides you from
+  the north hall; do not stand in line with the gap). 2. Watch him: when he is walking up
+  (facing the north wall, his back to you) from the bottom of his lane, go up through the gap to
+  (8,6) and straight east along row 6 across col 11 behind him, to the exit at (14,6)/(14,5) in
+  the east wall. If you hesitate and he turns round (he will be facing down his lane, 8 cells of
+  sight) duck back through the gap and wait again.
+solution_inputs: tests/solutions/r09.inputs
+par_time_sec: 25
+ghost_possible: true
+
+must_not:
+  - "Walking straight through the gap and east along row 6 without waiting must get you Suspicious or caught (he is facing down his lane)."
+  - "Standing in the north hall within 8 cells of him and in front of him for more than 1 s must turn him Alert."
+  - "Waiting at (8,8) just below the gap must NOT get you seen."
+  - "In the equivalent dark room the same position would be safe: lit range is 8 cells, not 5 (QA: range test)."

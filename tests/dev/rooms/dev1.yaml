@@ -1,0 +1,39 @@
+# DEV room for engine tests (HUSH_ROOMS_DIR=tests/dev/rooms, or the fallback when design/rooms is empty).
+id: dev1
+status: draft
+seq: 1
+floor: 1
+teaches: >-
+  Dev room 1: empty room with one exit and a standing guard.
+layout: >-
+  Open room; start top-left, exit bottom-right, one guard in the middle.
+grid:
+  - "################"
+  - "################"
+  - "#..............#"
+  - "#S.............#"
+  - "#..............#"
+  - "#..............#"
+  - "#......a.......#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#.............X#"
+  - "#.............X#"
+  - "#..............#"
+  - "################"
+lighting: dark
+guards:
+  - type: lantern_guard
+    patrol: stands in the middle
+    facing: down
+    id: a
+    move: still
+tools_given: [shade_knife]
+intended_solution: >-
+  Walk around the guard to the exit.
+solution_inputs: tests/solutions/dev1.inputs
+par_time_sec: 10
+ghost_possible: true
+must_not:
+  - Walking through walls.

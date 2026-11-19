@@ -1,0 +1,64 @@
+# r08: floor 2, seq 8. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r08
+status: specified
+seq: 8
+floor: 2
+teaches: >-
+  Darts at distance and through a door: line up with a guard from outside his range and shoot
+  along his row; time the shot around a patrol.
+layout: >-
+  A wall at col 8 splits the room, with a one-cell door at (8,7). East of it a still guard
+  stands at (12,7) looking west through the door; the exit is the south-east corner (14,12). The
+  west hall (cols 1-7) holds a patrolling guard walking east-west along row 3. You start bottom
+  left (1,11).
+grid:
+  - "################"
+  - "################"
+  - "#.......#......#"
+  - "#.b.....#......#"
+  - "#.......#......#"
+  - "#.......#......#"
+  - "#.......#......#"
+  - "#...........a..#"
+  - "#.......#......#"
+  - "#.......#......#"
+  - "#.......#......#"
+  - "#S......#......#"
+  - "#.......#.....X#"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      East hall: stands still at (12,7) facing west, straight at the door (8,7). Sees 5 cells:
+      the row-7 cells from col 7 to col 11.
+    facing: left
+    id: a
+    move: still
+  - type: lantern_guard
+    patrol: >-
+      West hall: walks east-west along row 3 (cols 1-7), starting at (2,3) facing east; pauses
+      about 1 s at each wall.
+    facing: right
+    id: b
+    move: patrol
+
+tools_given: []
+
+intended_solution: >-
+  1. Walk to (6,11), safely 8 rows below patrol guard b. 2. Wait for b to be walking west (his
+  back to you as you stand east of him) or paused with his back turned, then go up col 6 to
+  (6,7): from here you are 6 cells from guard a (out of his range) and in line with him through
+  the door. 3. Face east and fire a dart through the door along row 7: guard a falls asleep. 4.
+  Go through the door (8,7), down col 9 to row 12 and east along row 12 to the exit (14,12)
+  within 8 s (the east hall is out of b's sight behind the wall).
+solution_inputs: tests/solutions/r08.inputs
+par_time_sec: 30
+ghost_possible: false
+
+must_not:
+  - "Walking up to the door along row 7 without sleeping guard a must get you Suspicious (inside his 5 cells from col 7)."
+  - "Standing in the west hall at row 7 while b walks east with you in front of him (within 5 cells) must get you Suspicious."
+  - "A dart fired from (6,7) must fly through the open door and hit guard a (the wall must stop darts elsewhere)."
+  - "No dart is needed on b: he must be avoidable."

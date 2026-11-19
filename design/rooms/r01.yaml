@@ -1,0 +1,55 @@
+# r01: floor 1, seq 1. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r01
+status: specified
+seq: 1
+floor: 1
+teaches: >-
+  Guards only see in front of them (a 90-degree cone, 5 cells in the dark); you are invisible
+  behind a guard's back.
+layout: >-
+  One hall split by an inner wall (row 7) with a two-cell gap (cols 10-11). Link starts bottom
+  right (13,12), the exit is the far top-left corner (cols 1, rows 2-3). One still guard stands
+  at (8,4) facing up at the north wall, so his cone is the wedge above him. The only way is
+  through the gap, then west along the south side of the guard's hall (row 6), never in front of
+  him.
+grid:
+  - "################"
+  - "################"
+  - "#X.............#"
+  - "#X.............#"
+  - "#.......a......#"
+  - "#..............#"
+  - "#..............#"
+  - "##########..####"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#............S.#"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Stands still at (8,4), back to the room, facing the north wall. Sees only the wedge above
+      him (cols 4-12 of rows 2-3 near his column).
+    facing: up
+    id: a
+    move: still
+
+tools_given: []
+
+intended_solution: >-
+  1. Walk up col 13 from the start (13,12) to row 8, west along row 8 to the gap and up through
+  it at col 10 to (10,6). 2. Walk west along row 6 (two cells below the guard, who has his back
+  to you) to (1,6). 3. Walk up col 1 to the exit at (1,3)/(1,2). Never step into the wedge above
+  the guard (rows 2-3 within about 2 cells of col 8).
+solution_inputs: tests/solutions/r01.inputs
+par_time_sec: 12
+ghost_possible: true
+
+must_not:
+  - "Walking from the gap diagonally to the exit through (7,3)/(8,3)/(9,3), in front of the guard, must get you Suspicious ('?')."
+  - "Walking within 1 cell of the guard (touching him) must alert him and end in a catch."
+  - "Walking along row 6 and up col 1 must NOT trigger any awareness change (the guard stays Unaware)."

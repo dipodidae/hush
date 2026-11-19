@@ -318,6 +318,39 @@ function hush.save_state(path)
   hush.wait(1)
 end
 
+-- In-memory savestates (QA: the solution recorder and replays start every room from the same post-new-game state, so a replay
+-- cannot depend on what the previous room left in RAM: item cursor, Link sub-pixels, frame counter ...).
+--   local s0 = hush.snapshot()     -- the current state as a string
+--   hush.restore(s0)               -- back to exactly that state (continues after the next frame boundary)
+function hush.snapshot()
+  local data
+  state_pending = true
+  local ref
+  ref = emu.addMemoryCallback(function()
+    emu.removeMemoryCallback(ref, emu.callbackType.exec, 0x000000, 0xFFFFFF)
+    data = emu.createSavestate()
+    state_pending = false
+  end, emu.callbackType.exec, 0x000000, 0xFFFFFF)
+  wait_left = 0
+  coroutine.yield()
+  hush.wait(1)
+  return data
+end
+
+function hush.restore(data)
+  state_pending = true
+  local ref
+  ref = emu.addMemoryCallback(function()
+    emu.removeMemoryCallback(ref, emu.callbackType.exec, 0x000000, 0xFFFFFF)
+    state_pending = false
+    if not emu.loadSavestate(data) then hush.fail("emu.loadSavestate rejected the in-memory state") end
+    held = held_table({})
+  end, emu.callbackType.exec, 0x000000, 0xFFFFFF)
+  wait_left = 0
+  coroutine.yield()
+  hush.wait(1)
+end
+
 -- ---------------------------------------------------------------------------
 -- Entry point
 -- ---------------------------------------------------------------------------

@@ -1,0 +1,65 @@
+# r11: floor 2, seq 11. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r11
+status: specified
+seq: 11
+floor: 2
+teaches: >-
+  Smoke as a door: a pot dropped at a gap hides the whole crossing of a corridor watched from
+  both ends.
+layout: >-
+  LIT. A one-cell corridor (row 5, cols 1-14) has a still guard at each end looking inwards (a
+  at (1,5) facing east, b at (14,5) facing west): with 8 cells of sight together they cover the
+  whole corridor. Walls above and below it (rows 4 and 6) have a two-cell gap at cols 7-8. You
+  start in the south hall at (1,11); the exit is in the north hall (13-14, row 2). The only way
+  is across the corridor through the gaps.
+grid:
+  - "################"
+  - "################"
+  - "#............XX#"
+  - "#..............#"
+  - "#######..#######"
+  - "#a............b#"
+  - "#######..#######"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#..............#"
+  - "#S.............#"
+  - "#..............#"
+  - "################"
+lighting: lit
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Stands still at the west end (1,5) facing east along the corridor; sees 8 cells (to col
+      9).
+    facing: right
+    id: a
+    move: still
+  - type: lantern_guard
+    patrol: >-
+      Stands still at the east end (14,5) facing west along the corridor; sees 8 cells (to col
+      6).
+    facing: left
+    id: b
+    move: still
+
+tools_given: []
+
+intended_solution: >-
+  1. Walk to (7,6), the south gap cell directly below the corridor (the wall corners hide it
+  from both guards). 2. Face north, select the Ink Pots and place a pot: it explodes after about
+  2.5 s into smoke covering the corridor cells (6..8, 5) and both gap cells. 3. Wait about 3 s
+  so the smoke is up, then walk north (7,5) -> (7,4) -> (7,3) inside the smoke: neither guard
+  can see you. 4. Walk east along row 3 to the exit (13,2)/(14,2). You have about 5 s of smoke;
+  the crossing takes about 1.5 s.
+solution_inputs: tests/solutions/r11.inputs
+par_time_sec: 25
+ghost_possible: true
+
+must_not:
+  - "Crossing the corridor without smoke must get you Suspicious from at least one guard (lit: 8 cells)."
+  - "Walking into the corridor before the smoke has appeared (2.6 s after placing) must not be hidden."
+  - "After about 5 s the smoke is gone; a late crossing must get you Suspicious."
+  - "Both guards stay in place (still) even when Suspicious; neither ever leaves the corridor ends."

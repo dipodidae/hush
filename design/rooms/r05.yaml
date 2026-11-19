@@ -1,0 +1,57 @@
+# r05: floor 1, seq 5. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r05
+status: specified
+seq: 5
+floor: 1
+teaches: >-
+  An alerted guard cannot be hurt and cannot be fought: when a '?' appears, break line of sight
+  behind a pillar and wait.
+layout: >-
+  A wide hall (rows 5-9, cols 1-14) with one still guard at the east end (13,7) looking west
+  down the hall, and a single side shaft leading south at col 9 (rows 10-11) to the exit (9,12).
+  A pillar at (10,9) sits right at the shaft mouth on the guard's side. You start at the west
+  end (1,7).
+grid:
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "################"
+  - "#..............#"
+  - "#..............#"
+  - "#S...........a.#"
+  - "#..............#"
+  - "#.........p....#"
+  - "#########.######"
+  - "#########.######"
+  - "#########X######"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Stands still at (13,7) facing west down the hall; his cone covers the hall from col 8 to
+      col 12.
+    facing: left
+    id: a
+    move: still
+
+tools_given: []
+
+intended_solution: >-
+  1. Walk west-to-east along the south wall (row 9) to (7,9), the last cell outside his 5-cell
+  range. 2. Step to (8,9): the guard notices you and a '?' appears. Do NOT try to fight him: the
+  Shade Knife does nothing to a Suspicious or Alert guard. 3. Keep walking: (9,9) is hidden
+  behind the pillar (10,9), then down the shaft (9,10)-(9,12) to the exit. If you stop in the
+  open he turns Alert after 1 s; hiding behind the pillar for 2 s makes him forget you (the '?'
+  goes out).
+solution_inputs: tests/solutions/r05.inputs
+par_time_sec: 15
+ghost_possible: false
+
+must_not:
+  - "Walking east along row 7 (the guard's row) or standing in the open hall within 5 cells of the guard for more than 1 s must turn him Alert (amber '!')."
+  - "Swinging the Shade Knife at a Suspicious or Alert guard must do nothing (he stays alive)."
+  - "Standing behind the pillar at (9,9) must NOT keep the guard Suspicious: after about 2 s he returns to Unaware."
+  - "An Alert guard that touches you must restart the room."

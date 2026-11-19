@@ -1,0 +1,73 @@
+# r15: floor 3, seq 15. See design/pillars.md (difficulty curve) and docs/engine_notes.md section 11 (AI rules).
+id: r15
+status: specified
+seq: 15
+floor: 3
+teaches: >-
+  Chain the floor-2 skills with no new rule: cross a patrol lane, sleep a guard in a corridor
+  from far away, cross a second lane.
+layout: >-
+  Stacked bands: an exit row (row 2), patrol lane 1 (row 4), a one-cell middle corridor (row 6),
+  patrol lane 2 (row 8) and the south hall (rows 10-12, start (1,12)). The walls between have
+  two-cell gaps: lane 2 at cols 1-2 (rows 7 and 9), lane 1 at cols 6-7 (rows 3 and 5). In the
+  middle corridor a still guard c stands at (11,6) looking west, covering the corridor from col
+  6 to col 10, exactly the cells under lane 1's gap.
+grid:
+  - "################"
+  - "################"
+  - "#.....XX.......#"
+  - "######..########"
+  - "#..a...........#"
+  - "######..########"
+  - "#..........c...#"
+  - "#..#############"
+  - "#...........b..#"
+  - "#..#############"
+  - "#..............#"
+  - "#..............#"
+  - "#S.............#"
+  - "################"
+lighting: dark
+
+guards:
+  - type: lantern_guard
+    patrol: >-
+      Lane 1: walks east-west along row 4 (cols 1-14), starting at (3,4) facing east; pauses
+      about 1 s at each end wall.
+    facing: right
+    id: a
+    move: patrol
+  - type: lantern_guard
+    patrol: >-
+      Lane 2: walks east-west along row 8 (cols 1-14), starting at (12,8) facing west; pauses
+      about 1 s at each end wall.
+    facing: left
+    id: b
+    move: patrol
+  - type: lantern_guard
+    patrol: >-
+      Middle corridor (row 6): stands still at (11,6) facing west; sees 5 cells (cols 6-10).
+    facing: left
+    id: c
+    move: still
+
+tools_given: []
+
+intended_solution: >-
+  1. At once (guard b starts 11 cells from the gap and walks towards it, so you have about 1 s)
+  go straight up col 1 from the start (1,12) across lane 2 through the gaps (1,9)/(1,7) to
+  (1,6), the west end of the middle corridor. You are now 10 cells from c, outside his 5-cell
+  sight and in line with him. Face east and fire a dart: c sleeps for 8 s. (If you miss the
+  first window, wait below the gap until b has walked past col 4 heading east.) 2. Walk east to
+  (5,6) and wait there; when guard a has walked east past col 8 (his back to the gap at cols
+  6-7) go (6,6) and straight up col 6 across lane 1 to the exit row (6,2), within the 8 s of c's
+  sleep.
+solution_inputs: tests/solutions/r15.inputs
+par_time_sec: 30
+ghost_possible: false
+
+must_not:
+  - "Walking east along the middle corridor past col 5 while c is awake must get you Suspicious (5 cells)."
+  - "Crossing lane 2 while b is within 5 cells of the gap and facing it must get you Suspicious."
+  - "Crossing lane 1 while a is within 5 cells of the gap and facing it must get you Suspicious."
+  - "The south hall and the middle corridor west of col 6 are hidden by walls: waiting at (1,12) and (1,6) must NOT get you seen by the lane guards."

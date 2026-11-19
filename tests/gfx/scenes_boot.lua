@@ -20,7 +20,7 @@ local function until_mode(want, what, max_tries, key)
   end
 end
 
-hush.test("gfx scenes: cold boot -> title -> file select -> name entry -> house", function()
+hush.test("gfx scenes: cold boot -> title -> START -> room 1 (E1: no file select / name entry / house any more)", function()
   -- A0 intro skip (src/hooks/intro_skip.asm): boot goes straight to the title screen (module 0,
   -- submodule 8, "PRESS START") with no triforce / sword animation, within ~6 s of power-on.
   local waited = 0
@@ -32,27 +32,23 @@ hush.test("gfx scenes: cold boot -> title -> file select -> name entry -> house"
   hush.assert(hush.read("submodule") == 8, "title screen left by itself (attract mode must not start)")
   hush.wait(600); gfx.snap("title_idle")
   hush.assert(mode() == 0 and hush.read("submodule") == 8, "title screen timed out into another scene")
-  until_mode(1, "file select"); hush.wait(120); gfx.snap("file_select")
-  until_mode(4, "name entry"); hush.wait(120)
-  gfx.snap("name_entry")
-  tap({ "a" }, 2);  hush.wait(20);  gfx.snap("name_entry_typed")
-  tap({ "start" }); hush.wait(120)
-  tap({ "a" });     hush.wait(60)
-  local seen_text = false
+  -- E1 (src/hooks/new_game.asm): START goes straight into room 1 of the tower. The file-select, name-entry and
+  -- Link's-house scenes of vanilla can no longer be reached, so they are no longer dumped.
+  tap({ "start" })
   local tries, stable = 0, 0
   while stable < 6 do
-    local m, s = mode(), hush.read("submodule")
-    if m == 0x07 and s == 0x00 then stable = stable + 1 else stable = 0 end
-    if m == 0x0E and not seen_text then seen_text = true; hush.wait(90); gfx.snap("text_box") end
-    hush.press({ "a" }, 4, 8)
+    if mode() == 0x07 and hush.read("submodule") == 0x00 then stable = stable + 1 else stable = 0 end
     hush.wait(30)
     tries = tries + 1
-    hush.assert(tries < 400, "never reached gameplay; module=" .. mode())
+    hush.assert(tries < 100, "never reached gameplay; module=" .. mode())
   end
-  hush.wait(600)
-  gfx.snap("house_gameplay")
+  hush.wait(120)
+  gfx.snap("room1_gameplay")
   -- dev state for the other gfx scenes; made from THIS build, so it never carries vanilla VRAM/CGRAM
   os.execute("mkdir -p '" .. hush.ROOT .. "/build/dev_states'")
-  hush.save_state("build/dev_states/gfx_house.mss")
-  hush.pass("scenes dumped (text_box seen: " .. tostring(seen_text) .. ")")
+  hush.save_state("build/dev_states/gfx_room.mss")
+  -- SELECT in gameplay opens the vanilla save/continue message: the only text box still reachable
+  tap({ "select" }); hush.wait(90)
+  gfx.snap("text_box")
+  hush.pass("scenes dumped")
 end)

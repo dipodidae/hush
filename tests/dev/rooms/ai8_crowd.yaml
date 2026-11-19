@@ -1,0 +1,74 @@
+# DEV room for the E2 AI tests: eight guards at once (cost check: the AI must not make the game lag).
+id: ai8_crowd
+status: draft
+seq: 8
+floor: 1
+teaches: >-
+  AI test: eight guards in a lit room.
+layout: >-
+  Engine test layout.
+grid:
+  - "################"
+  - "################"
+  - "#S.............#"
+  - "#...a..........#"
+  - "#...b..........#"
+  - "#...c..........#"
+  - "#...d..........#"
+  - "#...e..........#"
+  - "#...f..........#"
+  - "#...g..........#"
+  - "#...h..........#"
+  - "#.............X#"
+  - "#..............#"
+  - "################"
+lighting: lit
+guards:
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: a
+    move: still
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: b
+    move: still
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: c
+    move: still
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: d
+    move: still
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: e
+    move: still
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: f
+    move: still
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: g
+    move: still
+  - type: lantern_guard
+    patrol: stands, faces east
+    facing: right
+    id: h
+    move: still
+tools_given: []
+intended_solution: >-
+  Engine test room: nothing to solve.
+solution_inputs: tests/solutions/ai8_crowd.inputs
+par_time_sec: 10
+ghost_possible: true
+must_not:
+  - Anything: engine test room.

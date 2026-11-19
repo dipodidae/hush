@@ -1,0 +1,384 @@
+# HUSH engine notes (E1: foundation, E2: stealth AI)
+
+Sections 1-10: everything the engine learned while building camera lock, the one-screen room format, new game, the room compiler and
+the per-frame controller (E1). **Section 11 onwards: E2 (stealth AI, damage rules, caught -> fast restart, ink cloud, icons, test ROM)**, section 11.12 = E4 (the custom guard drawing);
+where E2 changed an E1 statement, the E1 text says so. Facts are cited (`bank_XX.asm:line` = `vendor/usdasm`) or were measured in MesenCE with the
+scripts named in brackets. Nothing here is from memory.
+
+## 1. The room model
+
+A HUSH room is the **visible 256x224 window of one vanilla 512x512 room**. All HUSH rooms use vanilla layout 7
+(`RoomLayout_07`, `bank_04.asm:5144-5199`: one big open room: walls only at tile x 2..6 / 58..62, y 4..8 / 58..62), so
+the window is entirely inside the open interior and every wall inside it is drawn by us.
+
+| Thing | Value |
+|---|---|
+| Room ids | `$128 + k` for the k-th room (0-based, order of `seq`). Ids `$128..$13F` are the unused tail of every 320-entry room pointer table; room flags `$7EF000 + 2*room` stay below `$7EF280`. Max 24 rooms |
+| Room base (pixels) | `x = (id & 15) * 512`, `y = (id >> 4) * 512` (rooms `$128-$12F` are in room row `$12`, `$130-$13F` in row `$13`) |
+| Window origin (room-local px) | `WIN_X = 128`, `WIN_Y = 144`; in 8x8 tiles `(16, 18)`. Constants live in `tools/roomgen.py` and are exported to asm as `!HUSH_WIN_X/Y` |
+| Grid | 16 x 14 cells of 16x16 px. Cell `(cx, cy)` = pixels `base + (128 + 16*cx, 144 + 16*cy)` = tiles `(16 + 2cx, 18 + 2cy)` |
+| Camera | `$E2 = base_x + 128`, `$E8 = base_y + 144` (also `$E0/$E6`), never changes. Verified constant while walking [`tests/smoke/newgame.lua`] |
+| HUD | BG3, covers the top ~24 px (real art). The A0 *placeholder* HUD is taller (about 62 px, hex-labelled tiles) and hides Link when he starts near the top-left; grid rows 0-1 are walls anyway |
+
+### Link and sprite coordinates
+
+* Link's `(x, y)` = `$7E0022` / `$7E0020` is the top-left of a 16x16 box. His **tile-collision box is `x..x+15`, `y+8..y+23`**
+  (measured: walking into the left wall stops at `x = cell_left`, into the top wall at `y = wall_bottom - 8` [probe]).
+* To stand exactly in cell `(cx, cy)`: `x = cellX`, `y = cellY - 8`. roomgen uses this for the start position.
+* The exit test point is the **centre of the box**: `(x + 8, y + 16)` (`!HUSH_FEET_DX/DY`). Touching an `X` cell means this point is inside it.
+* Sprite positions in a room's sprite list are in 16-px units inside the 512 room: unit = `8 + cx`, `9 + cy` for cell `(cx, cy)`; the
+  loader adds the room row/column (`LoadUnderworldSprites`, `bank_09.asm:13440-13480`, `LoadSingleUnderworldSprite`, `bank_09.asm:13602-13686`).
+
+## 2. Camera lock (hooks in `src/hooks/camera_lock.asm`)
+
+`HandleUnderworldCamera` ($02BA31) and `Underworld_TryScreenEdgeTransition` ($02885E) are each replaced by
+`SEP #$20 : RTS` (E2 20 60), the exact exit state of the originals. Vanilla bytes checked in the ROM:
+`C2 20 A9 01 00 ...` and `C2 20 A5 30 29 ...`. Scroll values then stay what `LoadUnderworldEntrance` wrote from
+`EntranceData.horizontal_scroll/vertical_scroll`. Nothing else was needed: BG1/BG2 scroll registers read `$E2/$E8` and
+`$E0/$E6`; sprites/Link are drawn relative to them.
+BG3 (HUD) scroll is 0/0 (`$E4/$EA`) and stays so.
+
+## 3. Collision (measured with `tests/dev/dump_collision.lua`, `$7F2000`)
+
+* `$7F2000` is the collision map Link uses (64x64 bytes, one per 8x8 tile, row stride 64). `$7F3000` (second layer) stays all 0 for HUSH rooms.
+* `$00` floor/walkable, `$01` solid. Our `$00` ceiling objects produce `$01` exactly on the cells they cover; the interior is `$00`.
+* Dev room 1 (empty interior, `#` rim): window tiles x 16..47, y 18..45 (32 x 28 tiles); solid rows 18-21 and 44-45, solid columns 16-17 and 46-47; everything else is `$00`.
+  **Walkable interior: 14 columns x 11 rows = 154 cells (39 424 px^2)** out of 224 cells in the grid (70 solid). Outside the window the map is `$00` (walkable) but unreachable behind the solid rim.
+* Link cannot leave: pushing left for 180 frames stops at window x = 16 [`tests/smoke/newgame.lua`].
+* Other values seen when probing other object ids (not used): `$02`, `$06`, `$07`.
+
+### Object ids (type 1, `RoomDraw_DrawAllObjects`, `bank_01.asm:1251-1330`; table `DrawObjects`, `bank_01.asm:268`)
+
+| id | draws | used by |
+|---|---|---|
+| `$00` | "Ceiling": 2x2 tiles per repeat to the right, size 1..15 = repeats, **size 0 = 32 repeats** (`RoomDraw_Rightwards2x2_1to15or32`). Solid (`$01`). One repeat = one grid cell | `#` and `p` cells (horizontal runs) |
+| `$60` | same, downwards | `#`/`p` (vertical runs) |
+| `$07`, `$08`, `$53`, `$B8`, `$B9` ... | other 2x2 shapes; `$53` = solid wall piece, `$07/$08` = dark tiles with collision `$00` | not used yet |
+
+Object encoding: `b0 = XXXXXXss`, `b1 = YYYYYYss`, `b2 = id`; X, Y are 8-px tile coordinates 0-63 and `size = (b0 & 3) << 2 | (b1 & 3)`.
+Stream: `b0` floor nibbles (we use `$22`), `b1 = layout << 2` (layout 7 -> `$1C`), list 1 objects `FF FF`, list 2 `FF FF`, list 3 `F0 FF` (door marker) then doors then `FF FF`.
+HUSH rooms put every object in list 1 and have no doors (`F0 FF FF FF`); the door pointer (`RoomData_DoorDataPointers`) points at the final `FF FF`.
+The placeholder art draws every non-wall, non-floor tile as hex-labelled text, which makes object experiments easy to read.
+
+roomgen covers solid cells with the smaller of a horizontal-run and a vertical-run decomposition (runs split at 15). A simple 16x14 room takes about 28 objects
+(~100 bytes); the worst case (checkerboard) stays well under the 12 KiB stream budget for 24 rooms.
+
+**E3 (section 12):** `#`, `p` and `X` are no longer drawn alike: wall top `$00/$60`, wall face `$07`, pillar `$B8/$92`, exit marker `$B9/$93`, each with its own tile words; collision is unchanged.
+
+## 4. Header, sprite list, pointer tables
+
+* Header (14 bytes, `LoadRoomHeader`, `bank_01.asm:9986-10215`): `b0 = bg2mode << 5 | collision << 2 | dark(bit0)`, `b1` palette set (E3: UnderworldPaletteSets row 0-5 = dark/lit x floor 1-3, section 12), `b2` blockset (`$0AA2`), `b3` sprite gfx set (`+$40` -> `$0AA3`), `b4..b13` tags/warp/stairs.
+  HUSH: `00 <palette row> 00 04 00...` (E3; was `00 00 00 04 00...`). `04` = the soldier sprite set used by all vanilla castle rooms with soldiers (`$50`, `$52`, `$60-$62` have palette 0 / blockset 0 / sprite set 4).
+  The vanilla "dark room" bit is left 0: HUSH `lighting: lit|dark` is a guard-range rule, not the vanilla darkness effect.
+* Sprite list: `00 | b0 b1 b2 ... | FF`; `b0 = l ss yyyyy`, `b1 = ttt xxxxx`, `b2 = sprite id`. `l` = layer, `yyyyy`/`xxxxx` = 16-px units in the 512 room,
+  sub-type (`$0E30`) = `ss << 3 | ttt`. Guards use sprite `$41` (green soldier, `Guard_Main`, `bank_05.asm:12115`).
+* Pointer tables rewritten in place for rooms `$128..`: object `$1F8000` (3 B), door `$1F83C0` (3 B), header `$04F502` (2 B, bank 04 hard-coded in `LoadRoomHeader`), sprites `$09D62E` (2 B, bank 09 hard-coded).
+  The data they point to sits in vanilla regions of rooms that HUSH can never load (see `src/FREESPACE.md`). All other vanilla tables keyed by room id already have a shared "empty" entry for rooms `$128+` (pot items `$E6B0`, checked in the ROM).
+
+## 5. Guard sprites (vanilla soldier AI, what E1 spawned; **replaced in E2, see section 11**)
+
+`SpritePrep_StandardGuard` (`bank_06.asm:3445`) and `Guard_Main` (`bank_05.asm:12115`), measured with `tests/dev/guard_behaviour.lua`:
+
+* Sub-type (`$0E30`, from the sprite-list bytes `ss << 3 | ttt`): values 1-4 set the initial direction `$0DE0 = (n - 1) xor 1`; guard direction codes are **0 right, 1 left, 2 down, 3 up**
+  (`GuardSpeeds_X/Y`, `bank_05.asm:12317-12322`). So roomgen writes `left = 1, right = 2, up = 3, down = 4`. Verified for every guard of every room [`tests/smoke/guard_facing.lua`].
+  Values 5-7 select "probe" sentries (`Guard_ShootProbeAndStuff`). Sub-type 0 = random looking-around. Guards spawn exactly on the grid cell (sprite origin = cell top-left).
+* Observed AI (all indoor guards, sub-type 1): `$0D80` (AI state) cycles 0 idle (look around, timer) -> 1 **on patrol** (walks straight, ~95 px in 180 frames) -> 2 surveying (stops, looks around) -> 0 ... and turns around (`EOR 1`) when
+  blocked. So vanilla indoor guards **do patrol along their facing axis**, they never stand still for long. "move: still" is therefore NOT implemented by E1 (both `patrol` and `still` spawn the same vanilla guard); the AI milestone must pin `$0D80`.
+  **E2: `Guard_Main` is no longer run; `move: still` is sub-type bit 3 (section 11.2).**
+* Vanilla detection works unmodified: when Link is in the probe line of sight the guard goes to state 4 (in pursuit, `$0D80 = 4`) and chases. Damage to Link is vanilla; health is refilled every frame so Link survives (see pitfalls).
+* The guard's own "probe" sprites also report type `$41` in state 9 (slots 9/10 in the probe log): count `>= #guards`, not `==`.
+
+## 6. New game: title START -> room 1 (`src/hooks/new_game.asm`)
+
+START/A/B/X/Y on the title are handled at `$0CC126-$0CC130` (`bank_0C.asm:19-24`), which used to `JMP FadeMusicAndResetSRAMMirror` (-> file select).
+Now it jumps to `Hush_TitleStart` ($0CC110, in the A0 block of `intro_skip.asm`) -> `Hush_NewGame`:
+
+1. `JSL FadeMusicAndResetSRAMMirror` ($0CC2F0): fades music, clears `$20-$8F` and the whole save mirror `$7EF000-$7EF4FF`, sets `$10=1`.
+2. Writes the start file straight into the mirror (no SRAM slot): `$7EF36C = $7EF36D = $18` (3 hearts), `$7EF3C5 = 2`.
+   **Dossier correction: `$7EF3C5 = 2`, not 1.** Any non-zero value honours the entrance X/Y (`bank_02.asm:15607`) and skips the bed cutscene (`bank_02.asm:549`);
+   values `< 2` start the **rain ambience** (`UnderworldAdjustRainSFX`, `bank_02.asm:586-607`, `$012D = 3`).
+3. Repeats the non-SRAM part of `CopySaveToWRAM` (`bank_0C.asm:2636-2750`). **Pitfall found the hard way:** without `$0219 = $6040` (HUD VRAM destination)
+   the NMI DMA writes the HUD buffer to VRAM `$0000`, i.e. into the BG2 tilemap, and no HUD shows. It also sets `$021D/$021F/$0221`, `$7EC00D/0F/13/15`, `$0204`, `$0710`, `$0AB2` and clears `$1AB0-$1AFF`.
+4. `Hush_LoadRoom(0)`: Module 5.
+
+Result: cold boot -> title (~frame 400 incl. the A0 title) -> START -> Link controllable in room 1 after **198 frames** (3.3 s, black screen for ~117 of them). Slot 0 SRAM is never read or written.
+Dead code paths now: file select, name entry, Link's house, intro text, all overworld modules. (`tests/gfx/scenes_boot.lua` no longer dumps them.)
+Music: **silent**. The title music is faded out by `FadeMusicAndResetSRAMMirror`; every EntranceData row carries song `$FF` ("keep", `LoadUnderworldSongBankIfNeeded` returns at once for `$FF`, `bank_02.asm:5375-5378`).
+Sound effects still play (not audible in tests; not verified by ear).
+
+## 7. Room loading, advance, restart (`src/hooks/room_ctrl.asm`)
+
+* `Hush_FrameHook` replaces `JSL LoadChrHalfSlot` at $0287BA in `Module07_Underworld` (once per frame, submodule 0 only, `bank_02.asm:1393-1397`); it runs the original JSL first.
+* **Entrance k loads room k**: `LoadUnderworldEntrance` (`bank_02.asm:15456`) reads 17 `EntranceData` tables by `$010E`; roomgen rewrites rows 0..N-1 (the tables are in `src/FREESPACE.md`).
+  `$010E` is the room index. Link faces down in entrance 0 and up in the others (`bank_02.asm:15714-15722`; not configurable via the tables).
+* `Hush_LoadRoom(A = index)` sets `hush_room`, `$010E`, `$010A = 1` (skips the "recache" block), `$04AA = 0` (not a respawn), `$B0 = 0`, `$10 = 5`, `$11 = 0`, grants the tools, and clears `$7EF000 + 2*room` and `$7FDF80 + 2*room`.
+  Module 5 (`bank_02.asm:224`) falls straight into module 6 and the room is rebuilt completely (graphics, tilemaps, sprites, Link).
+  The rest of the current frame is allowed to finish (the return address is *not* discarded); module 5 is dispatched next frame.
+* Clearing `$7FDF80 + 2*room` matters: it holds the "sprite killed" bits that `LoadSingleUnderworldSprite` (`bank_09.asm:13640-13660`) honours; without it a killed guard stays dead after a restart.
+* **`Hush_RestartRoom`** (JSL, any M/X, preserves P) = `Hush_LoadRoom(hush_room)`. The guard AI calls this when a guard catches Link. [`tests/smoke/room_advance.lua` checks Link back at start and the death flags cleared.]
+* Exit: each frame the centre of Link's box is tested against up to 4 pixel rectangles of the ROOM TABLE (`Hush_CheckExit`). Touching one -> room `hush_room + 1`; last room -> `Hush_Ending`
+  (Module 0, submodule 0: the intro runs again: the A0 `IntroSkip` fast-forwards to the title; START starts a new game. Verified [`tests/smoke/room_advance.lua`]: 258 frames back to the title).
+* **Timing:** (E2: "caught" now uses `Hush_FastRestart`, 6 frames, section 11.6; the full load below is what exits and the debug jump still do) a room load takes **~160 frames (2.7 s)**: Module 5+6 run as one very long frame (~117 frames, forced blank: graphics decompression, tilemap build), then the fade-in (~41 frames). `Hush_RestartRoom` therefore is *not* instant yet;
+  the M5 "instant restart" work should skip `LoadDefaultGraphics`/`DecompressSwordGraphics`/palette reloads when the room did not change. [`tests/dev/room_load_timing.lua`]
+* Debug jump: `hush_room_req = N + 1` -> next gameplay frame loads room N (out-of-range values are ignored). Also used for tests (`bot.jump_to_room`).
+* Health: `$7EF36D := $7EF36C` every frame. **Risk:** a single hit larger than current health kills before the refill (3 hearts = `$18`; green soldiers deal 2 hearts at most; blue/red soldiers deal more). Death would go to the vanilla game-over module `$12`. (E2: the guard AI never damages Link at all.)
+
+### Tools (per room, cumulative)
+
+`ROOM TABLE +18` = OR of `tools_given` of rooms 0..k. On every load (`Hush_GrantTools`): bit0 shade_knife -> `$7EF359 = 1` (fighter sword);
+bit1 hush_darts -> `$7EF340 = 2` (bow with arrows) and `$7EF377 = 8` arrows; bit2 ink_pots -> `$7EF343 = 8` (the bomb **count** itself lives at `$7EF343`, `Zelda_3_SRM.log:177`; capacity is `$7EF370` upgrades, default 10).
+Tools not granted are set to 0 (a debug jump backwards removes later tools). No shield. Verified: sword swing runs (`$3C` counts 1..8 on B) and START opens the item menu (module `$0E`) [probe].
+`$0202` (selected Y item) is not set: the player picks the item in the menu.
+The A0 placeholder item menu shows tile-index text, so the icons were not judged visually.
+
+## 8. RAM
+
+`$7EC900` `hush_room`, `$7EC901` `hush_room_req` (documented in `docs/ram_map.md` with the evidence that vanilla never touches `$7EC9xx`: the only `$7E[C-E]xxxx` operands in
+`usdasm` are the HUD/palette buffers `$7EC0xx-$7EC8xx` and the power-on full-WRAM clear in `bank_0C.asm:90-112`). Direct-page scratch used by the controller: `$00-$03`.
+
+## 9. How to add a room
+
+1. Write `design/rooms/<id>.yaml` from `design/rooms/_template.yaml` (fields `seq`, `grid`, guards with `id`/`move`; **quote every grid row**).
+2. `make validate` (schema, border walls, one `S`, >= 1 `X`, guard letters, reachability warning), then `make rooms` -> `build/rooms_report.txt` (ASCII + byte sizes) and `build/rooms_gen.asm`.
+3. `make build && make test` (`rooms_all_load` loads and screenshots every room; `room_advance` walks the whole chain by teleport; `walk_exit` walks the first guard-free room).
+4. Nothing in `src/` changes. Limits: 24 rooms, <= 4 exit rectangles per room (adjacent `X` cells merge), <= 8 guards.
+5. `HUSH_ROOMS_DIR=tests/dev/rooms make build` builds the engine dev set; with no real rooms in `design/rooms` roomgen falls back to it and says so.
+
+## 10. Pitfalls and open problems
+
+* A full room load (exit -> next room) is still ~2.7 s; the restart after "caught" is 6 frames (E2, section 11.6). Faster room *advance* is open (11.11).
+* ~~`move: still` and `move: patrol` are the same in E1~~ fixed in E2 (sub-type bit 3).
+* ~~No visual exit marker; `p` looks like `#`~~ fixed in E3 (section 12). A0 placeholder HUD hides the top-left ~62 px.
+* SELECT in a room opens the vanilla save/continue message (`bank_02.asm:1671-1700`); START opens the item menu (fine). Neither is suppressed.
+* `hush_room_req` also reloads the *current* room (restart); tests rely on it.
+* Link starts facing up (down in room 1); the EntranceData tables cannot change that.
+* `make test` now ends with the leak check; `tests/gfx/*.lua` were adapted to the new flow (no file select / name entry / house scenes; guard scenes use the HUSH rooms; death scenes cannot trigger any more because health is refilled).
+
+## 11. E2: the stealth AI, damage rules, caught -> restart, ink, icons
+
+Files: `src/hooks/guard_ai.asm` (hook + AI), `guard_vision.asm` (geometry, vision, line of sight), `guard_hooks.asm` (arrows, bombs),
+`guard_runtime.asm` (per-frame tick, fast restart, palettes). RAM: `docs/ram_map.md` ("HUSH stealth AI variables", including the test API `spr_aware`).
+Every vanilla address below was read in `vendor/usdasm` (file:line cited) and every hook byte checked against `rom/vanilla.sfc` before patching.
+
+### 11.1 How the AI plugs in
+
+* `Sprite_41/42/43` all start at **`$05C155`** (`LDA.w $0DB0,X : BNE Probe : JMP.w Guard_Main`, `bank_05.asm:11942-11946`; the three jump-table entries are one routine, run as a
+  PHA/RTS dispatch from `SpriteModule_Active_bank05.main` `$05B5D3`, DB = `$05`, M = X = 8). The 8 bytes became `JML Hush_GuardEntry` + 4 NOPs. `Hush_GuardEntry` repeats the
+  `$0DB0 != 0` test (probe sprites: `JML $05C15D`, the vanilla `Probe` code, untouched and unreachable in HUSH) and otherwise runs `Hush_GuardAI` with DB = `$0E`, then `JML $05C226`
+  (the `RTS` at `EXIT_05C226`, `bank_05.asm:12112`) so the bank-05 caller continues as after `Guard_Main`.
+* **Nothing of `Guard_Main` runs any more**: no `Guard_SendOutProbe`/`FireProbe` (probe sprites `$41` with `$0DB0 = parent + 1` are never spawned), no `CheckDamageToLink`
+  (`bank_06.asm:22161`), no `ParrySwordAttacks` (the vanilla sword-vs-soldier code, `bank_06.asm:20887`), no `CheckSwordDamageToSprite`. Link is never hurt, knocked back or
+  "tinked" by a guard: contact is our own box test.
+* Why not hooks on `AlertSprites` ($088AB9) / `WeaponTink` ($088F8E), the `$0FDC = 3` "noise" setters? Their **only readers** are vanilla guard code
+  (`bank_05.asm:12160` = `Guard_Main`, `:13924`, `bank_06.asm:804-807` the decrement). Our AI never reads `$0FDC`, so every thump, arrow and tink is silent without patching a byte.
+* Code placement: free blocks (`src/FREESPACE.md`): `$0EEE22-$0EF3FF` AI (uses ~0.7 KB), `$0EFB64-$0EFFFF` vision + hooks (~0.7 KB), `$07FB00-$07FFFF` runtime (~0.3 KB).
+  **Pitfall: `$0EEE21` must stay `$FF`.** It is the end marker of the dialogue text (`bank_0E.asm:11950` "see text.asm"): when the first byte of `NULL_0EEE21` held code, the intro hung
+  in submodule 1 (the text loader scanned on). The block starts at `$0EEE22`.
+
+### 11.2 States and variables (all per sprite slot)
+
+| Variable | Meaning |
+|---|---|
+| `$0D80` `spr_aware` | **0 UNAWARE, 1 SUSPICIOUS, 2 ALERT, 3 ASLEEP.** Vanilla `Guard_Main` used it as its AI state; the array is ours now |
+| `$0DE0` | facing, vanilla encoding: 0 right, 1 left, 2 down, 3 up. The walk counter `$0E80` (+1 per frame moved) selects the walk phase. E4: the vanilla head direction `$0EB0` and body frame `$0DC0` are no longer written or read (the draw in `guard_draw.asm` picks tiles from `$0DE0`, `$0E80` and the velocity) |
+| `$0DF0` | suspicious: 60-frame investigation timer; asleep: 240-frame chunk |
+| `$0E10` | "lost sight" timer: suspicious 120, alert 180 (reset to that value every time he sees Link) |
+| `$0D90` | state 0: 1 = pausing at a wall; state 3: remaining 240-frame chunks (the dart sets 1: 240 + 1 + 240 = ~480 frames, measured 479) |
+| `$0E00` | state 0: 60-frame wall pause |
+| `$0EE0` | ink "stand still" timer (60) |
+| `$0E30` | sub-type from the sprite list: bits 0-2 facing code (vanilla `SpritePrep_StandardGuard`, `AND #7`), **bit 3 = `move: still`** (`tools/roomgen.py` `STILL_SUBTYPE`, encoded in the `ss` bits of the sprite-list byte 0) |
+| `$0DB0` | must stay 0 (non-zero = a vanilla probe) |
+
+Transitions (`Hush_GuardAI`):
+
+* **UNAWARE**: sword hit -> dies. Touching Link -> ALERT. Otherwise looks (`Hush_Vision`, mode 0: cone + range + line of sight): sees Link -> SUSPICIOUS (`$0DF0` 60, `$0E10` 120,
+  stops, faces him). Not noticing: patrol (`move: patrol`) or stand (`move: still`).
+* **SUSPICIOUS**: immune to the sword. Touching Link -> ALERT. Senses in all directions (mode 1: range + line of sight, no cone: the guard turns to the larger axis towards Link). While he senses Link,
+  `$0E10` := 120 and when `$0DF0` has run out -> ALERT (`$0E10` := 180). `$0E10` reaching 0 -> UNAWARE.
+* **ALERT**: immune to the sword. Touching Link -> **CAUGHT** (`hush_caught := 1`). Chases (see 11.4). Sees Link (mode 1) -> `$0E10` := 180; `$0E10` = 0 -> UNAWARE (he stays where he is).
+* **ASLEEP**: ignores everything, dies to the sword, is a **solid obstacle** (`Hush_Solid`: Link is pushed out of the 16 x 16 overlap, smaller axis first), wakes into UNAWARE after ~480 frames.
+* Touching an UNAWARE or SUSPICIOUS guard makes him ALERT; since Link still overlaps him on the next frame, that frame is a catch. So *any* contact with an awake guard ends the room within two frames
+  (tests: `ai_caught`). Contact box: guard 16 x 16 at its origin vs Link's collision box `(x, y+8)..(x+15, y+23)` = `|dx| < 16 and |dy| < 16` between the centres.
+
+### 11.3 Vision (`Hush_Geom`, `Hush_Vision`)
+
+* Coordinates: guard centre = origin + (8, 8), Link centre = (x + 8, y + 16) (section 1). `Hush_Geom` leaves `dx = Lx - Gx` (`$00`), `dy = Ly + 8 - Gy` (`$02`), `|dx|` `$04`, `|dy|` `$06`, guard centre `$08/$0A`.
+* **Range** = `max(|dx|, |dy|) <= hush_range`: **80 px (5 cells) dark, 128 px (8 cells) lit** (`Hush_Tick` writes it from ROOM TABLE +19 bit 0). Square, not round: the cone makes the forward component the maximum.
+* **Cone (mode 0)**: the forward axis must be the larger one (`|dx| >= |dy|` for left/right, `|dy| >= |dx|` for up/down: a 90-degree cone, edges inclusive) and Link must be on the correct side. Behind the guard = blind.
+  Same layer as Link (`$0F20,X = $EE`).
+* **Line of sight**: the straight segment guard centre -> Link centre is walked in 8-px steps along its major axis (minor axis by an 8.8 fixed-point rate from the hardware divider `$4204-$4206`, 16 cycles wait);
+  at every sample the `$7F2000` collision map (`((y & $1FF) >> 3) * 64 + ((x & $1FF) >> 3)`, section 3) must read `$00`. Any non-zero tile blocks. The same loop tests the **ink cloud** box
+  (`|px - cx| <= 24 and |py - cy| <= 24`, 3 x 3 cells like the vanilla bomb's 48 x 48 damage box). Mode 2 = cloud only (no range / cone / tiles): "does the line to Link, or the guard himself, touch the cloud?"
+* Staggering (frame budget, 11.8): unaware guards look every 2nd frame, suspicious / alert every 4th, offset by slot, so a notice takes up to 2 frames.
+
+### 11.4 Movement
+
+* `Hush_Step` = one frame of movement in one direction + the **vanilla tile collision** (`CheckSpriteTileCollision_long` `$06E496`, the soldier's tile box: it stops **14 px before a wall tile**, i.e. the 16-px sprite overlaps the wall by 2 px; measured with `ai_patrol`).
+  Own `MoveAxis` (the `MoveSpriteY_bank05` body, `bank_05.asm:22234-22261`, the X arrays are the same arrays at X + $10). **When blocked the position and sub-pixels from before the move are restored**:
+  the vanilla pushback alone let an alert guard creep through a pillar at 1 px / 8 frames (found by `ai_deescalate`; he reached Link behind the pillar).
+* Speeds (1/16 px per frame): patrol **12 = 0.75 px/frame** (vanilla indoor patrol is 0.5), alert **18 = 1.125 px/frame = 1.5 x patrol** (vanilla `AppliedSpeed18`); Link walks about 1 px/frame, so a chase is not outrun for free.
+* **Patrol**: walks along its facing axis; blocked -> stops 60 frames (`$0E00`) -> turns 180 degrees (`$0DE0 xor 1`) -> walks back. `still` never moves and keeps facing. Measured: 45 px in 60 frames, pause 59 frames (`ai_patrol`).
+* **Chase** (`Hush_Chase`): step along the larger axis towards Link; if blocked and the other axis offset is >= 3 px, step along that axis (wall slide). A guard directly behind a pillar line stays stuck (he loses Link after 180 frames).
+  Facing follows the movement.
+
+### 11.5 Damage and noise
+
+* **Sword** (Shade Knife): `Hush_SwordCheck` builds Link's sword box with the vanilla routines (`SetupActionHitbox_long` `$06F57E`, `SetupSpriteHitbox_long` `$0683EA`, `CheckIfHitboxesOverlap_long` `$0683E6`) only while Link
+  swings or dashes (`$3C`/`$0372` non-zero). Unaware / asleep guard overlapped -> `SpawnPoofGarnish` ($05AB9C) + `$0DD0 := 0` (gone until the room restarts: a restart reloads the sprite list and clears `$7FDF80 + 2*room`).
+  Suspicious / alert: no code runs at all: no damage, no flash, no tink. Reach measured with `tests/dev/sword_reach.lua`: Link 16-32 px from the guard (centre to centre dx) kills; 36 and more misses; < 16 is a contact.
+* **Arrows** (Hush Darts): hook `$06ECB7` (`CheckAncillaDamageToSprite`, `JML Hush_AncillaHit`). Entered by JSL from `Ancilla_CheckSpriteCollision_Single` (`bank_08.asm:3078`) with A = ancilla type ($09 arrow) and X = sprite. For a guard:
+  arrow + state 0 -> ASLEEP (240 + 240); anything else does nothing. The vanilla caller treats it as a hit, so the arrow stops (it becomes ancilla $0A, the stuck arrow, for a moment). Other sprite types run the vanilla code.
+  `$7EF340 = 2` (bow with arrows) is enough; verified `ai_darts`. Item selection pitfall for tests: **`$0202` is the HUD slot, the item that is used is `$0303` = `MenuToEquipID[$0202]`** (`bank_0D.asm:17015`: bow 3, bombs 1); `UpdateEquippedItem` copies it
+  only when the HUD rebuilds, so a test that pokes `$0202` must poke `$0303` too.
+* **Bombs = ink pots**: hook `$089815` (`Bomb_CheckSpriteAndPlayerDamage`, `JML Hush_BombHook`). The vanilla damage code (sprites, Link, recoil) is never reached. Phase `$0C5E = 1`: cloud centre := bomb position (`$0C18:$0C04`, `$0C0E:$0BFA`;
+  the bomb is placed ~14 px in front of Link), `hush_ink_t := 300`. Phase 8 (largest explosion frame, 6 OAM objects) is **held** (`$039F` kept at 2) while `hush_ink_t > 0`, so the vanilla explosion graphic is the visible cloud; then phases 9, 10 and the ancilla ends
+  (measured: 157 frames from placing to the explosion, cloud 300 frames, ancilla gone ~345 frames after placing). Link is neither hurt nor pushed (tested with the bomb at his feet and a guard inside the blast box).
+  A second bomb restarts the single global cloud. Colour: sprite palette row 1 (the explosion's `$22/$62` attribute bytes, `bank_08.asm:6040-6090`) is overwritten with dark indigo smoke colours at room load (`Hush_PalInk`).
+* **Ink effect on guards**: suspicious / alert guards whose line to Link crosses the cloud, or who stand in it, become UNAWARE at once and stand still 60 frames (`$0EE0`); unaware guards do not see Link through it.
+
+### 11.5b Not done / deviations from the task text
+
+* `AlertSprites` / `WeaponTink` immediates were **not** patched (nothing reads `$0FDC` any more, 11.1).
+* The icons are **not** in `GFX_BC`: in E2 every one of its 64 tiles was used by the vanilla soldier frames (head 16x16 at `$40/$42/$44`, body, weapon; checked against `GuardBodyObjectChar` etc.). E4 rebuilt that sheet (11.12) and left half of it free, but the icons stay in `GFX_C5` (tiles `$FC-$FE`). See 11.7.
+
+### 11.6 Caught -> fast restart (`guard_runtime.asm`)
+
+* Contact with an ALERT guard sets `hush_caught` (`$7EC902`). `Hush_Tick` (JSL from `Hush_FrameHook`, i.e. at the start of the next gameplay frame, before the sprites run) calls **`Hush_FastRestart`**:
+  clear `$7EF000 + 2*room` and `$7FDF80 + 2*room`; `Underworld_ResetSprites` (`$09C114`, `bank_09.asm:13187`: deletes every sprite, ancilla, garnish and overlord and loads the room's sprite list again); `ResetLinkProperties_A` (`$07F1A3`);
+  Link := EntranceData position of the room (`$02CF59` y / `$02D063` x rows written by roomgen) and facing; `Hush_GrantTools`; 6 black frames (`$13 := 0`, `hush_flash` counts down in `Hush_Tick`, then `$13 := $0F`).
+  **Nothing is rebuilt**: tilemaps, graphics and palettes stay (the whole point: the vanilla Module05/06 load is ~117 frames of decompression and tilemap building, section 7).
+* **Measured** (`tests/smoke/ai_caught.lua`, log line `RESTART:`): the guard's contact frame sets the flag; the restart runs on the next frame; **the screen is back at full brightness 6 frames after the contact frame**
+  (6 black frames; Link, guards and tools are already reset on the first of them). Target was <= 20 frames with a 6-frame flash. Physical play (`ai_stealth`): noticed -> chased -> caught -> restart.
+* Link is controllable (and can move) during the black frames; guards restart unaware and Link is at the start, so nothing can happen in 6 frames.
+* **Full load (exit to the next room, debug jump, new game) is unchanged: ~160 frames.** Ideas for a faster advance (not done): reuse the loaded graphics for a room with the same sprite/blockset (all HUSH rooms do) and call only the room-draw part of Module06;
+  draw only the quadrant that is visible (`LoadAndDrawRoom` builds all four); skip the fade-in iris.
+
+### 11.7 Icons and palettes
+
+* Icons: entry 3 (byte offset `$0C`) of the guard's 5-entry OAM allocation (E4, 11.12; in E2 it was entry 7 of 9 written before the vanilla draw), 8 x 8 sprite, attribute `$29` (priority 2, palette 4, name table 1),
+  written by `Hush_DrawGuard` (`guard_draw.asm`): tile `$FB` + awareness state ('?' `$FC`, '!' `$FD`, 'Z' `$FE`; `$FF` spare), offset (+4, -22); hidden (Y = `$F0`) while UNAWARE.
+  **Tile region**: the loaded sheets of sprite set `$44` are `GFX_B9, GFX_BC, GFX_86, GFX_C5` (`SheetsTable_AA3` `$44` = `46 49 13 52` + `$73`, `bank_00.asm:11079`) in sprite tile slots `$00/$40/$80/$C0` of name table 1 (`attr bit 0`).
+  `GFX_BC` (slot 1, the guard) had no free tile in E2 (it has since E4, but the icons stayed). `GFX_C5` (slot 3, 23 of the 80 underworld sprite sets, unused by anything HUSH draws) has: its tiles 60-63 (row 3, x 96..127 of `gfx/src/sprite/GFX_C5.png`) are the icons.
+  Painted placeholder glyphs (`?` amber, `!` amber, `Z` near white, spare empty); `tools/gfx_convert.py check` and the leak check are clean. `GFX_C5.yaml` has an `engine_icons` note. **`make gfx` would overwrite the glyphs** (it regenerates the labelled placeholder).
+  The director's `NEW_awareness_icons.png` only needs to land on those tiles (or the `$FB` / attribute / offset constants in `Hush_DrawGuard` change).
+* Alert = amber: `$0F50` palette bits (`GetScreenCoordinates` ORs `$0F50` with `$0B89` into `$05`, `bank_06.asm:19362-19367`) := row 6 while ALERT, row 4 (`SpriteData_OAMProp & $0F`) otherwise.
+  Rows 1-6 of the A0 placeholder palettes are identical (`gfx/src/palettes/sprites.yaml`), so `Hush_SetPalettes` writes **row 6 = amber guard colours** and **row 1 = ink smoke** into the live palette buffer `$7EC500` + `$100 + row*32`
+  and the cached one `$7EC300 + ...`, once per room load (`hush_pal`), and sets `$15` (the NMI then uploads `$7EC500`, `bank_00.asm:1972-1990`). The real art should put these rows into `gfx/src/palettes/sprites.yaml` and drop `Hush_SetPalettes`.
+
+### 11.8 CPU budget
+
+`tests/dev/cpu_load.lua` reads the PPU scanline when the game loop ends (`$00805D`, `STZ $12`, `bank_00.asm:78`; NMI = line 225; later = the frame is lost = 30 fps):
+**E2 numbers (vanilla soldier draw):** empty room line 114, 1 guard 129, 4 guards 178, **6 guards 211**, 7 guards overrun (every other frame lost; `$1A` advances 100 times in 200 frames). A chasing guard cost ~21 lines, an idle one ~16, **about 14 of them vanilla**
+(`Guard_HandleAllAnimation`, sprite handling, shadow). **E4 (custom draw, section 11.12): ~8 lines per idle guard, 6 guards line 163, 8 guards line 179 - the 6-guard limit is gone** (8 idle or asleep guards fit; 6 chasing guards end at line 196-221).
+The AI's own tricks: staggered looks (11.3), sword box only while swinging,
+`$0BE0` bit 7 (skips the pit/water/conveyor tile checks in `CheckSpriteTileCollision`, `bank_06.asm:19549`), geometry computed once per frame.
+
+### 11.9 Test infrastructure
+
+* **Dev ROM**: `make build-dev` -> `build/hush_dev.sfc` = the same code and graphics with the rooms of `tests/dev/rooms` (`tools/build.py build --dev`: roomgen to `build/dev/`, `asar -DHUSH_ROOMS_GEN=...`, `src/main.asm` does `incsrc "!HUSH_ROOMS_GEN"`;
+  `tools/check_freespace.py --rom --rom-file` checks its bytes against the ledger as well). `make test` builds both. A test script with the header tag **`-- @rom dev`** runs on it (`tools/run_test.py`, which also exports
+  `HUSH_ROOMS_LUA` so `bot.rooms()` returns that ROM's rooms). Untagged tests run on `build/hush.sfc` (design rooms, or the dev rooms while `design/rooms` is empty).
+* Dev rooms (`tests/dev/rooms`, play order = `seq`): `dev1-dev3` (E1), `ai4_dark` (still guard facing east, dark), `ai5_lit` (same, lit), `ai6_cover` (pillar column), `ai7_patrol` (patrol + still guard), `ai8_crowd` (8 guards).
+* Helper `tests/lib/ai.lua` (`ai.enter(id)`, `ai.state`, `ai.link_to(slot, dx, dy)` = Link's centre `(dx, dy)` from the guard's centre, `ai.restart()` = poke `hush_caught`, which exercises the real fast restart between sub-tests).
+* Tests (`tests/smoke/`): `ai_vision` (cone, edges, range dark/lit, behind, timing), `ai_los` (pillar), `ai_sword`, `ai_darts` (sleep 479 frames, solid sleeper, no effect on others), `ai_ink` (cloud blocks, calms, real bomb: no damage, 300 frames),
+  `ai_caught` (contact, restart <= 20 frames and what is reset), `ai_deescalate` (120 / 180 frame timers), `ai_patrol` (speed, wall pause, turn, still, calm -> patrol again), `ai_stealth` (real button presses).
+  Dev utilities: `tests/dev/cpu_load.lua`, `sword_reach.lua`, `ai_probe.lua`, `probe_gfx.lua`.
+* Pitfalls while testing: `hush.screenshot` shows the frame **before** the last one (wait 4-8 frames after changing something before judging a screenshot); sprite coordinates of Link vs guard (11.3); a Link placed
+  inside a wall column (guard at the room edge) is "behind" the wall for line of sight - keep test positions on floor cells.
+
+### 11.10 Facts learned
+
+* Collision map and sprite coordinates share the absolute pixel space; room-local = `& $1FF`. Hardware divider usable from bank `$0E` code (I/O at `$4204` is mapped in every bank `$00-$3F`).
+* `GetScreenCoordinates_bank05` pops its caller's return address when the sprite is off screen (`bank_05.asm:22308-22316`) - the vanilla draw wrapper `Guard_HandleAllAnimation_long` `$05C676` was safe to call (E2). E4 replaced the draw; `GetScreenCoordinates_long` `$06E416` returns C = 1 instead of popping.
+* Sprite palette bits come from `$0F50` (not `$0E60`); the hit flash `$0B89` is XORed on top.
+* `$0DB0` of the soldier sprites is the probe parent index: never use it for AI state.
+* Frame lag detection in tests: `$1A` is incremented once per main-loop pass (`bank_00.asm:70`); a pass that overruns NMI loses the next frame (`STZ $12`).
+
+### 11.11 Open problems / not done
+
+* Room advance (exit -> next room) is still a ~160-frame full load; only the restart is fast (11.6).
+* A guard cannot be "pushed" or distracted; no noise mechanic (by design: arrows and tinks are silent).
+* Guards do not walk back to their post after an alert (spec: they stay where they are); `move: still` guards may end up facing a wall.
+* No sound effects for notice / alert / kill / tink; no visual tink spark when the knife hits an alert guard (the hit is silently ignored).
+* Real ink-cloud art: the vanilla explosion tiles in palette row 1 are the placeholder; `Hush_PalAlert/Ink` belong in `gfx/src/palettes/sprites.yaml` once the art is real.
+* ~~More than 6 guards per room lag~~ fixed by E4 (11.8, 11.12): 8 guards fit. More than ~8 awake guards would need a cheaper `Hush_Vision` (16-px steps).
+* Only sprite type `$41` is spawned by roomgen; `$42/$43` would run the same AI (palette bits come from their own OAMProp).
+* The designer's rooms were not available while this was written (`design/rooms` held only the template); the main ROM is built from the dev rooms until they land. Everything is room-data independent except the ROOM TABLE flag bit 0 (lit).
+
+### 11.12 E4: the custom guard drawing (head + body + lantern = 4 OAM entries per guard)
+
+Files: `src/hooks/guard_draw.asm` (new, `Hush_DrawGuard`, bank `$07` `$07FD00-$07FEC7`), `src/hooks/guard_ai.asm` (the call, the `SpriteData_OAMHarm` hook, the removed vanilla draw), `gfx/src/sprite/GFX_BC.png/.yaml` (placeholder blocks),
+sheet contract for the painter: `docs/gfx/art_map.md` section 5; test `tests/smoke/guard_draw.lua`; profilers `tests/dev/guard_cost.lua`, `tests/dev/oam_probe.lua`.
+
+* **What was replaced.** `Hush_GuardAI` used to `JSL $05C676` (`Guard_HandleAllAnimation_long`): head (1 OAM entry, 16x16), body (2-4 entries from 7 different 16x16 / 8x16 pieces, many H/V flips), weapon (2-4 entries) + shadow = 9 allocated entries, 8 visible,
+  drawn from 60 of the 64 cells of `GFX_BC`. Now `JSL Hush_DrawGuard`.
+* **OAM allocation.** `DoSpriteOAMandTimers` (`bank_06.asm:909`) allocates `((n & $1F) + 1) * 4` bytes with `n = $0E40,X`, which `LoadSpriteProperties` (`bank_0D.asm:7835`) copies from `SpriteData_OAMHarm[type]`. `$0DB0C1-C3` (types `$41-$43`) went from `$08` to `$04`:
+  5 entries. Verified a pure per-type table: its only reader is `LoadSpriteProperties` (grep over `vendor/usdasm`); `$0E40` of a guard is only read by `DoSpriteOAMandTimers` and the shadow routine (which draws into entry `$0E40 & $1F`, i.e. the last = entry 4). Ledger: hook row `$0DB0C1-$0DB0C3`.
+* **Entries** (lower = in front): 0 head 16x16 at `(X, Y-8)`, 1 lantern 8x8, 2 body 16x16 at `(X, Y)`, 3 awareness icon 8x8 (hidden while UNAWARE), 4 shadow (the vanilla tile `$6C`, written inline with the same values `DrawSpriteShadow_custom` produces).
+  Unaware guard = 4 visible entries, aware / asleep = 5. Same OAM priority bits (from `$0B89`: layer), same palette rows as before (OBJ row 4 calm and asleep, row 6 ALERT; `$0F50` is still written), same icons.
+* **Tiles** (`tile = $40 + cell index`, final table; `f` = facing / pose class, side views are drawn facing LEFT, right = H flip of head and body):
+
+| part | right | left | down | up | asleep |
+|---|---|---|---|---|---|
+| head | `$44` H | `$44` | `$40` | `$42` | `$46` |
+| body phase 0 / 2 (standing) | `$60` H | `$60` | `$48` | `$4C` | `$66` |
+| body phase 1 (step) | `$62` H | `$62` | `$4A` | `$4E` | - |
+| body phase 3 (step 2) | `$64` H | `$64` | `$4A` H | `$4E` H | - |
+| lantern frame 0 / 1 | `$68` / `$69` at (+13, +6) | at (-5, +6) | at (+10, +6) | at (-3, +6) | `$69` at (+10, +10), no flicker |
+
+  Icon `$FC/$FD/$FE` (GFX_C5) at (+4, -22), shadow `$6C` (GFX_7D, name table 0) at (0, +10 down/up, +12 side). Walk phase = `($0E80 >> 3) & 3` while the guard moved on the previous frame (velocity `$0D40 | $0D50` non-zero; `Hush_Patrol` / `Hush_Chase` count `$0E80` only on frames
+  they moved and clear the velocity otherwise), else 0. Lantern flicker: `((slot*4 + $1A) * 43 >> 9) & 1` via the hardware multiplier = a flip every 11.9 frames, phase staggered by slot.
+* **Culling.** `GetScreenCoordinates` is replaced by two 16-bit subtractions (guard position - `$E2/$E8`; guards never fly, `$0F70` = 0). The routine is exact for a guard origin inside screen x `[8, 231]`, y `[24, 199]`: then every part is fully on screen and x bit 8 is always 0, so none needs
+  clipping. Real guards always are inside (rows 0-1 and 13, columns 0 and 15 are walls and a guard stops 14 px before a wall tile: origin x 14..226, y 30..194; test: 4 rooms x 420 frames of natural play, 0 culled draws). Outside the window the vanilla `GetScreenCoordinates_long` runs (it flags or kills a sprite far off screen as before)
+  and all 5 entries are hidden (Y = `$F0`). Tested at every window edge (`guard_draw`, section 5 of the script).
+* **No flicker, same priorities.** The entries live in the guard's own contiguous allocation, so OAM order between guards is unchanged (slot order); the shadow stays the last entry (behind), the head the first (in front). Unwritten entries do not need clearing (`ClearOAMBuffer` runs in every main-loop pass, `bank_00.asm:72` / `:835`); the routine writes Y = `$F0` for the hidden ones anyway.
+* **Cost** (CPU cycles per guard per frame, `tests/dev/guard_cost.lua`, 6 guards in `ai8_crowd`; 1 scanline ~ 155 of these cycles):
+
+| | vanilla draw (E2) | E4 |
+|---|---|---|
+| draw (`Hush_DrawGuard` / `Guard_HandleAllAnimation_long`) | 1745 | **500** (asleep 495) |
+| whole AI call (`Hush_GuardEntry` .. RTS) | 2307 (asleep 2333) | **957** (asleep 788) |
+
+  Frame budget (`tests/dev/cpu_load.lua`, scanline where the logic ends, NMI at 225; `ai8_crowd`):
+
+| guards | idle (E2 -> E4) | asleep (E2 -> E4) | chasing, all alert (E2 -> E4) |
+|---|---|---|---|
+| 0 | 114 -> 114 | | |
+| 1 | 129 -> 121 | 130 -> 121 | lines 135 (median) -> 126 |
+| 4 | 178 -> 146 | | **overrun** (median 208, 99 frames in 120) -> 177 (max 204), 120 frames |
+| 6 | **211** -> **163** | **212** -> **157** | **overrun** (median 79 = lost frames) -> 196 (max 221), 120 frames |
+| 8 | **overrun** (60 frames in 120) -> **179** | **overrun** -> **171** | overrun -> overrun (60 frames; 8 simultaneous chasers) |
+
+* **B-001 (lag with 5-6 guards, sleepers)** is fixed: the real replays `r20` (5 guards, lit, sleepers) and `final` (6 guards, lit, sleepers) went from 130 / 463 lagged frames to **0 / 0** (`tests/solutions`), with 6 sleeping guards at line 157 instead of 212.
+  Because those two replays had been recorded *under lag* (taps were lengthened), they desynchronised once the lag was gone; `r20.inputs` and `final.inputs` were re-recorded with `tools/solve_rooms.py solve r20 final` (fresh traces; 815 and 1069 frames instead of 946 and 1536). The other 19 replays are byte-identical and take the same number of frames.
+* **Not touched:** AI timing, movement, collision, the vision stagger (the AI code only lost its `$0EB0` head-direction stores). `make gfx` is unaware of the new `GFX_BC` layout (the labelled placeholder blocks are hand-made, like the `GFX_C5` icons).
+
+
+## 12. E3: visual variety of the room tiles (exit marker, pillar, wall face, palette sets)
+
+Goal: every element of a room gets its own art slot so the director can paint it, with **zero change to collision**. Art coordinates, rows and priorities: `docs/gfx/art_map.md` sections 1, 3.1, 3.3 (the single source for the painter). Files: `src/hooks/room_visuals.asm`,
+`tools/roomgen.py` (`cell_kinds`, `OBJ_KINDS`, `cover_runs`), `gfx/src/palettes/bg_dungeon.yaml` (groups 00-05), test `tests/smoke/visual_tiles.lua`. No code runs at room load: it is all data.
+
+### 12.1 How (and why not a tilemap hook)
+
+* **Collision lives in the tile ids, not in the object.** `LoadBasicObjectAttributess` (`bank_01.asm:10661`) turns every tile word of the BG2 tilemap buffer **`$7E2000`** (the layer list-1 objects draw to; `$7E4000` = BG1 holds the floor only, measured)
+  into a collision byte with `UnderworldTileTypes[id]` (`bank_0E.asm:274`, copied to `$7EFE00`; ids `$140+` come from the blockset tables). So any tile whose vanilla type is `$01` is solid and any with `$00` is floor, whatever object drew it.
+  The ids chosen (`$024 $025 $02C $02D $03C $03D` solid, `$0C0 $0C1 $0D0 $0D1` floor) were looked up in the ROM table; no tile-type byte is patched.
+* **Objects instead of a post-draw hook.** The vanilla 2x2 objects `$07` (`obj0388`), `$B8`/`$92` (`obj1F52`) and `$B9`/`$93` (`obj1F5A`) are never used by HUSH, so their tile data (`RoomDrawObjectData`, `bank_00.asm:4864`, `:6952`, `:6957`) is rewritten in place
+  (hook rows `$009EDA`, `$00BAA4`). Rightwards and downwards variants of a pair share their data, so the pillar and exit marker run in both directions; the wall face (only ever one row) uses the rightwards `$07` only.
+  The stream stays plain vanilla object data: `object_bytes` encodes size `n` for the `1to15or32` routines and `n-1` for `$07` (`RoomDraw_Rightwards2x2_1to16`, `bank_01.asm:9043`).
+  Tilemap upload to VRAM is the normal room build (module 6), nothing to patch. Streams grew from 2754 to 3084 bytes for the 21 rooms (budget 12 288).
+* **Cell kinds** (`cell_kinds`): `#` with floor (anything not `#`/`p`) in the cell below -> `face`; other `#` -> `ceil`; `p` -> `pillar`; `X` -> `exit`. The cell below is out of the grid in the last row -> `ceil`. Run decomposition: `cover_runs` per kind (min of horizontal / vertical runs, faces horizontal only).
+* **Priorities:** wall top/face 1 (as before), pillar 0 and exit 0.
+
+### 12.2 Palette sets
+
+Header byte 1 (`b1`) = `UnderworldPaletteSets` row (`bank_0E.asm:10412`, 4 bytes per row, `LoadRoomHeader` `bank_01.asm:10120-10130`: byte 0 -> `$0AB6` = BG palette id, bytes 1-3 -> `$0AAC-$0AAE` sprite palettes).
+`PaletteLoad_UnderworldSet` (`bank_1B.asm:6409`) indexes `PaletteIDtoOffset_UW` with the byte as a word index, so id `2n` = `pal_dungeon_0n`. Rows 1-5 were rewritten to `(2n, 00, 03, 01)`; row 0 is vanilla `(00, 00, 03, 01)`. Sprite bytes identical in all six rows -> **OBJ palettes are the same
+in every variant** (test: CGRAM `$100-$1FF` equal in all 21 rooms). Mapping: dark floor 1/2/3 = rows 0/1/2, lit floor 1/2/3 = rows 3/4/5 (`DARK_PAL_ROWS`/`LIT_PAL_ROWS` in `tools/roomgen.py`); `floor` outside 1-3 is a roomgen error. `rooms_gen.lua` exports `floor` and `pal_set` per room.
+The yaml groups 01-05 are tinted copies of `pal_dungeon_00` (the director tunes them); `colours[0]` of every group stays identical because `PaletteLoad_UnderworldSet` also copies its first 7 colours to OBJ row 0 colours 9-15.
+
+### 12.3 Test
+
+`tests/smoke/visual_tiles.lua` (real ROM, all 21 rooms): for every cell of the 16x14 window the 4 tile words in `$7E2000` **and** in the VRAM BG2 tilemap equal the words predicted from the grid; `$7F2000` equals the grid (`#`/`p` = `$01` on all four 8x8 tiles, everything else `$00`);
+the BG palette is the same within a palette set and different between sets; the OBJ half of CGRAM is identical in every room; each kind occurs at least once (only 2 `p` cells exist in the current rooms: r05 and r14).
