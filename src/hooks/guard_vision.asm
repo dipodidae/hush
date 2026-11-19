@@ -36,6 +36,8 @@ Hush_Geom:
 ;   mode 0  90-degree cone in front of the guard ($0DE0: 0 right, 1 left, 2 down, 3 up), range, line of sight
 ;   mode 1  the same without the cone (an investigating or alerted guard senses all around)
 ;   mode 2  only the ink cloud: no range, no cone, no tiles (is the line / the guard covered by the cloud?)
+;   mode 3  (B-003) only the tiles: no range, no cone, no cloud. Used by Hush_SwordCheck: C = 0 when a solid tile lies between
+;           the guard centre and Link's centre, so the knife does not kill through a wall
 ; Range = max(|dx|, |dy|) <= hush_range (80 px dark rooms, 128 px lit rooms; Hush_Tick sets it from the room table).
 ; Same layer as Link ($0F20,X = $EE). Line of sight: samples every 8 px along the major axis from the guard centre to
 ; Link ($7F2000 collision map: any non-zero tile blocks, docs/engine_notes.md section 3) and tests the ink cloud box
@@ -55,7 +57,7 @@ Hush_Vision:
     RTL
 .start
     LDA.w $0F20,X : CMP.b $EE : BNE .no
-    LDA.b $0E : CMP.b #$02 : BNE .full
+    LDA.b $0E : CMP.b #$02 : BNE .full       ; (mode 3 takes the full path too)
     LDA.l !hush_ink_t : ORA.l !hush_ink_t+1
     BEQ .yes                             ; no cloud: the line is clear
 .full
@@ -120,6 +122,7 @@ Hush_Vision:
     CLC
     RTL
 .loop
+    LDA.b $0E : AND.w #$00FF : CMP.w #$0003 : BEQ .nocloud   ; mode 3 (sword) ignores the cloud
     LDA.l !hush_ink_t : BEQ .nocloud
     LDA.b $08 : SEC : SBC.l !hush_ink_x : BPL .cx : EOR.w #$FFFF : INC A
 .cx
@@ -130,7 +133,7 @@ Hush_Vision:
     BRA .blocked
 .nocloud
     SEP #$20
-    LDA.b $0E : CMP.b #$02 : BCS .next
+    LDA.b $0E : CMP.b #$02 : BEQ .next       ; mode 2 = cloud only: no tile test (modes 0, 1, 3 test the tiles)
     REP #$20
     LDA.b $0A : AND.w #$01F8 : ASL A : ASL A : ASL A : PHA      ; row * 64
     LDA.b $08 : AND.w #$01FF : LSR A : LSR A : LSR A

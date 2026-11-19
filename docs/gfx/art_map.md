@@ -195,7 +195,7 @@ The placeholders of E3 hold the **same colours in all five rows** of a group, ti
 ## 4. HUD (BG3, 2bpp, no flips except where noted)
 
 BG3 chr at VRAM `$E000`: tile ids `0-127` = **`GFX_DD`**, `128-255` = **`GFX_DE`**, `256-383` = `GFX_DC` (not used by the HUD in rooms) (`LoadDefaultGraphics` loads `$6A,$6B,$69` = DD, DE, DC there, `bank_00.asm:11837-11866`).
-Tilemap entry palette bits `p` select CGRAM `p*4..p*4+3` = group `pal_hud_0p` in `gfx/src/palettes/hud.yaml` (colour 0 transparent, 1 `ECE8FF`, 2 `6C66C8`, 3 `14123A` as authored; in game `EFEFFF 6B63CE 101039`).
+Tilemap entry palette bits `p` select CGRAM `p*4..p*4+3` = group `pal_hud_0p` in `gfx/src/palettes/hud.yaml` (colour 0 transparent; the colours of every group are in `docs/gfx/hud_map.md` section 4; groups 04-06 and the START menu / text box cells: hud_map.md sections 7-8).
 Blank fill is tile `$7F` (all other cells). The HUD occupies tilemap rows 2-7, columns 2-27 (px y 16-63). Cells used (this is the full set over the 21 rooms; 3 full hearts, whatever each room's tools show):
 
 | sheet | cells idx -> (col,row) | tilemap positions (col,row) / flips / palette bits |
@@ -316,10 +316,10 @@ Palettes (the same index = the same *role* in every row they are drawn with, so 
 |---|---|---|---|---|---|---|---|
 | meaning | outline | shade | deepest | mid violet | light violet | cyan-white glint | teal sparkle |
 | **OBJ row 2 left + right, rows 1 right / 3** (`pal_sprite_01`, `_right`, `pal_sprite_00_right`, `pal_sprite_02`): dart, poof, sparkles, Ink Pot | `080818` | `403078` | `181050` | `6848C8` | `A880F8` | `E0F8F8` | `38E0D0` |
-| OBJ row 1 left = **asm `Hush_PalInk`** (ink cloud; do not edit) | `080818` | `181040` | `100830` | `282860` | `483898` | `8880E0` | `A878F0` |
+| OBJ row 1 left = **asm `Hush_PalInk`** (ink cloud; do not edit; E6: idx 6 and 7 are now teal-cyan) | `080818` | `181040` | `100830` | `282860` | `483898` | `5ED8D0` | `9CF0E8` |
 | OBJ row 4 right (shadow only uses 1-2) | `081018` | `101038` | | | | | |
 
-The cloud is painted for the Ink row: smoke fill = 4, lighter rim = 5, tiny specks 6/7, shade 2/3; in the Ink row it reads dark indigo with periwinkle specks (no teal: `Hush_PalInk` has none). The poof and sparkles use the violet/teal row 2 (the same indices give violet smoke with teal sparkles). The Ink Pot flashes through rows 6, 5, 4, 3, 1, 0 right halves before it bursts (amber, violet, ...): an intentional warning flash; `pal_shield_00` (the 4 colours at OBJ 5 right 12-15, shared with the blade sheet) is now violet/teal, not magenta.
+The cloud is painted for the Ink row: smoke fill = 4, lighter rim = 5, tiny specks 6/7, shade 2/3; in the Ink row it reads dark indigo with **teal-cyan specks** (E6: `Hush_PalInk` colours 6 / 7 are `$6B6B` = `5ED8D0` and `$77D3` = `9CF0E8`, were periwinkle `8880E0` / `A878F0`; the smoke fill 4 and the rim 5 stay indigo / violet). The poof and sparkles use the violet/teal row 2 (the same indices give violet smoke with teal sparkles). The Ink Pot flashes through rows 6, 5, 4, 3, 1, 0 right halves before it bursts (amber, violet, ...): an intentional warning flash; `pal_shield_00` (the 4 colours at OBJ 5 right 12-15, shared with the blade sheet) is now violet/teal, not magenta.
 Painted pieces: shadow = flat ellipse in rows 4-8 of block (12,2) (Link's shadow is its top cell mirrored); Ink Pot = round violet flask with cork, cyan glint and a teal ink drop; dart = violet shaft, `$2A/$2C` = fletching (tail, two flicker frames), `$3C` = head (tip down), `$3A/$3D` = the same rotated (tip right) - the game flips them for the other directions, tip is cyan-white.
 
 ---
@@ -439,7 +439,7 @@ Roles come from each sheet's yaml. Which PNG indices are amber/violet in the aut
 | `LINK` | player | must contain violet, no amber | palette is violet shades + pale cyan / teal accents; no amber anywhere in the sheet |
 | `GFX_D1` (blade) | player | violet, no amber | **fixed**: PNG palette idx 1-3 = the in-game blade colours (violet used by idx 1), idx 4-7 = violet/teal shield colours, never magenta |
 | `GFX_73/79/7A/7D` | **player** (was debug) | violet required, no amber | FX palette: violet ramp + cyan-white + teal; idx 5 (light violet) must be used at least once per sheet (`GFX_7A` stars use it for the arms) |
-| `GFX_DD/DE/DC`, `FONT` | ui | none | free |
+| `GFX_DD/DE/DC`, `FONT` | ui | none | free (the HUD / menu / text colours follow the same violet-you / teal-secondary convention, hud_map.md section 4) |
 | any sheet | -- | SNES limits | 3bpp: indices 1-7 only; two distinct colours may not collapse to the same BGR555; sizes multiple of 8 |
 
 `make gfx` regenerates **all** placeholders and would overwrite painted art (and the hand-painted C5 icons): never run it after painting. `gfx_convert.py check` itself validates everything in `gfx/src`; `tools/art_apply.py` runs the same code for just the file it wrote.
@@ -454,7 +454,7 @@ Roles come from each sheet's yaml. Which PNG indices are amber/violet in the aut
 4. ~~`GFX_BC` has role env~~ fixed: role `danger`. The alert/ink rows are still asm constants (`Hush_PalAlert`, `Hush_PalInk`), documented in sections 5 and 7; to get teal sparkles in the ink cloud `Hush_PalInk` would have to contain a teal (engine decision).
 5. Walls hide sprites (priority 1, section 3.2); wall art must be designed with that.
 6. Bow limbs (`GFX_73` cells (8..10, 0..1)) are drawn with row 1 = the ink palette and are not painted (they show only while aiming); the dart itself uses row 2. Painted in A0-art as a violet bow: cell (9,0) = the curve rising to the right, (9,1) its vertical mirror, (10,0)/(10,1) the tip stubs (row 1 = the ink palette: idx 7 violet bow, idx 5 shade).
-7. The title sheets are painted (section 14). Unpainted but never visible in HUSH: LINK.png cells not listed in section 8, GFX_B9, GFX_86, GFX_C7, GFX_D2, GFX_D3, GFX_D8, all text fonts.
+7. The title sheets are painted (section 14). The HUD, the START item menu, the text box and the font are painted too (`docs/gfx/hud_map.md`, `tools/art/hud_art.py`, `menu_art.py`, `font_art.py`; every cell a HUSH screen shows). Unpainted but never visible in HUSH: LINK.png cells not listed in section 8, GFX_B9, GFX_86, GFX_C7, GFX_D2, GFX_D3, GFX_D8, the HUD/menu cells of items HUSH does not have, file select / name entry graphics.
 8. Placeholder tile art of different sheets is identical (same label text per cell), so a pixel comparison of VRAM against `gfx/src` **cannot** tell sheets apart; do not rely on it. The trace ROM (section 13) can.
 
 ---
@@ -469,6 +469,9 @@ Roles come from each sheet's yaml. Which PNG indices are amber/violet in the aut
 .venv/bin/python tools/art_apply.py floor16.png gfx/src/bg_tileset/GFX_06.png --at 96 16       # a 16x16 patch: the floor block
 .venv/bin/python tools/gfx_convert.py check                                                  # the whole-tree check
 # painters of the cast (A0-art; all original ASCII/procedural pixel art, re-runnable, they rewrite gfx/src PNGs):
+.venv/bin/python tools/art/hud_art.py                          # in-room HUD cells of GFX_DD / DE (hud_map.md sections 1-6)
+.venv/bin/python tools/art/menu_art.py                         # START menu + text box cells of GFX_DC / DD / DE (hud_map.md section 7)
+.venv/bin/python tools/art/font_art.py [--preview p.png]       # FONT.png glyph fixes + new glyphs : / + (hud_map.md section 8)
 .venv/bin/python tools/art/cast_guard.py [--preview p.png]     # GFX_BC (14 blocks)
 .venv/bin/python tools/art/cast_fx.py                          # GFX_C5 icons, 7D shadow+pot, 79 cloud/poof/sparkles, 7A, 73 dart+bow, D1 blade
 .venv/bin/python tools/art/cast_link.py [--preview p.png]      # LINK.png (every block of section 8)

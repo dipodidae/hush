@@ -29,7 +29,7 @@ import gfx_convert  # noqa: E402
 HUD = ROOT / "gfx" / "src" / "hud"
 
 # palette stored in the two PNGs (preview palette only; in game each tile uses the group of its tilemap entry)
-PNG_PALETTE = [(0, 0, 0), (0xE8, 0xE8, 0xF8), (0xA8, 0x78, 0xF0), (0x50, 0x30, 0xA0)]
+PNG_PALETTE = [(0, 0, 0), (0xE8, 0xE8, 0xF8), (0xA8, 0x78, 0xF0), (0x1A, 0x24, 0x56)]
 
 # ---------------------------------------------------------------------------------------------
 # digits 0-9: 5x7 glyphs, drawn at x 1..5, y 0..6, with a one pixel shadow (index 3) down-right
@@ -81,7 +81,9 @@ def heart(kind: str) -> list[str]:
         s = ""
         for x, c in enumerate(row):
             if c == "O":
-                s += "3"
+                # outline: dark (3) around a filled part; the EMPTY part is drawn as a violet (2) outline so it still shows on dark floors
+                filled = kind == "full" or (kind == "half" and x <= 3)
+                s += "3" if filled else "2"
             elif c in "FH":
                 keep = kind == "full" or (kind == "half" and x <= 3)
                 s += ("1" if c == "H" else "2") if keep else "."
@@ -312,6 +314,9 @@ def cell_map() -> dict[tuple[str, int], list[str]]:
     m[("DE", 58)], m[("DD", 74)], m[("DD", 73)], m[("DE", 75)] = db
     ib = to_cells(INK_BIG, 2, 2)
     m[("DE", 50)], m[("DE", 51)], m[("DE", 66)] = ib[0], ib[1], ib[2]
+    # the item icons are opaque (idx 3 = dark slot): the START menu draws them over the room, not over a slot tile
+    for key in (("DE", 58), ("DD", 74), ("DD", 73), ("DE", 75), ("DE", 50), ("DE", 51), ("DE", 66)):
+        m[key] = [r.replace(".", "3") for r in m[key]]
     # (ib[3] is never drawn: the game uses C2 H-flipped for the bottom right quarter, INK_BIG's bottom half is symmetric)
     return m
 

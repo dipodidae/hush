@@ -57,11 +57,15 @@ intended_solution: >-
   1. At once (guard b starts 11 cells from the gap and walks towards it, so you have about 1 s)
   go straight up col 1 from the start (1,12) across lane 2 through the gaps (1,9)/(1,7) to
   (1,6), the west end of the middle corridor. You are now 10 cells from c, outside his 5-cell
-  sight and in line with him. Face east and fire a dart: c sleeps for 8 s. (If you miss the
-  first window, wait below the gap until b has walked past col 4 heading east.) 2. Walk east to
-  (5,6) and wait there; when guard a has walked east past col 8 (his back to the gap at cols
-  6-7) go (6,6) and straight up col 6 across lane 1 to the exit row (6,2), within the 8 s of c's
-  sleep.
+  sight and in line with him. Face east and fire a dart: c sleeps for 8 s. (1,6) is a
+  transit cell, not a hiding cell: b, walking west, sees it from the diagonal when he passes col 3
+  (see must_not), about 3.2 s of play time after the room starts (menu time does not count), so
+  be at (2,6) or further east by then. (If you miss the first window, wait at the start (1,12),
+  which neither lane guard can see, until b has turned at the west wall and has walked east past
+  col 4; you then have about 8 s before he is back at col 3.) 2. Walk east to (5,6) and wait
+  there (cols 2-5 of the corridor are hidden from both lane guards by the wall row 7); when guard
+  a has walked east past col 8 (his back to the gap at cols 6-7) go (6,6) and straight up col 6
+  across lane 1 to the exit row (6,2), within the 8 s of c's sleep.
 solution_inputs: tests/solutions/r15.inputs
 par_time_sec: 30
 ghost_possible: false
@@ -70,4 +74,6 @@ must_not:
   - "Walking east along the middle corridor past col 5 while c is awake must get you Suspicious (5 cells)."
   - "Crossing lane 2 while b is within 5 cells of the gap and facing it must get you Suspicious."
   - "Crossing lane 1 while a is within 5 cells of the gap and facing it must get you Suspicious."
-  - "The south hall and the middle corridor west of col 6 are hidden by walls: waiting at (1,12) and (1,6) must NOT get you seen by the lane guards."
+  - "The south hall (start (1,12)) is hidden by the wall row 9: waiting at (1,12) must NOT get you seen by the lane guards."
+  - "The middle corridor cells (2,6) to (5,6) are hidden by the wall row 7 (only the gap cells (1,7)/(2,7) are open): waiting at (2,6) must NOT get you seen by the lane guards."
+  - "(1,6) is NOT a hiding cell (engine reality, bug B-004): standing still there while guard b walks west must get you Suspicious when b passes col 3 (|dx| = |dy| = 32 px, the cone edge is inclusive and the line passes the open cell (2,7)); the dart shot from (1,6) must therefore be followed by leaving the cell before then."

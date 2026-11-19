@@ -77,6 +77,26 @@ The other guard variables are listed in the header of `src/hooks/guard_ai.asm`.
 | `hush_ink_y` | `$7EC90A` | 2 | Ink cloud centre Y (`$0C0E:$0BFA`) | E2 `guard_hooks.asm` |
 | `hush_ink_t` | `$7EC90C` | 2 | Ink cloud frames left (300 at the explosion); 0 = no cloud | E2 `guard_hooks.asm`, `guard_runtime.asm` |
 
+## HUSH feel / polish variables (E6; src/hooks/transition.asm, ending.asm, feedback.asm)
+
+| Name | Address | Bytes | Meaning | Source |
+|---|---|---|---|---|
+| `hush_gfx` | `$7EC90E` | 1 | 1 = the HUSH room graphics are resident in VRAM / WRAM, so a room load skips the graphics work (fast load); 0 = full load. Set by the first full load (`Hush_InitTilesets`), cleared by `Hush_NewGame` and when the ending takes the screen. Tests poke 0 to force a full load | E6 `transition.asm` |
+| `hush_trans` | `$7EC90F` | 1 | Room transition state in submodule `$0F`: 0 none, 1 fading out (before an advance), 2 fading in (after a load) | E6 `transition.asm` |
+| `hush_tcnt` | `$7EC910` | 1 | Pass counter of the running fade | E6 `transition.asm` |
+| `hush_next` | `$7EC911` | 1 | Room index to load when the fade-out ends; `$FF` = the ending | E6 `transition.asm` |
+| `hush_retries` | `$7EC912` | 2 | Times caught in this run (saturates at 999); reset by `Hush_NewGame`; shown on the ending screen | E6 `ending.asm` |
+| `hush_sec` | `$7EC914` | 2 | Play time of this run in seconds (gameplay frames only, saturates at 5999) | E6 `ending.asm` |
+| `hush_fsub` | `$7EC916` | 1 | Frames within the current second (0-59) | E6 `ending.asm` |
+| `hush_etimer` | `$7EC917` | 1 | Frame counter of the ending module states | E6 `ending.asm` |
+| `hush_cmsave` | `$7EC919` | 5 | `$99 $9A $9C $9D $9E` saved while the caught flash runs | E6 `feedback.asm` |
+| `hush_lx` | `$7EC940` | 2 | Link's x (`$22`) at the end of the last gameplay frame (written by `Hush_SaveLink`, `feedback.asm`, called by `Hush_Refills` = the end of the frame, after Link moved and the guards ran); `Hush_Solid` puts Link back there when he moves into a sleeping guard | E7 `feedback.asm`, `guard_ai.asm` |
+| `hush_ly` | `$7EC942` | 2 | Link's y (`$20`) at the end of the last gameplay frame (see `hush_lx`) | E7 `feedback.asm`, `guard_ai.asm` |
+| `hush_ebuf` | `$7EC920` | 32 | Ending screen text buffers: RETRIES line at `+0`, TIME line at `+$10`, the saved PRESS START colour at `+$0E` (overlaps the RETRIES template padding) | E6 `ending.asm` |
+
+Vanilla variables the E6 code relies on (documented where used): `$012C` song request, `$012D/$012E/$012F` SFX1/2/3 requests (NMI: `bank_00.asm:239-291`),
+`$0130` current song, `$0132` entrance song, `$0133` last song sent to the APU, `$0136` underworld song bank loaded, `$13` screen brightness, `$16` HUD upload flag, `$F4` new button presses.
+
 ## Sprite slot arrays (16 slots each, index 0 to 15)
 
 Read slot `i` at `base + i`.

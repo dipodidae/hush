@@ -40,3 +40,14 @@ Acceptance is a command that must pass or a named human check.
 | M1-4 | Conditional damage on sword hit by awareness | engine | M1-2 damage tests pass | todo |
 | M1-5 | Critic review of M1 diff | critic | no blocking findings | todo |
 | M1-GATE | Human fun check: one guard + knife for 10 minutes | **human** | `/gate` | todo |
+
+## Build pass (gates waived by the human)
+
+| ID | Task | Status |
+|---|---|---|
+| E1-E7 | Foundation, guard AI, damage, fast transitions, audio, ending, bug fixes | done |
+| D1 | 21 room specs (r01-r20, final) | done |
+| Q1 | 21 solution replays, 108 must-not cases, chaos suite (6 scripts) | done |
+| A1 | Colour/art pass: floors, decor, HUD, menu, guards, Link, tools, title | done |
+| B-006 | Lag with 5-6 guards + pot/dart spam | open (needs ~190 free bytes in bank $07) |
+| M5 | `dist/hush.bps` | built; human approval pending |

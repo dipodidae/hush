@@ -74,6 +74,11 @@ OBJ_KINDS = {
 # header byte 1 = UnderworldPaletteSets row (4 bytes: BG palette id = 2 x pal_dungeon_NN, then 3 sprite palette bytes). Rows 0..5 all carry
 # the sprite bytes 00 03 01 (src/hooks/room_visuals.asm), so only the BG palette differs. Row = LIT_ROWS/DARK_ROWS[floor - 1].
 DARK_PAL_ROWS = (0, 1, 2)
+# E6: music. EntranceData.song of room k: the song of its floor when it is the first room of the game or of a floor, SONG_FINAL for the last
+# (heist) room, else $FF = "keep playing" (LoadUnderworldSongBankIfNeeded returns at once for $FF, bank_02.asm:5375; Hush_RoomMusic
+# starts the song after the fade-in). Ids are vanilla underworld-bank songs (docs/engine_notes.md section 14 cites why).
+FLOOR_SONG = {1: 0x10, 2: 0x11, 3: 0x16}    # Hyrule Castle, Pendant Dungeon, Crystal Dungeon
+SONG_FINAL = 0x1C                           # Suspense
 LIT_PAL_ROWS = (3, 4, 5)
 
 # ---- E5 visual variants (docs/engine_notes.md section 13, docs/gfx/art_map.md section 3.5) ---------------------------------------
@@ -641,7 +646,7 @@ def build_asm(rooms: list[dict]) -> tuple[str, dict]:
         rows["camera_scroll_controller"].append(bytes([0x00]))
         rows["quadrant"].append(bytes([0x02]))
         rows["overworld_door_tilemap"].append(le(0x0000))
-        rows["song"].append(bytes([0xFF]))
+        rows["song"].append(bytes([r["song"]]))
     for name, (base, size) in ENT.items():
         w(f"org ${base:06X}    ; EntranceData.{name}")
         data = b"".join(rows[name])
@@ -692,7 +697,7 @@ def build_lua(rooms: list[dict]) -> str:
             for g in r["guards"])
         var = ", ".join("{%d, %d, '%s'}" % (cx, cy, nm) for (cx, cy), nm in sorted(r["variants"].items(), key=lambda q: (q[0][1], q[0][0])))
         out.append(f"  {{ id='{r['spec']['id']}', variants={{{var}}}, seq={r['spec']['seq']}, room_id=0x{rid:X}, start_x={lx}, start_y={ly}, "
-                   f"tools=0x{r['cum_tools']:X}, own_tools=0x{r['tools']:X}, floor={r['spec']['floor']}, pal_set={r['pal_row']}, lit={'true' if r['flags'] & 1 else 'false'}, "
+                   f"tools=0x{r['cum_tools']:X}, own_tools=0x{r['tools']:X}, floor={r['spec']['floor']}, song=0x{r['song']:02X}, pal_set={r['pal_row']}, lit={'true' if r['flags'] & 1 else 'false'}, "
                    f"base_x={base_x}, base_y={base_y},\n    exits={{{ex}}}, guards={{{gs}}},\n    grid={{{grid}}} }},")
     out.append("} }")
     return "\n".join(out) + "\n"
@@ -725,6 +730,18 @@ def main() -> int:
             r = compile_room(s, i, cum)
             cum = r["cum_tools"]
             rooms.append(r)
+        # E6 music: the dev rooms (test ROM) stay silent: the first underworld song load uploads the whole SPC song bank (tens of frames)
+        music = d.resolve() != (ROOT / "tests" / "dev" / "rooms").resolve() and not os.environ.get("HUSH_NO_MUSIC")
+        for i, r in enumerate(rooms):
+            f = r["spec"]["floor"]
+            if not music:
+                r["song"] = 0xFF
+            elif i == len(rooms) - 1:
+                r["song"] = SONG_FINAL
+            elif i == 0 or f != rooms[i - 1]["spec"]["floor"]:
+                r["song"] = FLOOR_SONG[f]
+            else:
+                r["song"] = 0xFF
         asm, stats = build_asm(rooms)
     except (RoomError, KeyError) as ex:
         die(f"roomgen: {ex}")

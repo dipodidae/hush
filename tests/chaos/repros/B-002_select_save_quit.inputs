@@ -1,0 +1,12 @@
+# B-002: SELECT opens the vanilla "Continue Game / Save and Quit" dialog; Save and Quit writes SRAM and drops to the title (module $17 -> 0).
+# Replay (the quit is only tolerated by the chaos kit unless HUSH_CHAOS_STRICT=1 is set, which makes it fail):
+#   HUSH_CHAOS_STRICT=1 HUSH_REPLAY=tests/chaos/repros/B-002_select_save_quit.inputs .venv/bin/python tools/run_test.py tests/dev/chaos_replay.lua
+# @room r01
+# frames  buttons
+30 -
+2 select
+100 -
+2 down
+10 -
+2 a
+300 -

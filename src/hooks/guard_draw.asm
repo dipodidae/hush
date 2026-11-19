@@ -160,3 +160,4 @@ Hush_BodyFlip:
 Hush_ShadowY:                            ; vanilla DrawGuardShadow .shadow_type ($05C69E): right, left, down, up
     db $0C, $0C, $0A, $0A
 Hush_Draw_End:
+assert pc() <= $07FEC8                       ; E6: the block must stay inside its src/FREESPACE.md row (pc = the first free byte)

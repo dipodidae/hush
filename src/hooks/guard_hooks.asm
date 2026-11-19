@@ -47,6 +47,7 @@ Hush_AncillaHit:
     CMP.b #$09 : BNE .done               ; only arrows act
     LDA.w $0D80,X : BNE .done            ; only an UNAWARE guard falls asleep
     LDA.b #$03 : STA.w $0D80,X
+    LDA.b #$0B : JSL $0DBB8A             ; E6: SFX3.0B, the soft pickup chime = "he sleeps" (QueueSpriteSFX3WithPan; feedback.asm)
     LDA.b #240 : STA.w $0DF0,X
     LDA.b #$01 : STA.w $0D90,X           ; one more chunk of 240 frames
     STZ.w $0D50,X : STZ.w $0D40,X
@@ -79,3 +80,4 @@ Hush_BombHook:
 .rts
     JML $0897B5
 Hush_Hooks_End:
+assert pc() <= $0EFE00                       ; E6: the block must stay inside its src/FREESPACE.md row (pc = the first free byte)

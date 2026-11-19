@@ -50,9 +50,13 @@ assumes a tool it did not give.
 
 ## Art direction
 
-- Palette: deep indigo + warm amber.
+- Palette: colourful yet dark. A deep indigo base with a distinct hue per floor:
+  floor 1 indigo + jade / brown / teal accents, floor 2 teal + rust / ice / slate,
+  floor 3 wine + gold / charcoal. Lit rooms are brighter and warmer, with wall torches.
+- Guards: steel-blue uniform with an amber lantern (alert = the whole guard turns amber).
+- Player: violet hooded thief with cyan eyes and a teal scarf. Exit cells: green glow marker.
 - The player and their tools are **faint violet**.
-- **Amber = danger** (lanterns, alert guards, alert icon).
+- **Amber = danger and light sources** (lanterns, torches, alert guards, alert icon).
 - **Violet = you** (player, knife, darts, ink pots).
 - Violet never appears on guards or hazards; amber never appears on the player.
   `tools/gfx_convert.py` enforces this by file-name role prefix.

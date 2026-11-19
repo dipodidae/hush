@@ -1,0 +1,9 @@
+# B-003: the Shade Knife kills a guard through a one-cell wall. r11: guard a stands still at (1,5) in the corridor; Link walks up col 1 to
+# (1,7), flush under the wall row 6, and swings. a is unaware (the wall hides Link), the knife reaches 32 px (centre to centre) and kills him.
+# Expected: a stays alive (g a=0/alive in the replay's end line). Actual: a=0/dead.
+#   HUSH_REPLAY=tests/chaos/repros/B-003_knife_through_wall_r11.inputs .venv/bin/python tools/run_test.py tests/dev/chaos_replay.lua
+# @room r11
+# frames  buttons
+100 up
+3 b
+30 -

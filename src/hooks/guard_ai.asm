@@ -38,12 +38,16 @@
 ;     6 guards at line 163, 8 guards at 179 (E4; with the vanilla draw 6 guards = 211 and 7 or more dropped the game to 30 fps).
 ; Sword: only state 0 and 3 (unaware / asleep) die (Link's sword box from SetupActionHitbox_long $06F57E vs the sprite
 ;     box SetupSpriteHitbox_long $0683EA, CheckIfHitboxesOverlap_long $0683E6); states 1 and 2 ignore the sword.
+;     E7 (B-003): the overlap only counts with a clear tile line of sight guard centre -> Link centre (Hush_Vision mode 3, guard_vision.asm).
+; Chase (E7, B-005): Hush_Step also runs Hush_BoxProbe (guard_box.asm) for alert steps: the leading edge of the guard's feet box must be on floor tiles.
 ; Arrows / bombs: see guard_hooks.asm (CheckAncillaDamageToSprite, Bomb_CheckSpriteAndPlayerDamage).
 ; Draw (E4, replaces the vanilla soldier drawing Guard_HandleAllAnimation $05C680 = 9 OAM entries from 60 cells): Hush_DrawGuard in
 ;     guard_draw.asm (bank $07) writes 5 OAM entries per guard from the cells of GFX_BC (sheet contract: docs/gfx/art_map.md section 5):
 ;     entry 0 head (16x16), 1 lantern (8x8), 2 body (16x16), 3 awareness icon (8x8, GFX_C5 tiles $FC-$FE), 4 shadow (tile $6C).
 ;     SpriteData_OAMHarm $0DB0C1-C3 (the per-type OAM allocation, $08 = 9 entries) is now $04 = 5 entries; DoSpriteOAMandTimers
 ;     $0683F2 allocates ((n & $1F) + 1) * 4 bytes. The AI itself (timing, movement, collision) is unchanged.
+;
+; Sound (E6): '?' on notice, '!' on SUSPICIOUS -> ALERT, a hit sound on a knife kill; ids and why: src/hooks/feedback.asm. They only add a JSL at those transitions.
 ;
 ; Space:    src/FREESPACE.md rows: hook $05C155-$05C15C, hook $0DB0C1-$0DB0C3 (OAM count); free blocks $0EEE21 (NULL_0EEE21, "FREE ROM: 0x05DF",
 ;           bank_0E.asm:11950; all $FF in vanilla ROM, no references in vendor/usdasm)
@@ -55,6 +59,8 @@
 !hush_ink_x   = $7EC908
 !hush_ink_y   = $7EC90A
 !hush_ink_t   = $7EC90C
+!hush_lx      = $7EC940                  ; E7: Link's x / y at the end of the last frame (Hush_SaveLink), for Hush_Solid
+!hush_ly      = $7EC942
 
 macro retif(cond)                        ; return when the condition holds (a long branch to an RTS is out of reach)
     <cond> ?do
@@ -131,6 +137,7 @@ Hush_GuardAI:
     JSL Hush_Vision                      ; cone + range + line of sight
     BCC .patrol
     LDA.b #$01 : STA.w $0D80,X          ; notice: SUSPICIOUS
+    LDA.b #$3C : JSL $0DBB7C            ; E6: SFX2.3C, the '?' bleep (QueueSpriteSFX2WithPan; feedback.asm lists the ids)
     LDA.b #60  : STA.w $0DF0,X
     LDA.b #120 : STA.w $0E10,X
     STZ.w $0D90,X
@@ -162,6 +169,7 @@ Hush_GuardAI:
     LDA.w $0DF0,X
     %retif(BNE)
     LDA.b #$02 : STA.w $0D80,X          ; the 60 frames are over and Link is still there: ALERT
+    LDA.b #$04 : JSL $0DBB8A            ; E6: SFX3.04, the soldier's "noticed you" whistle (QueueSpriteSFX3WithPan)
     LDA.b #180 : STA.w $0E10,X
     RTS
 .unseen
@@ -224,7 +232,11 @@ Hush_SwordCheck:
     JSL $0683EA                          ; SetupSpriteHitbox_long: this sprite's box ($04-$07, $0A-$0B)
     JSL $0683E6                          ; CheckIfHitboxesOverlap_long
     BCC .no
+    LDA.b #$03
+    JSL Hush_Vision                      ; B-003: mode 3 = tile line of sight guard centre -> Link centre; a wall in between = a miss
+    BCC .no                              ; (no damage, the guard's state is untouched)
     JSL $05AB9C                          ; SpawnPoofGarnish (X = sprite)
+    LDA.b #$08 : JSL $0DBB8A             ; E6: SFX3.08, the vanilla "sprite hit" sound (QueueSpriteSFX3WithPan)
     STZ.w $0DD0,X                        ; gone until the room is restarted
     SEC
     RTS
@@ -249,24 +261,29 @@ Hush_Contact:
     RTS
 
 ; -----------------------------------------------------------------------------
-; Hush_Solid: an ASLEEP guard blocks Link: when the two 16x16 boxes overlap (|dx| < 16 and |dy| < 16, Hush_Geom data) Link is pushed
-; out along the axis of the smaller overlap (A 16-px push at most; normal walking overlaps 1-2 px).
+; Hush_Solid: an ASLEEP guard blocks Link: when the two 16x16 boxes overlap (|dx| < 16 and |dy| < 16, Hush_Geom data) Link goes back to where he was
+; at the end of the last frame (hush_lx / hush_ly, saved by Hush_Refills via Hush_SaveLink in feedback.asm: the last thing of a frame, after the guards), i.e. his move into the sleeper is undone. E7 (found by
+; chaos_spam r14 seed 303): the E2 version pushed Link out along the axis of the smaller overlap, which put him 2 px into the wall above him when he touched the
+; sleeper's corner while standing against that wall. His old position is known to be free of walls. If he already overlapped the sleeper there (the guard fell
+; asleep on him) he is left where he is: a push could end in a wall, and undoing every move would trap him.
 Hush_Solid:
     LDA.w $0F20,X : CMP.b $EE : BNE .no
     REP #$20
-    LDA.w #$0010 : SEC : SBC.b $04 : BEQ .no16 : BMI .no16 : STA.b $08      ; overlap in x
-    LDA.w #$0010 : SEC : SBC.b $06 : BEQ .no16 : BMI .no16 : STA.b $0A      ; overlap in y
-    LDA.b $08 : CMP.b $0A : BCS .push_y
-    LDA.b $00 : BMI .west
-    LDA.b $22 : CLC : ADC.b $08 : STA.b $22 : BRA .done
-.west
-    LDA.b $22 : SEC : SBC.b $08 : STA.b $22 : BRA .done
-.push_y
-    LDA.b $02 : BMI .north
-    LDA.b $20 : CLC : ADC.b $0A : STA.b $20 : BRA .done
-.north
-    LDA.b $20 : SEC : SBC.b $0A : STA.b $20
-.done
+    LDA.b $04 : CMP.w #$0010 : BCS .no16
+    LDA.b $06 : CMP.w #$0010 : BCS .no16         ; the boxes do not overlap
+    LDA.b $20 : PHA : LDA.b $22 : PHA            ; where Link is now
+    LDA.l !hush_ly : STA.b $20
+    LDA.l !hush_lx : STA.b $22                   ; where he was
+    SEP #$20
+    JSL Hush_Geom                                ; $04 / $06 = |dx| |dy| from there (the caller needs no Hush_Geom data after this)
+    REP #$20
+    LDA.b $04 : CMP.w #$0010 : BCS .back
+    LDA.b $06 : CMP.w #$0010 : BCC .keep         ; overlapping there too
+.back
+    PLA : PLA                                    ; Link stays at the old position
+    BRA .no16
+.keep
+    PLA : STA.b $22 : PLA : STA.b $20            ; the guard fell asleep on him: leave him
 .no16
     SEP #$20
 .no
@@ -311,7 +328,7 @@ Hush_FaceLink:
     RTS
 
 ; -----------------------------------------------------------------------------
-; Hush_Step: A = speed base (0 patrol, 8 alert), Y = direction. Moves one frame, then vanilla tile collision.
+; Hush_Step: A = speed base (0 patrol, 8 alert), Y = direction. Moves one frame, then vanilla tile collision (E7: + Hush_BoxProbe when the base is 8).
 ;            Z = 1 free, Z = 0 blocked: the position (and sub-pixels) from before the move are restored, so a guard never
 ;            creeps into a wall (the vanilla pushback alone lets one creep ~1 px per 8 frames: found by ai_deescalate).
 Hush_Step:
@@ -326,10 +343,19 @@ Hush_Step:
     TXA : CLC : ADC.b #$10 : TAX
     JSR Hush_MoveAxis
     TXA : SEC : SBC.b #$10 : TAX
+    TYA : PHA                            ; B-005: base + direction (the vanilla call clobbers Y)
     JSL $06E496                          ; CheckSpriteTileCollision_long -> A = $0E70,X
     AND.b #$0F
     STA.b $0F
+    PLY
+    LDA.b $0F
     BNE .blocked
+    CPY.b #$08
+    BCC .free                            ; patrol (base 0): the vanilla test only (the recorded solutions depend on it)
+    JSL Hush_BoxProbe                    ; B-005 (guard_box.asm): chase (base 8): the leading edge of the guard's feet box must be on floor tiles
+    STA.b $0F
+    BNE .blocked
+.free
     PLA : PLA : PLA : PLA : PLA : PLA
     BRA .out
 .blocked
@@ -443,3 +469,4 @@ Hush_VelTab:                             ; 1/16 px per frame: [base + dir]; Y va
     db   0,   0,  18, -18                ; alert Y
 
 Hush_AI_End:
+assert pc() <= $0EF220                       ; E6: the block must stay inside its src/FREESPACE.md row (pc = the first free byte)

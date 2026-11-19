@@ -1,5 +1,5 @@
 -- Smoke (E1): touching an exit cell of room 1 loads room 2 ($129); touching the exit of the last room returns to the
--- title screen; Hush_RestartRoom/same-room request reloads the room and restores killed guards.
+-- ending screen (E6: module $13, START -> title); Hush_RestartRoom/same-room request reloads the room and restores killed guards.
 -- Teleports Link into the exit rect (bot.exit_pos); the walking version is smoke/walk_exit.lua.
 -- @timeout 180
 package.path = os.getenv("HUSH_ROOT") .. "/tests/lib/?.lua;" .. package.path
@@ -52,9 +52,17 @@ hush.test("room_advance: exit cell -> next room", function()
   hush.assert_eq(bot.peek(flag_addr), 0, "restart: sprite death flags cleared")
   hush.screenshot("restart")
 
-  -- the last exit ends the game: back to the title (module 0 / submodule 8), and a new game starts again
+  -- the last exit ends the game: the ending screen (module $13, E6; waits for START after 90 frames), then the title (module 0 / submodule 8), and a new game starts again
   local x, y = bot.exit_pos(last.exits[1])
   bot.teleport(x, y)
+  local te = 0
+  while not (hush.read("game_mode") == 0x13 and bot.peek(0x7E00B0) == 2) do
+    hush.wait(1); te = te + 1
+    hush.assert(te < 120, string.format("ending screen not reached (mode=%02X)", hush.read("game_mode")))
+  end
+  hush.log("ending screen after " .. te .. " frames")
+  hush.wait(95)
+  hush.press({ "start" }, 3, 1)
   local t = 0
   while not (hush.read("game_mode") == 0x00 and hush.read("submodule") == 0x08) do
     hush.wait(1); t = t + 1

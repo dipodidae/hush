@@ -92,6 +92,7 @@ Hush_DrawVariant:
     ADC.b $0E
     TAX                         ; X = type1_data_offset[id] + 8 * index
     JMP.w $9895                 ; RoomDraw_Rightwards2x2: draws TL, BL, TR, BR from RoomDrawObjectData+X at the tilemap offset Y
+assert pc() <= $01B54F          ; E6: roomload.asm puts Hush_AttrTail right behind this routine
 
 org $018212
     dw Hush_DrawVariant         ; object $09

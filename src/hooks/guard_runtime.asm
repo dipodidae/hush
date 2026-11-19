@@ -7,7 +7,7 @@
 ;   2. hush_range := 128 (lit room) / 80 (dark room), from ROOM TABLE +19 bit 0
 ;   3. ink cloud timer (hush_ink_t) counts down
 ;   4. the amber / ink palettes are written into the live palette buffer once per room load (hush_pal)
-;   5. the restart flash: brightness $13 = 0 for 6 frames, then $0F
+;   5. the restart flash (E6: white-amber colour math over 5 frames, decaying; was 6 black frames), feedback.asm
 ; Hush_FastRestart (JSL): restart the CURRENT room without rebuilding it. The tilemaps, graphics and palettes stay;
 ;   all sprites, ancillae, garnish are cleared and the room's sprite list is loaded again (Underworld_ResetSprites,
 ;   bank_09.asm:13187-13250), Link goes back to the entrance position (EntranceData rows, written by roomgen),
@@ -22,6 +22,7 @@
 
 org $07FB00
 Hush_Tick:
+    JSL Hush_TimeTick                    ; E6 (ending.asm): play time for the ending screen
     LDA.l !hush_caught
     BEQ .not_caught
     JSL Hush_FastRestart
@@ -48,11 +49,7 @@ Hush_Tick:
 .pal_done
     LDA.l !hush_flash : BEQ .done
     DEC A : STA.l !hush_flash
-    BEQ .flash_end
-    LDA.b #$00 : STA.b $13               ; black
-    BRA .done
-.flash_end
-    LDA.b #$0F : STA.b $13               ; full brightness again
+    JSL Hush_FlashStep                   ; feedback.asm: colour-math flash with a decaying intensity, restores the registers on the last frame
 .done
     RTL
 
@@ -60,7 +57,11 @@ Hush_Tick:
 Hush_ResetRuntime:
     PHP
     SEP #$30
+    LDA.l !hush_flash
+    BEQ +
     LDA.b #$00
+    JSL Hush_FlashStep                   ; a load interrupts a running flash: put the colour-math registers back
++   LDA.b #$00
     STA.l !hush_caught : STA.l !hush_flash : STA.l !hush_pal
     STA.l !hush_ink_t : STA.l !hush_ink_t+1
     PLP
@@ -92,8 +93,9 @@ Hush_FastRestart:
 +   LDA.b #$00
 ++  STA.b $2F
     JSR Hush_GrantTools                  ; refill darts / ink pots
-    LDA.b #$06 : STA.l !hush_flash       ; 6 black frames (Hush_Tick)
-    LDA.b #$00 : STA.b $13
+    JSL Hush_CountRetry                  ; E6 (ending.asm): the ending screen shows the retries
+    LDA.b #$26 : STA.w $012E             ; SFX2.26: Link's hurt cry (bank_07.asm:153-156, the damage routine), the "caught" sound
+    JSL Hush_FlashBegin                  ; feedback.asm: 6 frames (Hush_Tick), the first 5 with the white-amber colour-math flash
     PLP
     RTL
 
@@ -117,6 +119,7 @@ Hush_SetPalettes:
 
 Hush_PalAlert:                           ; outline, body, shade, highlight, lantern, glyph, violet (unused)
     dw $0C21, $0DD9, $090F, $331E, $2F5F, $6BDF, $79F5
-Hush_PalInk:                             ; ink cloud: near-black indigo smoke
-    dw $0C21, $2043, $1822, $30A5, $4CE9, $7211, $79F5
+Hush_PalInk:                             ; ink cloud: near-black indigo smoke (colours 1-5) with teal-cyan specks (colours 6, 7: $6B6B = 5ED8D0, $77D3 = 9CF0E8; E6)
+    dw $0C21, $2043, $1822, $30A5, $4CE9, $6B6B, $77D3
 Hush_Runtime_End:
+assert pc() <= $07FC40                       ; E6: the block must stay inside its src/FREESPACE.md row (pc = the first free byte)

@@ -1,0 +1,651 @@
+# chaos repro: scenario=spam seed=305 room=final frames=1825
+# B-006: pot / dart spam in the 6-guard room `final`: the game loop overruns the frame on ~13 % of the frames (the $1A frame counter does not tick
+# although the game is in play), i.e. Link, guards and timers run at half speed; the lag comes with 5-6 live ancillae (pots in flight / held explosions + stuck arrows).
+#   HUSH_REPLAY=tests/chaos/repros/B-006_lag_pots_arrows_final.inputs .venv/bin/python tools/run_test.py tests/dev/chaos_replay.lua   (the end line prints `lagged`)
+# failure: frame lag 236 of 1825
+# @room final
+#@poke 0 7E0202 1
+#@poke 0 7E0303 3
+#@poke 19 7E0202 4
+#@poke 19 7E0303 1
+#@poke 67 7E0202 1
+#@poke 67 7E0303 3
+#@poke 87 7E0202 4
+#@poke 87 7E0303 1
+#@poke 95 7E0202 1
+#@poke 95 7E0303 3
+#@poke 114 7E0202 4
+#@poke 114 7E0303 1
+#@poke 126 7E0202 1
+#@poke 126 7E0303 3
+#@poke 160 7E0202 4
+#@poke 160 7E0303 1
+#@poke 174 7E0202 1
+#@poke 174 7E0303 3
+#@poke 208 7E0202 4
+#@poke 208 7E0303 1
+#@poke 222 7E0202 1
+#@poke 222 7E0303 3
+#@poke 239 7E0202 4
+#@poke 239 7E0303 1
+#@poke 246 7E0202 1
+#@poke 246 7E0303 3
+#@poke 270 7E0202 4
+#@poke 270 7E0303 1
+#@poke 283 7E0202 1
+#@poke 283 7E0303 3
+#@poke 305 7E0202 4
+#@poke 305 7E0303 1
+#@poke 311 7E0202 1
+#@poke 311 7E0303 3
+#@poke 330 7EF377 8
+#@poke 332 7E0202 4
+#@poke 332 7E0303 1
+#@poke 342 7E0202 1
+#@poke 342 7E0303 3
+#@poke 360 7E0202 4
+#@poke 360 7E0303 1
+#@poke 372 7E0202 1
+#@poke 372 7E0303 3
+#@poke 411 7E0202 4
+#@poke 411 7E0303 1
+#@poke 424 7E0202 1
+#@poke 424 7E0303 3
+#@poke 444 7E0202 4
+#@poke 444 7E0303 1
+#@poke 554 7E0202 4
+#@poke 554 7E0303 1
+#@poke 563 7E0202 1
+#@poke 563 7E0303 3
+#@poke 586 7E0202 4
+#@poke 586 7E0303 1
+#@poke 596 7E0202 1
+#@poke 596 7E0303 3
+#@poke 694 7E0202 1
+#@poke 694 7E0303 3
+#@poke 724 7E0202 4
+#@poke 724 7E0303 1
+#@poke 730 7E0202 1
+#@poke 730 7E0303 3
+#@poke 759 7E0202 4
+#@poke 759 7E0303 1
+#@poke 768 7E0202 1
+#@poke 768 7E0303 3
+#@poke 786 7E0202 4
+#@poke 786 7E0303 1
+#@poke 801 7E0202 1
+#@poke 801 7E0303 3
+#@poke 824 7EF377 8
+#@poke 825 7E0202 4
+#@poke 825 7E0303 1
+#@poke 836 7E0202 1
+#@poke 836 7E0303 3
+#@poke 856 7E0202 4
+#@poke 856 7E0303 1
+#@poke 862 7E0202 1
+#@poke 862 7E0303 3
+#@poke 879 7E0202 4
+#@poke 879 7E0303 1
+#@poke 983 7E0202 4
+#@poke 983 7E0303 1
+#@poke 993 7E0202 1
+#@poke 993 7E0303 3
+#@poke 1011 7E0202 4
+#@poke 1011 7E0303 1
+#@poke 1025 7E0202 1
+#@poke 1025 7E0303 3
+#@poke 1043 7E0202 4
+#@poke 1043 7E0303 1
+#@poke 1154 7E0202 4
+#@poke 1154 7E0303 1
+#@poke 1180 7E0202 1
+#@poke 1180 7E0303 3
+#@poke 1203 7E0202 4
+#@poke 1203 7E0303 1
+#@poke 1216 7E0202 1
+#@poke 1216 7E0303 3
+#@poke 1250 7E0202 4
+#@poke 1250 7E0303 1
+#@poke 1262 7E0202 1
+#@poke 1262 7E0303 3
+#@poke 1285 7E0202 4
+#@poke 1285 7E0303 1
+#@poke 1295 7E0202 1
+#@poke 1295 7E0303 3
+#@poke 1315 7EF377 8
+#@poke 1315 7E0202 4
+#@poke 1315 7E0303 1
+#@poke 1328 7E0202 1
+#@poke 1328 7E0303 3
+#@poke 1347 7E0202 4
+#@poke 1347 7E0303 1
+#@poke 1461 7E0202 4
+#@poke 1461 7E0303 1
+#@poke 1467 7E0202 1
+#@poke 1467 7E0303 3
+#@poke 1488 7E0202 4
+#@poke 1488 7E0303 1
+# frames  buttons
+1 y+down
+1 down
+1 y+down
+3 down
+3 y+down
+2 down
+2 y+down+left
+2 down
+1 b+down
+7 y+down+left
+1 down+left
+2 b+down+left
+3 b+y+down+left
+1 b+down+left
+3 b+y+down+left
+2 b+down+left
+2 b+y+down+left
+4 b+down
+3 b+y+down
+6 b+down
+1 b+y+down
+2 b+y+down+left
+1 b+y+down
+3 b+down
+2 b+y+down
+2 b+down
+1 b+down+left
+2 b+y+down+left
+3 y+down+left
+2 down+left
+1 y+down+left
+1 b+y+down+left
+3 down+left
+3 y+down+left
+1 down+left
+1 y+down+left
+1 b+y+down+left
+4 b+down+left
+3 b+y+down+left
+2 b+down+left
+1 b+left
+2 b+y+left
+2 y+left
+1 left
+2 up+left
+3 y+up+left
+2 up+left
+3 y+up+left
+3 up+left
+2 b+up+left
+3 b+y+up+left
+3 b+up+left
+2 up+left
+2 y+up+left
+5 up+left
+1 y+up+left
+1 up+left
+3 y+up+left
+2 up+left
+2 y+up+left
+4 up+left
+1 y+up+left
+4 up+left
+3 y+up+left
+4 up+left
+2 -
+3 y+left
+2 left
+4 up
+3 y+up
+1 up
+2 up+left
+3 y+up+left
+5 up+left
+3 y+up+left
+2 y+left
+5 left
+1 y+left
+1 y+right
+1 right
+3 down+right
+2 y+down+right
+1 y+right
+1 right
+1 b+right
+2 right
+4 y+down+right
+5 down+right
+1 y+down+right
+6 down+right
+4 y+down+right
+1 down+right
+1 right
+2 -
+4 y
+3 up
+2 y+up
+1 up
+2 y+up
+2 up
+3 y+up
+1 y
+2 -
+2 y
+5 -
+1 b+y
+1 b
+4 up
+1 y+up
+1 y+up+left
+1 up+left
+1 y+up+left
+2 up+left
+3 up
+3 y+up
+2 up
+2 up+right
+3 y+up+right
+3 y+up
+5 up+right
+1 y+up+right
+5 up+right
+2 y+up+right
+2 y+up
+1 y+up+left
+1 up+left
+1 b+y+up
+1 b+up
+1 b+y+up
+4 b+up
+1 b+y+up
+2 y+up
+2 up
+3 y+up
+1 up
+3 up+right
+2 y+up+right
+5 up
+1 b+y+up
+2 y+up
+6 up
+1 y+up
+2 y+up+right
+3 up+right
+1 up
+3 y+up
+1 up+left
+1 left
+1 up+left
+1 y+up+left
+1 up+left
+2 up
+1 y+up
+2 y+up+right
+1 up+right
+1 y+up+right
+6 up+right
+3 y+up+right
+3 up+right
+3 y+up+right
+1 up+right
+3 y+up+right
+1 up+right
+1 y+up+right
+5 up+right
+3 y+up+right
+5 up+right
+2 y+up+right
+1 up+right
+2 y+up+right
+1 up+right
+1 y+up+right
+1 up+right
+3 y+up+right
+5 right
+1 y+right
+2 y
+2 -
+3 down
+2 y+down
+3 down
+1 y+down
+2 y+down+left
+3 down+left
+2 y+down+left
+2 down+left
+3 y+down+left
+1 left
+2 -
+1 y+down
+1 down
+1 y
+2 y+up+right
+3 up+right
+2 b+up+right
+1 up+right
+3 y+up+right
+2 up+right
+3 up
+2 start
+32 -
+2 left
+6 -
+2 left
+6 -
+2 start
+27 -
+2 start
+3 -
+1 up
+1 y+up
+3 up+left
+1 y+up+left
+1 up+left
+4 y+up+left
+4 up+left
+3 y+up+left
+1 y+left
+4 left
+2 y+left
+2 down+left
+3 y+down+left
+6 left
+3 y+left
+2 left
+3 down+left
+1 y+down+left
+1 down+left
+3 y+down+left
+5 down+left
+1 left
+2 y+left
+2 y
+2 y+up
+3 -
+2 down
+2 start
+33 -
+2 right
+6 -
+2 right
+6 -
+2 start
+27 -
+2 start
+3 -
+1 down
+2 y+down
+2 down
+1 y+down
+2 y+right
+3 right
+3 y+right
+5 right
+1 y+up+right
+1 up+right
+1 y+up+right
+3 up+right
+3 y+up+right
+6 up+right
+3 y+up+right
+1 up+right
+2 y+up+right
+1 up
+5 up+left
+1 y+up+left
+4 up+left
+2 y+up+left
+1 left
+2 y
+2 -
+1 y+up
+4 up
+2 down
+3 y+down
+4 down
+1 y+down
+6 down
+1 y+down
+5 down
+3 y+down
+2 down
+6 y+down
+3 down+right
+3 y+down+right
+2 down+right
+4 down
+3 y+down
+3 down
+4 y+down
+2 y
+3 -
+3 y+up
+4 up
+1 y+up
+1 y+up+right
+2 up+right
+1 y+up+right
+3 b+up+right
+3 b+y+up+right
+3 b+up+right
+4 b+y+right
+1 y+right
+5 right
+1 up+right
+1 y+up+right
+5 up+right
+3 y+up+right
+1 up+right
+1 up
+3 y+up
+1 up
+2 y+up+left
+3 up+left
+2 up
+1 up+left
+3 y+up+left
+1 up+left
+3 y+up+right
+5 up+right
+3 y+up+right
+1 up+right
+1 b+up+right
+3 b+up
+2 b+y+up
+1 b+up
+2 b+up+right
+2 b+y+up+right
+2 b+up+right
+2 b+y+up+right
+3 b+up
+3 b+y+up
+2 start
+31 -
+2 left
+6 -
+2 left
+6 -
+2 start
+27 -
+2 start
+3 -
+2 up+left
+1 up
+1 up+left
+1 y+up+left
+2 y+up
+5 up+right
+1 y+up+right
+1 up+right
+3 y+up+right
+3 up+right
+1 y+up+right
+3 b+up+right
+1 up+right
+2 y+up+right
+1 up+right
+2 -
+2 y
+1 y+left
+5 down+left
+1 y+left
+1 left
+3 up+left
+1 y+up+left
+4 up+left
+5 y+up+left
+6 up+left
+2 y+up+left
+1 left
+2 down+left
+1 left
+1 y+left
+1 -
+2 start
+31 -
+2 left
+6 -
+2 left
+6 -
+2 start
+27 -
+2 start
+5 -
+1 b+up
+1 b+up+left
+1 b+y+up+left
+2 b+up
+1 b+y
+2 b+up
+3 up
+2 y+up
+1 up
+2 -
+2 y
+1 -
+3 b+left
+1 b+y+left
+1 b+left
+3 y+down+left
+1 down+left
+2 y+down+left
+1 down+left
+4 y+down+left
+4 down+left
+3 y+down+left
+2 down+left
+2 y+down+left
+6 down+left
+1 y+down+left
+1 down
+3 down+left
+1 y+down+left
+1 left
+1 right
+1 down+right
+1 y+down+right
+1 down+right
+2 y+down+right
+4 down+right
+1 y+down+right
+3 down+right
+2 y+right
+2 y+down+right
+2 down+right
+3 y+down+right
+3 down+right
+6 y+down+right
+2 down+right
+1 down
+3 y+down
+2 down
+2 y+down
+2 down
+2 y+down
+1 down
+1 y+down+right
+4 down+right
+2 down
+2 y+down
+3 down
+3 down+right
+2 y+down+right
+2 down+right
+3 y+down+right
+2 down+right
+1 y+down+right
+6 down+right
+2 y+down+right
+1 y+down
+3 down
+3 y+down+right
+6 down+right
+4 y+down+right
+1 down+right
+3 y+down+right
+4 down+right
+2 y+right
+6 up+right
+1 y+up+right
+3 up+right
+2 y+up+right
+5 up+right
+1 y+up+right
+4 up+right
+1 y+up+right
+6 up+right
+1 y+up+right
+3 up+right
+3 y+up+right
+2 up+right
+1 y+up+right
+5 up+right
+3 y+up+right
+2 up+right
+2 start
+32 -
+2 left
+6 -
+2 left
+6 -
+2 start
+27 -
+2 start
+3 -
+4 up+right
+2 y+up+right
+5 right
+2 y+right
+2 right
+1 y+right
+1 down+right
+4 down
+1 down+right
+1 y+down+right
+1 y+down
+1 down
+3 y+down
+3 down
+1 y+down
+2 down
+6 y+down
+2 down
+2 down+left
+4 y+down+left
+4 down+left
+3 y+down+left
+5 down+left
+2 y+down+left
+2 down+left
+2 y+down+left
+2 start
+32 -
+2 left
+6 -
+2 left
+6 -
+2 start
+27 -
+2 start
+3 -
+1 y+down+left
+241 -

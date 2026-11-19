@@ -6,8 +6,8 @@
 ; Does:     JSL Hush_FrameHook. It performs the replaced JSL first, then
 ;             1. refills health ($7EF36D := $7EF36C) so Link never dies;
 ;             2. `hush_room_req` != 0 (value N+1): load room N (test/debug jump);
-;             3. Link's feet inside an exit rectangle of the current room: next room,
-;                or Hush_Ending after the last one.
+;             3. Link's feet inside an exit rectangle of the current room: Hush_StartAdvance (transition.asm: fade out, fast load of the next
+;                room, or the ending screen after the last one).
 ;           The module is switched to 5 (load file) which rebuilds the room through
 ;           LoadUnderworldEntrance; the rest of the current frame is harmless (module is re-dispatched
 ;           next frame), so the return address is NOT discarded.
@@ -16,7 +16,7 @@
 ;   Hush_LoadRoom     A = room index (8-bit M). Sets everything for a reload of that room (FULL rebuild, ~160 frames).
 ;   Hush_RestartRoom  full reload of the current room (same entrance). "Caught" does NOT use it: guard_runtime.asm has the
 ;                     fast restart (Hush_FastRestart, ~7 frames) that keeps the room's tiles and graphics.
-;   Hush_Ending       last room cleared: soft-reset to the title screen.
+;   (Hush_Ending, the soft reset to the title, moved to ending.asm; the last room's exit starts the ending module there.)
 ;
 ; RAM (docs/ram_map.md): hush_room $7EC900, hush_room_req $7EC901. Scratch: $00-$03.
 ; Data: Hush_RoomTable and the !HUSH_* defines come from build/rooms_gen.asm (tools/roomgen.py).
@@ -36,6 +36,8 @@ Hush_FrameHook:
     JSL $00E3FA                          ; LoadChrHalfSlot (the replaced vanilla call)
     PHP
     SEP #$30
+    LDA.b $10 : CMP.b #$07
+    BNE .module_changed                  ; a load / the ending was started earlier in this pass (transition.asm): nothing more to do
     LDA.l $7EF36C : STA.l $7EF36D        ; never die: current health := capacity
     JSL Hush_Tick                        ; E2 (guard_runtime.asm): caught -> fast restart, lit range, ink timer, palettes, flash
 
@@ -56,13 +58,12 @@ Hush_FrameHook:
     LDA.l !hush_room
     INC A
     CMP.b #!HUSH_ROOM_COUNT
-    BCS .ending
-    JSL Hush_LoadRoom
-    BRA .done
-
-.ending
-    JSL Hush_Ending
+    BCC .advance
+    LDA.b #$FF                           ; after the last room: the ending
+.advance
+    JSL Hush_StartAdvance                ; transition.asm: fade out, then Hush_LoadRoom (fast) or the ending
 .done
+.module_changed
     PLP
     RTL
 
@@ -117,8 +118,10 @@ Hush_LoadRoom:
     LDA.b #$01 : STA.w $010A             ; skip the "recache" branch of LoadUnderworldEntrance
     STZ.w $04AA                          ; not a respawn: use the EntranceData row
     STZ.b $B0
-    LDA.b #$05 : STA.b $10               ; Module05_LoadFile (forced blank, full rebuild)
+    LDA.b #$05 : STA.b $10               ; Module05_LoadFile (forced blank; graphics skipped while hush_gfx is set, transition.asm)
     STZ.b $11
+    LDA.b #$02 : STA.l !hush_trans       ; transition.asm: Hush_Wipe fades the loaded room in (submodule $0F)
+    LDA.b #$00 : STA.l !hush_tcnt
     JSR Hush_GrantTools
     JSL Hush_ResetRuntime                ; E2: caught / flash / ink cloud / palette flag cleared
     REP #$30
@@ -159,17 +162,8 @@ Hush_GrantTools:
     LDA.b $00 : AND.b #$04 : BEQ .no_ink
     LDA.b #$08 : STA.l $7EF343
 .no_ink
+    JSL Hush_SetPendants                 ; E7 (menu_ui.asm): the FLOORS sockets of the item menu = floors reached
     PLP
     RTS
-
-; -----------------------------------------------------------------------------
-; Hush_Ending: soft-reset to the intro (title screen): Module00, submodule 0.
-Hush_Ending:
-    PHP
-    SEP #$30
-    STZ.b $11
-    STZ.b $10
-    STZ.b $B0
-    STZ.w $04AA
-    PLP
-    RTL
+Hush_RoomCtrl_End:
+assert pc() <= $07FA00                       ; E6: the block must stay inside its src/FREESPACE.md row (pc = the first free byte)

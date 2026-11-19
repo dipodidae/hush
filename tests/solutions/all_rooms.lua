@@ -1,6 +1,6 @@
 -- Solutions (QA): every room of the tower is played from its recorded input script (tests/solutions/<id>.inputs) on the real ROM
 -- (build/hush.sfc, rooms of design/rooms) and must be cleared: touching the exit advances hush_room to the next room (the last room
--- returns to the title) and no guard caught Link (no fast restart, hush_caught / hush_flash never set).
+-- ends in the ending screen) and no guard caught Link (no fast restart, hush_caught / hush_flash never set).
 -- One cold boot + new game, then each room is entered with the debug jump (hush_room_req) so the replay starts from a fresh load;
 -- the real new game -> room 1 path is covered by smoke/newgame. Regenerate the .inputs with `tools/solve_rooms.py` (README).
 -- Output: one `SOLUTION:` line per room (also shown by tools/run_test.py), a summary, and the test fails on any unexpected result.
@@ -31,7 +31,7 @@ local function replay(idx, r, steps)
       local a = hush.read("spr_aware", k)
       if a ~= 3 and a > max_aware then max_aware = a; first_aware = first_aware or frames end
     end
-    return hush.read("hush_room") ~= idx
+    return hush.read("hush_room") ~= idx or hush.read("game_mode") == 0x13   -- the last room ends in the ending screen (module $13, E6)
   end
   local advanced = false
   for _, s in ipairs(steps) do
@@ -77,11 +77,11 @@ hush.test("solutions: every room cleared from its recorded inputs", function()
         local ok = res.advanced and res.caught == 0
         if ok then
           if final then
-            -- the last room returns to the title (module 0)
+            -- the last room fades out into the ending screen (module $13)
             local t = 0
-            while hush.read("game_mode") ~= 0x00 and t < 120 do hush.wait(1); t = t + 1 end
-            ok = hush.read("game_mode") == 0x00
-            if not ok then detail = "exit touched but the game did not return to the title" end
+            while hush.read("game_mode") ~= 0x13 and t < 120 do hush.wait(1); t = t + 1 end
+            ok = hush.read("game_mode") == 0x13
+            if not ok then detail = "exit touched but the game did not show the ending screen" end
           else
             ok = hush.read("hush_room") == i
             if not ok then detail = string.format("hush_room is %d, expected %d", hush.read("hush_room"), i) end

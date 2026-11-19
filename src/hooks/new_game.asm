@@ -55,6 +55,8 @@ Hush_NewGame:
     STZ.w $0AB2
     LDA.b #$00
     STA.l !hush_req
+    STA.l !hush_gfx                      ; the title screen's graphics are in VRAM: the first room needs the full load
+    JSL Hush_StatsReset                  ; E6 (ending.asm): retries / play time of the run
     JSL Hush_LoadRoom                    ; A = 0: room 1, Module05
     RTL
 
@@ -68,3 +70,5 @@ Hush_HideSprites:
     BPL .next
     SEP #$10
     RTL
+Hush_NewGame_End:
+assert pc() <= $07FA98                       ; E6: the block must stay inside its src/FREESPACE.md row (E7: ends at $07FA97, the arrow_pre block follows)
