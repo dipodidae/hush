@@ -19,16 +19,16 @@ size_px:
 - 32
 tile_order: row-major, 16 tiles per row
 palette:
-  family: spr
-  note: 3bpp sprite sheets (indices 1-7)
+  family: blade
+  note: "Shade Knife: OBJ row 5 RIGHT half; the game shows ONLY indices 1-3 (sword.yaml pal_sword_00); 4-7 = pal_shield_00 (violet/teal, unused)"
   indices:
-    1: '#0B0A1E outline / ink (near-black indigo)'
-    2: '#38327A body / coat (indigo)'
-    3: '#231F4F shade (dark indigo)'
-    4: '#9A94D9 light neutral / highlight'
-    5: '#F2A93B AMBER = danger: lantern, alert, guard accent'
-    6: '#ECE8FF glyphs, text, eyes (near white)'
-    7: '#A878F0 VIOLET = you: player, tools'
+    1: "#8858E8 violet blade"
+    2: "#D0F8F8 cyan-white glint along the edge"
+    3: "#302068 deep violet edge / guard / grip"
+    4: "#6848C8 (shield colours, unused) mid violet"
+    5: "#A880F8 (shield colours, unused) light violet"
+    6: "#E0F8F8 (shield colours, unused) glint"
+    7: "#38E0D0 (shield colours, unused) teal"
 slot:
   rom: $1889A1
   compressed: true

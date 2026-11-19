@@ -1,11 +1,13 @@
 id: GFX_79
 kind: sprite
-role: debug
-decision: unused
+role: player
+decision: redraw
 priority: P2
-what_it_is: no table or call site references this sheet
+what_it_is: 'ink cloud (bomb explosion), guard-death poof, sparkles'
 reuse_as: null
-where_it_appears: []
+where_it_appears:
+- underworld rooms (Ink Pot, takedown poof, hit sparkles)
+- underworld rooms (Ink Pot, takedown poof, hit sparkles)
 bpp: 3
 size_tiles:
 - 16
@@ -15,16 +17,16 @@ size_px:
 - 32
 tile_order: row-major, 16 tiles per row
 palette:
-  family: cut
-  note: 'magenta debug sheets: UNUSED / CUT (indices 1-7)'
+  family: fx
+  note: "player tool/effect sheets: violet ramp + cyan-white glint + teal (OBJ rows 1/2); identical indices in every row they are drawn with"
   indices:
-    1: '#FF00FF magenta fill'
-    2: '#101010 label text (black)'
-    3: '#FF66FF light magenta'
-    4: '#B000B0 dark magenta'
-    5: '#FF00FF magenta'
-    6: '#FF99FF pale magenta'
-    7: '#400040 deep magenta'
+    1: "#080818 outline"
+    2: "#403078 shade"
+    3: "#181050 deepest shade"
+    4: "#6848C8 mid violet"
+    5: "#A880F8 light violet"
+    6: "#E0F8F8 cyan-white glint"
+    7: "#38E0D0 teal sparkle"
 slot:
   rom: $119400
   compressed: false

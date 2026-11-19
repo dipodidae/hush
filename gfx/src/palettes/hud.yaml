@@ -1,82 +1,82 @@
-note: 'HUD / menu / text 2bpp palettes: [black, light, mid, dark]. Colours are RGB hex; the build converts to BGR555.'
+note: 'HUD / menu / text 2bpp palettes: [transparent, 1, 2, 3]. Colours are RGB hex; the build converts to BGR555. HUSH HUD groups 00 01 02 03 07 are the ones the in-room HUD uses (docs/gfx/hud_map.md); 04-06 and 08-0F are untouched placeholders (menu/text).'
 groups:
   pal_hud_00:
     decision: redraw
     rom_rows: [$1BD660]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', '98E8E0', '40B8B0', '081828']  # p0: Hush Dart counter icon (teal)
   pal_hud_01:
     decision: redraw
     rom_rows: [$1BD668]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'E8E8F8', 'A878F0', '5030A0']  # p1: hearts (violet = you), counter digits, LIFE label
   pal_hud_02:
     decision: redraw
     rom_rows: [$1BD670]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', '80D8D0', '308088', '081828']  # p2: item box / meter frame + Hush Dart item icon (dark teal gradient)
   pal_hud_03:
     decision: redraw
     rom_rows: [$1BD678]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'D8C8FF', 'A878F0', '081828']  # p3: Ink Pot icons (violet = player tool)
   pal_hud_04:
     decision: redraw
     rom_rows: [$1BD680]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_05:
     decision: redraw
     rom_rows: [$1BD688]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_06:
     decision: redraw
     rom_rows: [$1BD690]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_07:
     decision: redraw
     rom_rows: [$1BD698]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'E8E8F8', '80D8D0', '081828']  # p7: loot gem, meter interior fill
   pal_hud_08:
     decision: redraw
     rom_rows: [$1BD6A0]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_09:
     decision: redraw
     rom_rows: [$1BD6A8]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_0A:
     decision: redraw
     rom_rows: [$1BD6B0]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_0B:
     decision: redraw
     rom_rows: [$1BD6B8]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_0C:
     decision: redraw
     rom_rows: [$1BD6C0]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_0D:
     decision: redraw
     rom_rows: [$1BD6C8]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_0E:
     decision: redraw
     rom_rows: [$1BD6D0]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']
   pal_hud_0F:
     decision: redraw
     rom_rows: [$1BD6D8]
     colours:
-    - ['000000', ECE8FF, 6C66C8, 14123A]
+    - ['000000', 'ECE8FF', '6C66C8', '14123A']

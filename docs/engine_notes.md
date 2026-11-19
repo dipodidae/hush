@@ -1,4 +1,4 @@
-# HUSH engine notes (E1: foundation, E2: stealth AI)
+# HUSH engine notes (E1: foundation, E2: stealth AI, E3-E5: room visuals)
 
 Sections 1-10: everything the engine learned while building camera lock, the one-screen room format, new game, the room compiler and
 the per-frame controller (E1). **Section 11 onwards: E2 (stealth AI, damage rules, caught -> fast restart, ink cloud, icons, test ROM)**, section 11.12 = E4 (the custom guard drawing);
@@ -382,3 +382,40 @@ The yaml groups 01-05 are tinted copies of `pal_dungeon_00` (the director tunes 
 
 `tests/smoke/visual_tiles.lua` (real ROM, all 21 rooms): for every cell of the 16x14 window the 4 tile words in `$7E2000` **and** in the VRAM BG2 tilemap equal the words predicted from the grid; `$7F2000` equals the grid (`#`/`p` = `$01` on all four 8x8 tiles, everything else `$00`);
 the BG palette is the same within a palette set and different between sets; the OBJ half of CGRAM is identical in every room; each kind occurs at least once (only 2 `p` cells exist in the current rooms: r05 and r14).
+
+
+## 13. E5: decoration variants (floor cracks/moss/runes, wall-top slabs, banners, torches, light pools) with zero collision change
+
+Goal: the rooms were one brick block, one speckle tile and one face strip. E5 adds ~28 decoration "cells" that are drawn over the plain ones. Art, tile ids and palette rows: `docs/gfx/art_map.md` section 3.5. Everything is data + one 19-byte object routine.
+
+### 13.1 How a variant gets on the screen
+
+* **One cell (2x2 tiles) per object, drawn by a hijacked vanilla object routine.** The vanilla 2x2 objects are too few (`$00 $07 $08 $53 $60 $92 $93 $B8 $B9`) and each has fixed tile data, so E5 repurposes the unused *diagonal* objects `$09` and `$0A`:
+  `DrawObjects.type1_routine[$09/$0A]` (`$018212/$018214`) -> `Hush_DrawVariant` (`$01B53C`, `src/hooks/room_visuals.asm`). The routine takes the object's **size field as the variant index**: `RoomDraw_RoomObject` (`bank_01.asm:1339-1351`) leaves `b0 & 3` in `$B2` and `b1 & 3` in `$B4` and jumps through `$000E`;
+  the routine computes `X += 8 * (($B2 << 2) | $B4)` and tail-calls `RoomDraw_Rightwards2x2` (`$019895`), which stores TL, BL, TR, BR from `RoomDrawObjectData + X` into the BG2 buffer at the object's position. Id `$09` reads from obj0420 (`$009F72`), id `$0A` from obj0420 + 128 (type1_data_offset[$0A] rewritten to `$04A0`): 2 x 16 = 32 variants, 28 used.
+* The table (8 bytes per variant) is emitted by `tools/roomgen.py` (`VARIANTS`) into `build/rooms_gen.asm` (`org $009F72`), the same list also goes to `build/rooms_gen.lua` (`variant_words`, `variant_kind`, per room `variants = {{cx, cy, name}, ...}`) so the tests predict the tile words from the same source.
+* **Order.** roomgen emits the plain objects first (unchanged), then one 3-byte variant object per decorated cell; later objects overwrite the cell. Streams grew from 3084 to 9408 B of the 12 288 B budget (24 rooms of this density would need ~10.8 KB: still fits, but this is the limit: if more rooms or decorations are added, make the plain-run decoration merge runs or drop wall-top variants first) (roomgen fails if exceeded). No object count limit exists (the stream is read until `FF FF`).
+* **Collision unchanged.** As in section 12 the collision byte comes from the final tile ids (`UnderworldTileTypes`). Every variant uses ids of the vanilla type of the cell it replaces (checked against `bank_0E.asm:274`):
+  floor variants `$C4-$DD`, `$E9 $EA $F9 $FA`, `$EE $EF $FE $FF`, `$2E $2F $3E $3F` = type `$00`; wall variants `$00 $01 $02` (T1-T3), `$15`, `$80-$8D`, `$90-$95`, `$A0 $A1 $B0 $B1` = type `$01`. Flip bits never change the type.
+  Free-id lists (so the next painter does not have to rediscover them): solid `$01` in the loaded slots: GFX_00 `$00 $01 $02 $05 $08 $09 $26 $36`; GFX_01 `$44 $46 $47 $49 $4A $4C $4F $54 $56 $57 $5D $60 $61 $72 $73 $74`; GFX_10 `$80-$8D $90-$99 $9D-$9F $A0 $A1 $A8 $B0-$BD`.
+  Floor `$00`: GFX_06 `$C0-$CD $D0 $D1 $D4-$DD $E7-$EA $EC-$EF $F8-$FA $FC-$FF`; GFX_00 `$03 $07 $13 $14 $16 $17 $19 $1A $2E $2F $3E $3F`; GFX_01 `$40-$42 $59-$5B $5F $78 $79 $7C $7E $7F`; GFX_10 `$AB-$AF`.
+* **Tile slots / sheets.** All variant art lives in sheets that are loaded in every HUSH room: slot 0 `GFX_00`, slot 2 `GFX_10`, slot 3 `GFX_06` (section 2.1 of the art map, all "right" expansion). `tests/smoke/visual_tiles.lua` reads the VRAM tilemap, not the characters, so tile *content* is checked by the screenshots.
+
+### 13.2 Placement (`variant_plan` in `tools/roomgen.py`)
+
+Deterministic: `sha256(room id / cx / cy / salt)` -> [0,1) (not CRC32: it is affine, equal-length salts correlate). Order: torches/sconces -> lit torch pools (+ warm faces) -> banners/sigils/cracks -> contact shadows under every face -> floor variants -> wall-top variants. Rules:
+
+* **Torches only in lit rooms** (`lighting: lit`), ~every 5th face cell of a horizontal run (offset 2 + 5k, jitter 0/1), never within one column of an `X` below, never above a guard letter; **unlit sconces in dark rooms** (offset 3 + 6k): flames would contradict "dark".
+* **Light pool** (lit rooms only): `f_glow` on the plain floor cell below the torch, `f_glow2` on its two side neighbours; `fc_warm` on the face cells beside the torch. Never on S/X/guard cells (a static glow near a patrolling guard would give its position away).
+* **Floor variants**: 21% of the plain `.` cells; never `S`, `X`, guard cells, never directly below a wall (the contact shadow is the only decoration there), never next to another variant; at most 2 runes per room, 6+ cells apart. The contact shadow covers the cell below **every** face including `S`/guard cells so the line has no gaps (these cells are visible anyway); exit cells keep the exit marker.
+* **Wall-top variants** on ~55% of the plain `ceil` cells (chip/speckle mixes 35%, slab seam 20%, crack 10% of those; seam/crack blocks never directly above a face).
+
+### 13.3 Test and checks
+
+`tests/smoke/visual_tiles.lua` (real ROM, 21 rooms): every cell's four tile words in `$7E2000` **and** VRAM equal the plain words of its kind or, for a cell listed in `variants`, the words of that variant; a variant must be of the cell's own base kind (floor variants only on `.`, except the shadow which may also cover S/guard cells; no lit torch in a dark room); `$7F2000` is still compared with the grid (`#`/`p` solid on all four 8x8 tiles, everything else `$00`).
+The collision assertions were not touched. Full result in the final report of the E5 change (`make test`).
+
+### 13.4 Palette and painting notes
+
+`bg_dungeon.yaml` rows 3 and 6 of groups 00-05 got new idx 5/6/7 colours (moss, banner cloth, lit-room warm bevel/flame): table in art_map section 3.5. `tools/art/env_art.py apply` re-paints all new tiles (idempotent), `preview` renders them in the six palettes.
+Perspective: wall top = the dark mass seen from above (row 7), the 8 px face strip (row 6) is the front; a torch is a whole 16x16 cell (dark top half in row 6 + sconce on the strip), a banner or sigil only decorates the strip.

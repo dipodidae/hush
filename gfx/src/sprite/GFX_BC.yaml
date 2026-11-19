@@ -1,9 +1,9 @@
 id: GFX_BC
 kind: sprite
-role: env
+role: danger
 decision: redraw
 priority: P0
-what_it_is: used by 0 underworld tilesets and 13 underworld sprite sets
+what_it_is: 'the lantern guard: 14 blocks (docs/gfx/art_map.md section 5), steel-blue uniform + amber lantern'
 reuse_as: null
 where_it_appears:
 - overworld areas (sprite sets 19 of 64)
@@ -17,16 +17,16 @@ size_px:
 - 32
 tile_order: row-major, 16 tiles per row
 palette:
-  family: spr
-  note: 3bpp sprite sheets (indices 1-7)
+  family: guard
+  note: "OBJ row 4 left (calm/asleep); the alert row 6 recolours the same indices amber (Hush_PalAlert). NEVER use index 7 (violet in the alert row)."
   indices:
-    1: '#0B0A1E outline / ink (near-black indigo)'
-    2: '#38327A body / coat (indigo)'
-    3: '#231F4F shade (dark indigo)'
-    4: '#9A94D9 light neutral / highlight'
-    5: '#F2A93B AMBER = danger: lantern, alert, guard accent'
-    6: '#ECE8FF glyphs, text, eyes (near white)'
-    7: '#A878F0 VIOLET = you: player, tools'
+    1: "#081018 outline"
+    2: "#284868 helmet / pauldrons / boots (dark slate)"
+    3: "#102038 deep shade"
+    4: "#4888A8 uniform (steel blue)"
+    5: "#F0A838 AMBER = danger: lantern, helmet badge, belt buckle"
+    6: "#D8E8F8 highlights / eyes"
+    7: "#40C8B8 unused (never paint)"
 slot:
   rom: $17A805
   compressed: true

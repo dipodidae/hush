@@ -1,24 +1,23 @@
-note: 'Title screen palettes (the intro loads these overworld palette slots). Every row is the same: index meanings in gfx/src/title/*.yaml. Colours
-  are RGB hex; the build converts to BGR555.'
+note: 'Title screen palettes (the intro loads these overworld palette slots; measured in MesenCE). pal_owmain_05 rows 0-4 = BG rows 2-6 LEFT half (sheet GFX_39): rows 0-3 idx 1 = backdrop band colour, row 4 = amber set (lantern, rule, PRESS START). pal_owaux_03 rows 0-2 = RIGHT halves of BG rows 2/5, 3/6, 4/7 (sheets GFX_40/41, the logo): A violet, B blend, C teal. Colours are RGB hex; the build converts to BGR555.'
 groups:
   pal_owanim_00:
     decision: redraw
     rom_rows: [$1BE604]
     colours:
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
+    - ['080018', '382008', '784810', 'F0A838', 'F8D060', 'F8F0C8', 'B87820']
   pal_owmain_05:
     decision: redraw
     rom_rows: [$1BE826, $1BE834, $1BE842, $1BE850, $1BE85E]
     colours:
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
+    - ['000018', '382008', '784810', 'F0A838', 'F8D060', 'F8F0C8', 'B87820']
+    - ['080028', '382008', '784810', 'F0A838', 'F8D060', 'F8F0C8', 'B87820']
+    - ['100840', '382008', '784810', 'F0A838', 'F8D060', 'F8F0C8', 'B87820']
+    - ['080830', '382008', '784810', 'F0A838', 'F8D060', 'F8F0C8', 'B87820']
+    - ['080018', '382008', '784810', 'F0A838', 'F8D060', 'F8F0C8', 'B87820']
   pal_owaux_03:
     decision: redraw
     rom_rows: [$1BE8EA, $1BE8F8, $1BE906]
     colours:
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
-    - [07061A, 2A2660, 5A54A8, B8B2F0, F2A93B, ECE8FF, '171436']
+    - ['000018', '181050', '282078', '5838C0', '8860F0', 'D8C8F8', 'F8F8F8']
+    - ['000018', '102848', '203878', '4060B0', '6890D8', 'C8E0F8', 'F8F8F8']
+    - ['000018', '083040', '105068', '2888A0', '48C8C0', 'C0F8F0', 'F8F8F8']

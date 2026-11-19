@@ -5,17 +5,17 @@ groups:
     decision: unused
     rom_rows: [$1BD648]
     colours:
-    - [FF00FF, '101010', FF66FF, B000B0]
+    - [6848C8, A880F8, E0F8F8, 38E0D0]
   pal_shield_01:
     decision: unused
     rom_rows: [$1BD650]
     colours:
-    - [FF00FF, '101010', FF66FF, B000B0]
+    - [6848C8, A880F8, E0F8F8, 38E0D0]
   pal_shield_02:
     decision: unused
     rom_rows: [$1BD658]
     colours:
-    - [FF00FF, '101010', FF66FF, B000B0]
+    - [6848C8, A880F8, E0F8F8, 38E0D0]
   pal_unused_00:
     decision: unused
     rom_rows: [$1BD6EE, $1BD6FC]

@@ -19,16 +19,16 @@ size_px:
 - 32
 tile_order: row-major, 16 tiles per row
 palette:
-  family: title
-  note: title screen sheets (indices 1-7); same colours in every title palette row
+  family: title-amber
+  note: "LEFT half of BG row 6: lantern, chain, rule, PRESS START (amber set); idx 1 of BG rows 2-5 = backdrop band colours"
   indices:
-    1: '#07061A deep (shadow/outline)'
-    2: '#2A2660 indigo panel'
-    3: '#5A54A8 logo shadow'
-    4: '#B8B2F0 lavender (spare)'
-    5: '#F2A93B AMBER accent: rules, PRESS START'
-    6: '#ECE8FF logo letters (near white)'
-    7: '#171436 dark indigo (spare)'
+    1: "#080018 outline (BG bands: backdrop colour)"
+    2: "#382008 dim halo"
+    3: "#784810 dark amber (cage, chain)"
+    4: "#F0A838 AMBER"
+    5: "#F8D060 bright amber"
+    6: "#F8F0C8 pale core"
+    7: "#B87820 text shade"
 slot:
   rom: $13C817
   compressed: true

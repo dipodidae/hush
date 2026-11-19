@@ -5,34 +5,34 @@ groups:
     decision: redraw
     rom_rows: [$1BD218]
     colours:
-    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - ['080818', '181040', '100830', '282860', '483898', 8880E0, A878F0]
   pal_sprite_00_right:
     decision: redraw
     rom_rows: [$1BD226]
     colours:
-    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [E0F8F8, '080818', '403078', '181050', 6848C8, A880F8, E0F8F8, 38E0D0]
   pal_sprite_01:
     decision: redraw
     rom_rows: [$1BD236]
     colours:
-    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - ['080818', '403078', '181050', 6848C8, A880F8, E0F8F8, 38E0D0]
   pal_sprite_01_right:
     decision: redraw
     rom_rows: [$1BD244]
     colours:
-    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - [E0F8F8, '080818', '403078', '181050', 6848C8, A880F8, E0F8F8, 38E0D0]
   pal_sprite_02:
     decision: redraw
     rom_rows: [$1BD254, $1BD262]
     colours:
-    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
-    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - ['080818', '403078', '181050', 6848C8, A880F8, E0F8F8, 38E0D0]
+    - [E0F8F8, '080818', '403078', '181050', 6848C8, A880F8, E0F8F8, 38E0D0]
   pal_sprite_03:
     decision: redraw
     rom_rows: [$1BD272, $1BD280]
     colours:
-    - [0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
-    - [ECE8FF, 0B0A1E, 38327A, 231F4F, 9A94D9, F2A93B, ECE8FF, A878F0]
+    - ['081018', '284868', '102038', 4888A8, F0A838, D8E8F8, 40C8B8]
+    - [E0F8F8, '081018', '101038', '885810', F0D878, F0A838, 90E8E0, 38A898]
   pal_sprite_04:
     decision: redraw
     rom_rows: [$1BD290, $1BD29E]

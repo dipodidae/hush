@@ -16,16 +16,16 @@ size_px:
 - 32
 tile_order: row-major, 16 tiles per row
 palette:
-  family: spr
-  note: 3bpp sprite sheets (indices 1-7)
+  family: icons
+  note: "OBJ row 4 RIGHT half (sprites.yaml pal_sprite_03 row 2): awareness icons"
   indices:
-    1: '#0B0A1E outline / ink (near-black indigo)'
-    2: '#38327A body / coat (indigo)'
-    3: '#231F4F shade (dark indigo)'
-    4: '#9A94D9 light neutral / highlight'
-    5: '#F2A93B AMBER = danger: lantern, alert, guard accent'
-    6: '#ECE8FF glyphs, text, eyes (near white)'
-    7: '#A878F0 VIOLET = you: player, tools'
+    1: "#081018 outline"
+    2: "#101038 soft shadow"
+    3: "#885810 dark amber"
+    4: "#F0D878 pale gold '?' (suspicious)"
+    5: "#F0A838 AMBER '!' (alert)"
+    6: "#90E8E0 pale teal 'Z' (asleep, harmless)"
+    7: "#38A898 teal shade"
 slot:
   rom: $17D82F
   compressed: true

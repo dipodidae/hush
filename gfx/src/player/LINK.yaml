@@ -18,23 +18,23 @@ size_px:
 tile_order: row-major, 16 tiles per row
 palette:
   family: link
-  note: 4bpp player sheet (indices 1-15)
+  note: "4bpp player sheet, OBJ row 7: violet hooded cloak, pale-cyan eyes, teal scarf (no amber)"
   indices:
-    1: '#0B0A1E outline'
-    2: '#4B2E8C cloak dark'
-    3: '#7048C8 cloak'
-    4: '#A878F0 violet main'
-    5: '#C9ABFF violet light'
-    6: '#ECE8FF face dot / eyes'
-    7: '#231F4F boots / shade'
-    8: '#E3D4FF blade edge / highlight'
-    9: '#6E64B4 belt / trim'
-    10: '#5E3AA8 violet mid dark'
-    11: '#8B63DD violet mid'
-    12: '#B58FFF violet bright'
-    13: '#3B2470 cloak deepest'
-    14: '#D8C7FF pale violet'
-    15: '#F4EEFF near white'
+    1: "#080818 outline"
+    2: "#382080 cloak dark"
+    3: "#5838B0 cloak"
+    4: "#8858E0 cloak light / hood highlight"
+    5: "#B890F8 violet bright"
+    6: "#D8F8F8 eye glint (pale cyan)"
+    7: "#181050 boots / deep shade"
+    8: "#38D8C8 scarf teal"
+    9: "#188888 scarf shade"
+    10: "#201860 hood inner"
+    11: "#7050D0 violet mid"
+    12: "#C0A8F8 violet bright 2"
+    13: "#281858 deepest (face hollow)"
+    14: "#E0D0F8 pale violet"
+    15: "#F0F8F8 near white"
 slot:
   rom: $108000
   compressed: false

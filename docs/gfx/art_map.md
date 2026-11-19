@@ -21,7 +21,7 @@ Conventions used in every table:
 
 | # | What | Sheet (file) | Cells (col,row) -> PNG px | Row + expansion | Notes |
 |---|---|---|---|---|---|
-| 1 | **Floor** (every floor cell `.`, `S`, guard letters: 2090 cells over the 21 rooms, all the same 16x16) | `bg_tileset/GFX_06.png` | block (12,2) = px (96,16) 16x16 | BG row 3, right | one 16x16 block repeated; no checker/variation possible except inside it |
+| 1 | **Floor** (every floor cell `.`, `S`, guard letters: 2090 cells over the 21 rooms) | `bg_tileset/GFX_06.png` | block (12,2) = px (96,16) 16x16 | BG row 3, right | the plain block; **E5: ~21% of the `.` cells use one of the 14 floor variants** of section 3.5 (cracks, soot, moss, rune, lamp glow, wall contact shadow) |
 | 2a | **Wall top surface** (`#` whose cell below is wall/pillar/outside the grid; the ceiling) | `bg_tileset/GFX_00.png` | **one** cell (5,1) = px (40,8) 8x8, fills all 4 quarters of the cell | BG row 7, right, **priority 1** | hides sprites that overlap it |
 | 2b | **Wall face** (`#` whose cell below is floor: the vertical front side of the wall) | `bg_tileset/GFX_00.png` | top half of the 16x16 cell = the wall-top cell (5,1) twice; **bottom half = face A (4,2) px (32,16) + face B (5,2) px (40,16)** (A on the even tile column, B on the odd one: a 16x8 strip) | face strip BG row **6**, right, priority 1 | solid; added in E3 |
 | 2c | **Pillar `p`** (own art, solid) | `bg_tileset/GFX_00.png` | block (12,2) = px (96,16) 16x16 = cells (12,2) (13,2) / (12,3) (13,3) = px (96,16) (104,16) / (96,24) (104,24) | BG row **5**, right, **priority 0** (Link and guards draw IN FRONT of it) | solid; added in E3 |
@@ -39,7 +39,7 @@ Conventions used in every table:
 | 14 | Sword hit sparkles / charge stars | `sprite/GFX_79.png`, `GFX_7A.png` | 79: (0,0) (3,0) (7,3), 7A: (6,1) (7,1) | OBJ rows 1/2, left | only while B is held/after a hit |
 | 15 | Everything else loaded but **never drawn** in HUSH rooms | `GFX_01 10 0E 1F 18 0F 5C 5D` (BG), `GFX_B9 GFX_86` (sprites), `GFX_C7 D2 D3 D8` | -- | -- | leave as placeholders; nothing on screen shows them |
 
-**Total BG art for all 21 rooms: 15 cells** = floor 4 (GFX_06) + wall top 1 + wall face 2 + pillar 4 (GFX_00) + exit marker 4 (GFX_06). Floors 1/2/3 x lit/dark use **six palette groups** (`pal_dungeon_00..05`, section 3.3):
+**Total BG art for all 21 rooms: 15 cells of the E3 base set** = floor 4 (GFX_06) + wall top 1 + wall face 2 + pillar 4 (GFX_00) + exit marker 4 (GFX_06), **plus the E5 decoration set of section 3.5 (~100 more cells, mostly in `GFX_06` and `GFX_10`)**. Floors 1/2/3 x lit/dark use **six palette groups** (`pal_dungeon_00..05`, section 3.3):
 floor/wall colours differ per variant, the tiles are shared.
 
 ---
@@ -106,7 +106,54 @@ The four sheet areas are disjoint (GFX_00: (5,1), (4,2), (5,2), (12..13, 2..3); 
   (e.g. `$02` standard, `$27`, ...): **do not move the art to other cells without checking the type table**, a type other than `$00`/`$01` changes how Link and the guards collide.
 * How they get on screen: vanilla room objects `$07` (face), `$B8`/`$92` (pillar), `$B9`/`$93` (exit marker) whose 4 tile words are rewritten (`src/hooks/room_visuals.asm`); the wall top is still object `$00`/`$60`.
 
-There is no door, no torch, no separate border tile (the outer border is wall top / wall face like every other `#`).
+There is no door and no separate border tile (the outer border is wall top / wall face like every other `#`); E5 adds torches, sconces, banners etc. over the wall faces (section 3.5).
+
+### 3.5 E5 decoration variants (zero collision change): which tile where
+
+E5 draws **decoration cells over the plain ones** (same kind of cell, same vanilla tile *type*, so `$7F2000` is identical): `tools/roomgen.py` (`variant_plan`, `VARIANTS`) decides deterministically per cell (seeded by room id + cell), a hijacked vanilla object routine draws them
+(`docs/engine_notes.md` section 13). Painter tool: `tools/art/env_art.py` (`apply` paints the pixel grids below into the sheets, `preview` renders them in the six room palettes to `build/art_preview/env_tiles_pal_dungeon_NN.png`).
+Digits in the grids are sheet indices; per BG row `k` they are the colours `colours[2(k-2)+1][i]` of `bg_dungeon.yaml`: **1 deepest dark, 2 base, 3 lit base (light from the top), 4 dark/mortar, 5 accent (row 3: rune / lamp bevel; row 6: copper), 6 amber, 7 pale (row 3: moss, row 6: banner cloth)**.
+Every 16x16 below is the usual TL TR / BL BR cell group; "px" is the PNG pixel of the top-left.
+
+| variant(s) (`VARIANTS` name) | replaces | sheet / cells -> px | tile ids | row, priority | what it shows |
+|---|---|---|---|---|---|
+| `f_crack`, `f_crack_h` | `.` floor | `GFX_06` block (4,0) -> px (32,0) | `$C4 $C5 / $D4 $D5` | 3, 0 | diagonal hairline crack across both brick rows (`_h` = same tiles, H flip) |
+| `f_crack2`, `f_crack2_h` | `.` floor | `GFX_06` block (9,2) -> px (72,16) | `$E9 $EA / $F9 $FA` | 3, 0 | forked crack in the upper brick + short crack in the lower one |
+| `f_worn`, `f_worn_h` | `.` floor | `GFX_06` block (6,0) -> px (48,0) | `$C6 $C7 / $D6 $D7` | 3, 0 | bevel worn off, two soot stains (core + dithered rim) |
+| `f_rune` | `.` floor | `GFX_06` block (8,0) -> px (64,0) | `$C8 $C9 / $D8 $D9` | 3, 0 | one big flagstone (no mortar cross) with a carved diamond glyph in the accent idx 5 (**decor only: max 2 per room, 6+ cells apart**) |
+| `f_moss`, `f_moss_h` | `.` floor | `GFX_06` block (10,0) -> px (80,0) | `$CA $CB / $DA $DB` | 3, 0 | moss tufts (idx 7 = per-group green) on the joints + rubble chips |
+| `f_glow`, `f_glow_h` | `.` floor below a lit torch | `GFX_06` block (12,0) -> px (96,0) | `$CC $CD / $DC $DD` | 3, 0 | lamp pool (strong): faces one step brighter (dithered), warm bevel idx 5, amber flecks idx 6 (**lit rooms only**) |
+| `f_glow2`, `f_glow2_h` | `.` floor beside a lit torch's pool | `GFX_00` block (14,2) -> px (112,16) | `$2E $2F / $3E $3F` | 3, 0 | lamp pool (weak): only the top bevel of each brick is warm |
+| `f_shadow` | floor cell below **every** wall face (also S / guard cells so the line has no gaps; never X) | `GFX_06` block (14,2) -> px (112,16) | `$EE $EF / $FE $FF` | 3, 0 | contact shadow: the first rows fade to the mortar colour |
+| `ct_a .. ct_d` | wall top | `GFX_00` cells (0,0) (1,0) (2,0) = **T1 T2 T3** | `$00 $01 $02` (plain T0 = `$15` at (5,1)) | 7, **1** | 8x8 speckle variants (chip, sparse, darker); `ct_a-d` are four mixes of T0-T3 per 2x2 |
+| `ct_crack`, `ct_crack_h` | wall top | `GFX_10` block (0,0) -> px (0,0) | `$80 $81 / $90 $91` | 7, **1** | hairline crack over a 16x16 block of the dark mass |
+| `ct_seam`, `ct_seam_h` | wall top | `GFX_10` block (0,2) -> px (0,16) | `$A0 $A1 / $B0 $B1` | 7, **1** | slab joints: one course joint (dark line + light line under it) and a vertical joint per slab |
+| `fc_banner` | wall face | `GFX_10` cells (6,0) (7,0) -> px (48,0) | `$86 $87` | 6, **1** | banner on a rod: cloth = idx 7 (crimson / teal), emblem idx 5, swallow-tail |
+| `fc_sigil` | wall face | `GFX_10` cells (8,0) (9,0) -> px (64,0) | `$88 $89` | 6, **1** | carved diamond sigil with two dots, accent idx 5 |
+| `fc_crack` | wall face | `GFX_10` cells (10,0) (11,0) -> px (80,0) | `$8A $8B` | 6, **1** | cracked bricks |
+| `fc_warm` | wall face beside a lit torch | `GFX_10` cells (12,0) (13,0) -> px (96,0) | `$8C $8D` | 6, **1** | bricks lit by the torch (bevel idx 5, faces idx 3) |
+| `fc_torch` (**lit rooms**) | wall face, ~every 5th face cell of a run | `GFX_10` block (2,0) -> px (16,0), **16x16 whole cell** | `$82 $83 / $92 $93` | 6, **1** | lit wall torch: flame (idx 5/6) + glow rings on the dark top half, iron sconce on the plate in the face strip |
+| `fc_sconce` (**dark rooms**) | wall face, ~every 6th face cell | `GFX_10` cells (4,0) (5,0) -> px (32,0) | `$84 $85` (top row = plain wall top `$15`) | 6 (bottom) / 7 (top), **1** | unlit iron sconce with a dead torch stub: dark rooms have no flames |
+
+Unused spare cells: `GFX_10` (4,1) (5,1) (`$94 $95`, solid), (6..13,1) and everything not listed. **Do not move art to other tile ids without checking the type table** (`UnderworldTileTypes`, `bank_0E.asm:274`): every id above is type `$00` (floor variants) or `$01` (wall variants); the verified free lists are in `docs/engine_notes.md` section 13.
+Draw rules that follow: floor variants must keep the brick skeleton (mortar rows y=0 and y=8, vertical joints x=0 / x=8) so they tile with the plain block (except the rune flagstone); `_h` variants are H-flipped copies, so keep the light direction readable when mirrored; wall variants are priority 1 (they hide sprites, section 3.2).
+Placement (`variant_plan`): torches never within one column of an exit cell below and never above a guard; banners/sigils/cracks >= 3 cells from other decorations; floor variants never on `S`/`X`/guard cells, never directly below a wall, never next to another variant (the shadow line excepted); wall-top variants on ~55% of the `ceil` cells (crack/seam blocks never directly above a face).
+Counts over the 21 rooms (`visual_tiles` log): 41 torches in the 7 lit rooms, 44 sconces in the 14 dark rooms.
+
+Palette additions that go with it (`gfx/src/palettes/bg_dungeon.yaml`, groups 00-05 only; the E3 colours of every other index are unchanged, `colours[0]` still identical in all six groups):
+
+| group | row 3 idx 7 (moss) | row 6 idx 7 (banner cloth) | lit groups only: row 3 idx 5 (warm bevel) / idx 6 | lit groups only: row 6 idx 6 (flame) |
+|---|---|---|---|---|
+| 00 dark floor 1 | `35603A` | `B03050` crimson | -- | -- |
+| 01 dark floor 2 | `4A7438` | `2A9A94` teal | -- | -- |
+| 02 dark floor 3 | `5E6E32` | `2A9A94` teal | -- | -- |
+| 03 lit floor 1 | `4A7040` | `C03858` | `A87850` / `F0B040` | `FFC040` |
+| 04 lit floor 2 | `56783E` | `30AAA4` | `A88458` / `F0B040` | `FFC040` |
+| 05 lit floor 3 | `6E7C38` | `30AAA4` | `B48254` / `F0B040` | `FFD060` |
+
+(`tools/art/env_art.py palette` applies exactly these edits to the yaml; the colour-rule hue bands are not hit: no violet in an env sheet.)
+
+---
 
 ### 3.2 Priority (important for painting walls)
 
@@ -140,7 +187,7 @@ The placeholders of E3 hold the **same colours in all five rows** of a group, ti
 
 ### 3.4 What is still the same everywhere
 
-* One floor block for every floor/lighting (only the palette differs). All 64-cell slots above not mentioned are never referenced by the tilemap, so painting them changes nothing visible.
+* The plain floor / wall-top / wall-face / pillar / exit tiles of sections 3.1 (the decoration of 3.5 is drawn over them). One floor block for every floor/lighting (only the palette differs). All 64-cell slots above not mentioned are never referenced by the tilemap, so painting them changes nothing visible.
 * The wall face repeats every 16 px, the pillar/exit marker are single 16x16 blocks used for every `p` / `X`.
 
 ---
@@ -207,24 +254,24 @@ Pose by state (facing = `$0DE0`):
 * **ASLEEP**: `head_sleep` + `body_sleep` + `lantern_1` on the ground; facing is ignored. Dead / dying guards use no sprite (the poof comes from the common sheet, section 7).
 
 Palette: calm and asleep = OBJ row 4 (CGRAM `$A0`), alert = **OBJ row 6** (`$C0`): every block of the guard (head, body, lantern) takes the same row, so the alert guard turns amber as a whole. The icon keeps row 4 (attr `$29`).
-Index meaning in game:
+Index meaning in game (painted, `tools/art/cast_pal.py`; calm = `sprites.yaml` `pal_sprite_03` row 0, alert = asm `Hush_PalAlert`):
 
-| idx | OBJ row 4 (calm) | OBJ row 6 (alert) |
-|---|---|---|
-| 1 | `080818` ink | `080818` |
-| 2 | `39317B` | `CE7318` dark amber |
-| 3 | `21184A` | `7B4210` brown |
-| 4 | `9C94DE` | `F7C663` light amber |
-| 5 | `F7AD39` amber | `FFD65A` bright amber |
-| 6 | `EFEFFF` | `FFF7D6` |
-| 7 | `AD7BF7` **violet** | `AD7BF7` **violet** |
+| idx | OBJ row 4 (calm) | OBJ row 6 (alert) | used for |
+|---|---|---|---|
+| 1 | `081018` outline | `080818` | outline |
+| 2 | `284868` dark slate | `C87018` dark amber | helmet, pauldrons, belt, boots |
+| 3 | `102038` deep shade | `784010` brown | visor, trousers, cape, face hollow |
+| 4 | `4888A8` steel blue | `F0C060` light amber | uniform |
+| 5 | `F0A838` **amber** | `F8D058` bright amber | lantern glass, helmet badge, belt buckle |
+| 6 | `D8E8F8` pale | `F8F0D0` | eyes, collar highlight, lantern core |
+| 7 | `40C8B8` teal (**never painted**) | `A878F0` **violet** | forbidden: violet in the alert row |
 
 Painting rule that follows: use the same index for "the lantern/the face" and the game recolours the whole guard amber when alert: put the body in indices 2-3, lantern/accents in 5, face in 6.
-Row 6 colours 1-7 are **assembler constants** (`Hush_PalAlert`, `src/hooks/guard_runtime.asm:118`), not yaml, until the art agent moves them into `sprites.yaml`.
+Row 6 colours 1-7 are **assembler constants** (`Hush_PalAlert`, `src/hooks/guard_runtime.asm:118`), not yaml (leave them; the painted indices were chosen so they look right: dark slate helmet -> dark amber helmet, steel body -> light amber body). `GFX_BC` has role `danger` (amber idx 5 used, violet idx 7 never used; `gfx_convert.py check` enforces both).
 
 What the engine does NOT do any more (the old vanilla soldier pieces are gone): no weapon column, no 24-px-wide body strips, no duplicate/mirrored body halves, no head bobbing, no separate legs. A pose = one head block + one body block + the lantern, so each block can be painted on its own as a plain 16x16 picture.
 Culling: all five entries are drawn only while the guard origin is inside screen x 8..231, y 24..199 (always true in HUSH rooms: rows 0-1 / 13 and columns 0 / 15 are walls); outside that window the guard is hidden.
-Placeholder state: the current `GFX_BC.png` carries labelled placeholder blocks in exactly these 14 positions (`HD HU HS HZ`, `D1 D2 U1 U2`, `S1 S2 S3 BZ`, lanterns `0 1`); `make gfx` would regenerate the old labelled grid (it does not know this layout) - do not run it after painting.
+Painted state (A0-art): all 14 blocks are hand-drawn by `tools/art/cast_guard.py` (ASCII pixel blocks; re-run it to regenerate `GFX_BC.png`; `make gfx` would overwrite it with the old labelled grid, never run it). Guard = steel-blue uniform, dark slate helmet with an amber badge, visor with pale eyes, amber lantern; the sleeping guard has closed eyes and a slumped body. On the floors it must stay readable against indigo (floor 1), teal-green (floor 2) and wine (floor 3): the uniform is the lightest large area of the sprite and no floor palette has a steel blue.
 Test: `tests/smoke/guard_draw.lua` checks every guard draw call (tiles, flips, positions, palette, entry count, flicker period) against this section.
 
 ---
@@ -239,14 +286,14 @@ Test: `tests/smoke/guard_draw.lua` checks every guard draw call (tiles, flips, p
 | spare | -- | `$FF` | idx 63 = (15,3) | (120,24) | not drawn |
 
 Drawn at guard origin `(+4, -22)` (x 4..11, y -22..-15), attr `$29` (OBJ row 4, priority 2, name table 1), **right expansion**: sheet idx `i` -> OBJ row 4 colour `8+i`
-(same colours as the left half: 5 `F7AD39` amber, 6 `EFEFFF`). Source of truth for the tile numbers: `src/hooks/guard_draw.asm` (icon tile = `$FB` + awareness state, attribute `$29`, offset (+4, -22)). The 8x8 placeholders already there are hand painted; `make gfx` would erase them.
+(OBJ row 4 right half = `pal_sprite_03` row 1: 1 `081018` outline, 4 `F0D878` pale gold, 5 `F0A838` amber, 6 `90E8E0` pale teal, 7 `38A898`). Source of truth for the tile numbers: `src/hooks/guard_draw.asm` (icon tile = `$FB` + awareness state, attribute `$29`, offset (+4, -22)). Painted by `tools/art/cast_fx.py`: `?` pale gold, `!` bold amber (2 px stem, pale-gold left edge), `Z` pale teal (asleep = harmless); each has a 1 px outline (idx 1) so it reads on every floor, and the three glyphs differ in shape, not only in colour. `make gfx` would erase them.
 
 ---
 
 ## 7. Shadows, Ink Pot, poof, sparkles, arrow (the "common sprite" sheets)
 
-**These four sheets (`GFX_73`, `GFX_79`, `GFX_7A`, `GFX_7D`) are listed as `role: debug`, `decision: unused`, magenta palette in their yaml/PNG, but the game draws them** (loaded by `LoadCommonSprites`
-for every room). Everything in this section needs the yaml role and PNG palette fixed before painting (section 12, item 2).
+**These four sheets (`GFX_73`, `GFX_79`, `GFX_7A`, `GFX_7D`) were listed as `role: debug`, `decision: unused`, magenta palette in their yaml/PNG, but the game draws them** (loaded by `LoadCommonSprites`
+for every room). Since A0-art they have `role: player`, `decision: redraw` and the FX palette (below) and are painted by `tools/art/cast_fx.py`. Uncompressed 3bpp sheets must start with `$FF`: **tile 0 row 0 of every one of these four sheets must be colour 1** (`tools/gfx_insert.py`); `cast_fx.py` puts a 1-px line there (in `GFX_79` cell (0,0) the sparkle sits one row lower).
 
 | element | sheet | cells -> px | OAM | row / expansion |
 |---|---|---|---|---|
@@ -263,8 +310,17 @@ Exact `GFX_79` cells seen: (0,0) (3,0) (4,0) (5,0) (6,0) (7,0) (8,0) (9,0) (10,0
 `GFX_7A`: (6,1) (7,1). `GFX_7D`: (12,2) (13,2) (14,2) (15,2) (12,3) (13,3) (14,3) (15,3).
 Mark-up of which cells are drawn: `tools/art_preview.py <sheet> --used`.
 
-Palette the explosion is drawn with (OBJ row 1 colours 1-7 are overwritten at room load by `Hush_PalInk`, `src/hooks/guard_runtime.asm:120`): `080818 181042 100831 292963 4A399C 8C84E7 AD7BF7`
-(idx 7 of this row is the violet `AD7BF7`; the ink cloud is a player tool, so violet is legitimate here); poof/sparkles/arrow use row 2: `080818 39317B 21184A 9C94DE F7AD39 EFEFFF AD7BF7`.
+Palettes (the same index = the same *role* in every row they are drawn with, so one PNG serves all):
+
+| FX family (`GFX_73 79 7A 7D`) | idx 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|
+| meaning | outline | shade | deepest | mid violet | light violet | cyan-white glint | teal sparkle |
+| **OBJ row 2 left + right, rows 1 right / 3** (`pal_sprite_01`, `_right`, `pal_sprite_00_right`, `pal_sprite_02`): dart, poof, sparkles, Ink Pot | `080818` | `403078` | `181050` | `6848C8` | `A880F8` | `E0F8F8` | `38E0D0` |
+| OBJ row 1 left = **asm `Hush_PalInk`** (ink cloud; do not edit) | `080818` | `181040` | `100830` | `282860` | `483898` | `8880E0` | `A878F0` |
+| OBJ row 4 right (shadow only uses 1-2) | `081018` | `101038` | | | | | |
+
+The cloud is painted for the Ink row: smoke fill = 4, lighter rim = 5, tiny specks 6/7, shade 2/3; in the Ink row it reads dark indigo with periwinkle specks (no teal: `Hush_PalInk` has none). The poof and sparkles use the violet/teal row 2 (the same indices give violet smoke with teal sparkles). The Ink Pot flashes through rows 6, 5, 4, 3, 1, 0 right halves before it bursts (amber, violet, ...): an intentional warning flash; `pal_shield_00` (the 4 colours at OBJ 5 right 12-15, shared with the blade sheet) is now violet/teal, not magenta.
+Painted pieces: shadow = flat ellipse in rows 4-8 of block (12,2) (Link's shadow is its top cell mirrored); Ink Pot = round violet flask with cork, cyan glint and a teal ink drop; dart = violet shaft, `$2A/$2C` = fletching (tail, two flicker frames), `$3C` = head (tip down), `$3A/$3D` = the same rotated (tip right) - the game flips them for the other directions, tip is cyan-white.
 
 ---
 
@@ -307,8 +363,9 @@ VRAM tiles 0-4 / 16-20 every frame (`DoNMIUpdates` reads `$0ACC..$0AD6` as offse
 About 226 of the 896 cells are referenced (`tools/art_preview.py LINK --used` marks them); the rest of the sheet is never drawn in the scenes captured. `gfx/src/player/LINK.yaml` `frames:` lists the same blocks with the vanilla `LinkOAM_*` animation indices (`bank_00.asm:3462-4106`). The sword blade and sparkles
 are separate sprites (section 9), not part of LINK.png.
 
-Index colours (all rows as the game shows them, OBJ row 7): `1 080818, 2 4A298C, 3 734ACE, 4 AD7BF7, 5 CEADFF, 6 EFEFFF, 7 21184A, 8 E7D6FF, 9 6B63B5, 10 5A39AD, 11 8C63DE, 12 B58CFF, 13 392173, 14 DEC6FF, 15 F7EFFF`;
-yaml `gfx/src/palettes/link.yaml` group `pal_Palettes_GreenMail` (colours[0] = idx 1-7, colours[1] = idx 8-15; its element 0 is CGRAM colour 8 = idx 8).
+Index colours (OBJ row 7, painted; `gfx/src/palettes/link.yaml` `pal_Palettes_GreenMail`, `tools/art/cast_link.py` `LINK_PAL`): `1 080818 outline, 2 382080 cloak dark, 3 583CB0 cloak, 4 885CE0 cloak light, 5 B890F8 violet bright, 6 D8F8F8 eye glint (pale cyan), 7 181050 boots,
+8 38D8C8 scarf teal, 9 188888 scarf shade, 10 201860 hood inner, 11 7050D0, 12 C0A8F8, 13 281858 face hollow, 14 E0D0F8, 15 F0F8F8`; violet cloak + pale-cyan eyes + teal scarf, **no amber** (role `player`: violet required, amber forbidden).
+Painted by `tools/art/cast_link.py` (every block listed in 8.1/8.2 plus the 8x8 hand (12,51)): hooded cloak, glowing eyes, scarf (hanging tail down/up, flying tail in profile), legs per walk phase (stand / step L / step R / mid, alternating in the order of the walk tables), the same body for sword/bow/push poses (the blade and bow are separate sprites). Cells of LINK.png that no scene draws (hurt, dying, swimming, ...) keep the labelled placeholder.
 
 ---
 
@@ -330,7 +387,8 @@ Per swing step (`$3C` = 1..9, down-facing; the other facings reuse the same cell
 | 7 | the (5,0)+(5,1) column flipped H+V |
 | 8-9 | block (6,0); block (8,0); then (5,1)/(5,0) is held while B is down |
 
-In game, idx 1-3 are the sword colours `AD7BF7 CEADFF 4A298C` (`sword.yaml`, 3 colours at CGRAM 9-11). **Idx 4-7 of this sheet are the magenta shield placeholders (`FF00FF 101010 FF63FF B500B5`) in game** (section 11).
+Painted by `tools/art/cast_fx.py` (`GFX_D1` role `player`, palette: idx 1-3 = the real blade colours, idx 4-7 = `pal_shield_00` violet/teal, unused). In game idx 1-3 are `8858E8` violet blade, `D0F8F8` cyan-white glint along the edge, `302068` deep violet edge/guard/grip (`sword.yaml` `pal_sword_00..04`). **The art uses indices 1-3 only** (the old "palette trap" of idx 7 is gone: idx 7 is teal and the player rule is satisfied by idx 1).
+Geometry (from the OAM dumps of the swing): unflipped pieces are: column `(5,0)+(5,1)` and `(0,0)+(0,1)` = blade **tip up** (tip in the top cell, hilt below); horizontal pairs `(3,0)(4,0)` and `(3,1)(4,1)` = blade **tip left** (hilt in the right cell); the four 16x16 blocks `(1,0)`, `(10,0)`, `(6,0)`, `(8,0)` = diagonal "\" blade, tip top-left, hilt bottom-right (different slopes). The swing flips them (V: pointing down/left-down, HV: down-right), so every piece must be vertically/horizontally flip-safe: it is.
 
 ### 9.2 Other tools: see section 7 (arrow, Ink Pot, ink cloud, poof, sparkles)
 
@@ -343,24 +401,25 @@ In game, idx 1-3 are the sword colours `AD7BF7 CEADFF 4A298C` (`sword.yaml`, 3 c
 | BG 0 / BG 1 (BG3 HUD, 4 colours per sub-palette) | 0-3, 4-7, 8-11, 12-15 | `hud.yaml` `pal_hud_00..03` (row 0) / `pal_hud_04..07` (row 1) | `PaletteLoad_HUD` `bank_1B.asm:6386` | colour 0 = transparent. `EFEFFF 6B63CE 101039` |
 | BG 2..7 (rooms) | 1-7 / 8-15 | `bg_dungeon.yaml` **`pal_dungeon_00..05`**, BG row `k` = `colours[2(k-2)]` (7 entries) + `colours[2(k-2)+1]` (8 entries) | `PaletteLoad_UnderworldSet` `bank_1B.asm:6409` | room header palette set -> `UnderworldPaletteSets` row 0-5 -> group 00-05 (section 3.3: dark floor 1/2/3 = 00/01/02, lit = 03/04/05); groups 06-19 unused. Floor = BG 3, exit marker BG 4, pillar BG 5, wall face BG 6, wall top BG 7 |
 | OBJ 0 | 1-7 / 9-15 | `sprites.yaml` `pal_spritepal0_00` / `bg_dungeon.yaml` `pal_dungeon_00` row 0 | `PaletteLoad_SpritePal0Left` `bank_1B.asm:6039`, `PaletteLoad_UnderworldSet` | used by nothing visible except bomb flash frames |
-| OBJ 1 | 1-7 / 9-15 | **colours 1-7: asm `Hush_PalInk`** (runtime, `guard_runtime.asm`) / `sprites.yaml` `pal_sprite_00_right` | `PaletteLoad_SpriteMain` `bank_1B.asm:6067` | ink smoke, explosion, bow, sparkles |
-| OBJ 2 | 1-7 / 8-15 | `sprites.yaml` `pal_sprite_01` / `pal_sprite_01_right` | `PaletteLoad_SpriteMain` | poof, arrow, sparkles, Ink Pot |
+| OBJ 1 | 1-7 / 9-15 | **colours 1-7: asm `Hush_PalInk`** (runtime, `guard_runtime.asm`; `pal_sprite_00` holds the same colours for reference) / `sprites.yaml` `pal_sprite_00_right` (FX violet) | `PaletteLoad_SpriteMain` `bank_1B.asm:6067` | ink smoke, explosion, bow, sparkles |
+| OBJ 2 | 1-7 / 8-15 | `sprites.yaml` `pal_sprite_01` / `pal_sprite_01_right` (FX: violet ramp, cyan-white, teal) | `PaletteLoad_SpriteMain` | poof, dart, sparkles, Ink Pot |
 | OBJ 3 | 1-7 / 8-15 | `sprites.yaml` `pal_sprite_02` rows 0/1 | `PaletteLoad_SpriteMain` | not used by anything drawn |
-| **OBJ 4** | 1-7 / 8-15 | `sprites.yaml` **`pal_sprite_03`** rows 0/1 | `PaletteLoad_SpriteMain` | **guards (calm), icons, shadows** |
-| OBJ 5 | 1-7 / 9-11 / 12-15 | `pal_spriteaux_03` (sprites.yaml) / **`sword.yaml` `pal_sword_00`** (3 colours) / `cut_unused.yaml` `pal_shield_00` (4 colours, magenta) | `PaletteLoad_SpriteAux1`, `PaletteLoad_Sword` `:6141`, `PaletteLoad_Shield` `:6167` | Shade Knife = right half, colours 9-11 only |
+| **OBJ 4** | 1-7 / 8-15 | `sprites.yaml` **`pal_sprite_03`** rows 0/1 (left = guard steel/amber, right = icon colours + shadow) | `PaletteLoad_SpriteMain` | **guards (calm), icons, shadows** |
+| OBJ 5 | 1-7 / 9-11 / 12-15 | `pal_spriteaux_03` (sprites.yaml) / **`sword.yaml` `pal_sword_00`** (3 colours) / `cut_unused.yaml` `pal_shield_00` (4 colours, now violet/teal) | `PaletteLoad_SpriteAux1`, `PaletteLoad_Sword` `:6141`, `PaletteLoad_Shield` `:6167` | Shade Knife = right half, colours 9-11 only |
 | **OBJ 6** | 1-7 / 9-15 | **colours 1-7: asm `Hush_PalAlert`** (runtime) / `sprites.yaml` `pal_environment_0A` | `PaletteLoad_SpriteEnvironment` `:6215` | alert guard (amber) |
 | **OBJ 7** | 1-7 / 8-15 | `link.yaml` `pal_Palettes_GreenMail` rows 0/1 | `PaletteLoad_LinkArmorAndGloves` `:6322` | Link |
 
-Full CGRAM dump, room 6 (identical in all rooms; `RT` = runtime asm constants):
+Full CGRAM dump, room 6 (identical in all rooms; `RT` = runtime asm constants; the sprite rows are as painted in A0-art):
 
 ```
-BG2..BG7  000000 | 000018 292163 312973 101031 5A52AD F7AD39 8C8CA5 | 8C8CA5 000018 292163 312973 101031 5A52AD F7AD39 8C8CA5
-OBJ0      000000 | 080818 39317B 21184A 9C94DE F7AD39 EFEFFF AD7BF7 | 000000 000018 292163 312973 101031 5A52AD F7AD39 8C8CA5
-OBJ1 RT   000000 | 080818 181042 100831 292963 4A399C 8C84E7 AD7BF7 | EFEFFF 080818 39317B 21184A 9C94DE F7AD39 EFEFFF AD7BF7
-OBJ2,3,4  000000 | 080818 39317B 21184A 9C94DE F7AD39 EFEFFF AD7BF7 | EFEFFF 080818 39317B 21184A 9C94DE F7AD39 EFEFFF AD7BF7
-OBJ5      000000 | 080818 39317B 21184A 9C94DE F7AD39 EFEFFF AD7BF7 | 000000 AD7BF7 CEADFF 4A298C FF00FF 101010 FF63FF B500B5
-OBJ6 RT   000000 | 080818 CE7318 7B4210 F7C663 FFD65A FFF7D6 AD7BF7 | 000000 080818 39317B 21184A 9C94DE F7AD39 EFEFFF AD7BF7
-OBJ7      000000 | 080818 4A298C 734ACE AD7BF7 CEADFF EFEFFF 21184A | E7D6FF 6B63B5 5A39AD 8C63DE B58CFF 392173 DEC6FF F7EFFF
+BG2..BG7  (see section 3.3 / hud / room tiles: not the cast)
+OBJ0      000000 | 080818 403078 181050 6848C8 A880F8 E0F8F8 38E0D0 | (BG row 2 colours 9-15)
+OBJ1 RT   000000 | 080818 181040 100830 282860 483898 8880E0 A878F0 | E0F8F8 080818 403078 181050 6848C8 A880F8 E0F8F8 38E0D0
+OBJ2,3    000000 | 080818 403078 181050 6848C8 A880F8 E0F8F8 38E0D0 | E0F8F8 080818 403078 181050 6848C8 A880F8 E0F8F8 38E0D0
+OBJ4      000000 | 081018 284868 102038 4888A8 F0A838 D8E8F8 40C8B8 | E0F8F8 081018 101038 885810 F0D878 F0A838 90E8E0 38A898
+OBJ5      000000 | (pal_spriteaux_03)                              | 000000 8858E8 D0F8F8 302068 6848C8 A880F8 E0F8F8 38E0D0
+OBJ6 RT   000000 | 080818 C87018 784010 F0C060 F8D058 F8F0D0 A878F0 | (pal_environment_0A)
+OBJ7      000000 | 080818 382080 583CB0 885CE0 B890F8 D8F8F8 181050 | 38D8C8 188888 201860 7050D0 C0A8F8 281858 E0D0F8 F0F8F8
 ```
 
 Editing rule: a room only loads one group of a family (the ones named above for HUSH). Edit **exactly those groups**; for the room BG family that means `pal_dungeon_00..05`. The CGRAM dump above is room 6 (`pal_dungeon_00`); the other variants differ only in BG rows 2-7.
@@ -375,11 +434,11 @@ Roles come from each sheet's yaml. Which PNG indices are amber/violet in the aut
 | sheet | role in yaml | rule | where it bites |
 |---|---|---|---|
 | `GFX_00`, `GFX_06` (floor, wall) | env | no violet | harmless: the bg palette has no violet. Amber idx 6 (torch/lamp light) is allowed |
-| `GFX_BC` (guard) | **env** (not danger!) | no violet; nothing requires amber | **never use idx 7** (violet, and in game = violet in both rows). If the art agent re-roles it to `danger` it must contain amber (idx 5) and no idx 7. In game the alert row recolours idx 2-6 amber automatically; E4: head, body and lantern all use the row |
-| `GFX_C5` (icons) | env | no violet | `?` `!` amber idx 5, `Z` idx 6: fine; idx 7 forbidden |
-| `LINK` | player | must contain violet, no amber | violet = idx 2,3,4,5,10-14; idx 6,7,8,9,15 do not count. Painting only with 1/6/7/8/9/15 fails the rule. No amber idx exists, so amber cannot be used |
-| `GFX_D1` (blade) | player | must contain violet, no amber | **trap**: the PNG palette says idx 7 = violet `A878F0`, idx 5 = amber (forbidden). The game's blade colours are idx 1-3 = violet shades; idx 7 renders `B500B5` magenta. To *pass the check* the PNG must use idx 7 at least once, which puts magenta on screen. **Fix needed (art agent):** change D1's PNG palette and yaml `palette.indices` so idx 1-3 are `A878F0 C9ABFF 4B2E8C` (as `sword.yaml`) and idx 4-7 unused; same for D2/D3/C7 if used |
-| `GFX_73/79/7A/7D` | **debug** | exempt from role rules, magenta palette | painting with the magenta palette = in-game colours come from the CGRAM row anyway (section 10), but a debug role means **no rule protects it**: the ink cloud (violet idx 7 in row 1) and the dart (row 2) are player colours; the poof is neutral. Needs `role:` + PNG palette of the `spr` family before painting |
+| `GFX_BC` (guard) | **danger** | amber required, no violet | amber idx 5 is used (lantern, badge, buckle); **never use idx 7** (it is violet in the alert row). Both enforced by `gfx_convert.py check` |
+| `GFX_C5` (icons) | env | no violet | `?` idx 4, `!` idx 5, `Z` idx 6: fine; the PNG palette of C5 holds the icon colours (no violet) |
+| `LINK` | player | must contain violet, no amber | palette is violet shades + pale cyan / teal accents; no amber anywhere in the sheet |
+| `GFX_D1` (blade) | player | violet, no amber | **fixed**: PNG palette idx 1-3 = the in-game blade colours (violet used by idx 1), idx 4-7 = violet/teal shield colours, never magenta |
+| `GFX_73/79/7A/7D` | **player** (was debug) | violet required, no amber | FX palette: violet ramp + cyan-white + teal; idx 5 (light violet) must be used at least once per sheet (`GFX_7A` stars use it for the arms) |
 | `GFX_DD/DE/DC`, `FONT` | ui | none | free |
 | any sheet | -- | SNES limits | 3bpp: indices 1-7 only; two distinct colours may not collapse to the same BGR555; sizes multiple of 8 |
 
@@ -390,12 +449,13 @@ Roles come from each sheet's yaml. Which PNG indices are amber/violet in the aut
 ## 12. Problems found while mapping (need a decision/owner)
 
 1. ~~No exit marker, no pillar look, no floor-per-floor look~~ done in E3 (sections 3.1, 3.3): exit marker, pillar, wall face and six palette variants exist as separate tiles/palette groups; the art in them is still the A0 placeholder.
-2. **Four sheets in use are labelled unused/debug** (`GFX_73 GFX_79 GFX_7A GFX_7D`, magenta yaml): shadow, ink cloud, poof, sparkles, dart, bow, Ink Pot. Owner: art agent (`gfx/src/sprite/*.yaml`, role + palette).
-3. **`GFX_D1` palette mismatch**: the colour rule forces idx 7 (violet) while the game renders idx 4-7 magenta (section 11). Owner: art agent.
-4. **`GFX_BC` has role env**, but it is the danger sprite; and the alert/ink rows are asm constants, not yaml (`Hush_PalAlert`, `Hush_PalInk`).
+2. ~~Four sheets in use are labelled unused/debug~~ fixed in A0-art: `role: player`, FX palette, painted (section 7).
+3. ~~`GFX_D1` palette mismatch~~ fixed (section 9.1: art in idx 1-3, idx 4-7 not magenta any more).
+4. ~~`GFX_BC` has role env~~ fixed: role `danger`. The alert/ink rows are still asm constants (`Hush_PalAlert`, `Hush_PalInk`), documented in sections 5 and 7; to get teal sparkles in the ink cloud `Hush_PalInk` would have to contain a teal (engine decision).
 5. Walls hide sprites (priority 1, section 3.2); wall art must be designed with that.
-6. Dart "arrow" and bow limbs share palette row 2 / row 1 with the poof/ink; row 1 is the ink-smoke palette, so the bow limbs are ink-coloured.
-7. Placeholder tile art of different sheets is identical (same label text per cell), so a pixel comparison of VRAM against `gfx/src` **cannot** tell sheets apart; do not rely on it. The trace ROM (section 13) can.
+6. Bow limbs (`GFX_73` cells (8..10, 0..1)) are drawn with row 1 = the ink palette and are not painted (they show only while aiming); the dart itself uses row 2. Painted in A0-art as a violet bow: cell (9,0) = the curve rising to the right, (9,1) its vertical mirror, (10,0)/(10,1) the tip stubs (row 1 = the ink palette: idx 7 violet bow, idx 5 shade).
+7. The title sheets are painted (section 14). Unpainted but never visible in HUSH: LINK.png cells not listed in section 8, GFX_B9, GFX_86, GFX_C7, GFX_D2, GFX_D3, GFX_D8, all text fonts.
+8. Placeholder tile art of different sheets is identical (same label text per cell), so a pixel comparison of VRAM against `gfx/src` **cannot** tell sheets apart; do not rely on it. The trace ROM (section 13) can.
 
 ---
 
@@ -408,6 +468,12 @@ Roles come from each sheet's yaml. Which PNG indices are amber/violet in the aut
 .venv/bin/python tools/art_apply.py /tmp/bc.png gfx/src/sprite/GFX_BC.png                    # whole sheet
 .venv/bin/python tools/art_apply.py floor16.png gfx/src/bg_tileset/GFX_06.png --at 96 16       # a 16x16 patch: the floor block
 .venv/bin/python tools/gfx_convert.py check                                                  # the whole-tree check
+# painters of the cast (A0-art; all original ASCII/procedural pixel art, re-runnable, they rewrite gfx/src PNGs):
+.venv/bin/python tools/art/cast_guard.py [--preview p.png]     # GFX_BC (14 blocks)
+.venv/bin/python tools/art/cast_fx.py                          # GFX_C5 icons, 7D shadow+pot, 79 cloud/poof/sparkles, 7A, 73 dart+bow, D1 blade
+.venv/bin/python tools/art/cast_link.py [--preview p.png]      # LINK.png (every block of section 8)
+.venv/bin/python tools/art/cast_title.py [--preview p.png]     # title sheets + title.yaml (section 14)
+.venv/bin/python tools/art/cast_yaml.py && .venv/bin/python tools/art/cast_meta.py   # palettes yaml + sheet briefs (colours in tools/art/cast_pal.py)
 ```
 
 Research chain (all under `tools/art/`, output under `build/art_research/`, nothing in the repo changes):
@@ -417,3 +483,21 @@ Research chain (all under `tools/art/`, output under `build/art_research/`, noth
 2. `dump_rooms.lua` (VRAM/CGRAM/OAM/PPU of all 21 rooms) and `dump_sprites.lua` (per-frame OAM, name-table-0 VRAM, Link DMA words, guard slots, ancillae: patrol/unaware, forced suspicious/alert/asleep, Link walking/sword/bow/Ink Pot, a sword kill) via
    `HUSH_ROM=<trace rom> HUSH_RESULTS=build/art_research/tr .venv/bin/python tools/run_test.py tools/art/dump_*.lua`.
 3. `sprlog.py`, `tilelib.py`, `catalog.py`, `linkposes.py`, `build_game_map.py` (-> `tools/art/game_map.json`, read by `art_preview.py`).
+
+---
+
+## 14. Title screen (`title/GFX_40 GFX_41 GFX_39`, `tools/gfx_title.py`, `palettes/title.yaml`)
+
+The title is **generated**: `tools/gfx_title.py` builds the logo from geometry + the HUSH 5x7 font, assigns tile numbers, and writes the stripe stream (`stream()`, **355 of 373 bytes**, asserted); `tools/art/cast_title.py` paints the three sheet PNGs, `palettes/title.yaml` and the sheet briefs from it (`--preview out.png` composes the screen without the emulator). `gfx_placeholder.py` uses the same module, so even a regenerated placeholder keeps the logo. Re-run `cast_title.py` after any change to `gfx_title.py`, then `make build`.
+Measured in MesenCE: **sheets 40/41 (tiles `$100-$17F`) are expanded to the RIGHT half, sheet 39 (`$180-$1BF`) to the LEFT half**; BG rows 2-6 left halves = `pal_owmain_05` rows 0-4, row 7 left = `pal_owanim_00`, right halves: rows 2&5 / 3&6 / 4&7 = `pal_owaux_03` rows 0 / 1 / 2.
+
+| element | cells (col,row) | layer / sheet | palette field | notes |
+|---|---|---|---|---|
+| backdrop | whole screen, 5 horizontal bands (rows 0-3, 4-7, 8-17, 18-22, 23-31) | BG2, solid tile of sheet 39 | left rows 2, 3, 4, 5, 2 -> idx 1 `04031A / 08062A / 100C40 / 0A0830` | deep indigo, lighter around the logo; 5 fixed runs = 30 bytes |
+| chain + lantern | cols 15-16: chain rows 0-3 (vertical runs), lantern 16x24 rows 4-6 | BG1, sheet 39 | left row 6 (amber set) | the lantern hangs over the logo |
+| **HUSH logo** | cols 9-22, rows 8-13 (14 x 6 cells, 81 unique tiles in `$100-$150`) | BG1, sheets 40/41 | right rows: set **A violet** (logo rows 0-2), **B blend** (row 3), **C teal** (rows 4-5) | bevelled blocky letters 22x34 px, outline idx 1, 2-step dithered glow idx 3/2, highlight 6, sparkle 7 |
+| amber rule | row 14, cols 9-22 | BG1, sheet 39 | left row 6 | fixed run of one tile + two fading end tiles |
+| PRESS START | cols 8-23, rows 19-20 | BG1, sheet 39 | left row 6 | 2x font, amber (top bright idx 5, body 4, shade 7), outline idx 1 |
+
+Colour sets (hex): A `06041A 1A1454 2E2078 5A3CC0 8C64F0 D8C8FF F8F8FF`, B `06041A 14284E 233C7C 4364B0 6896D8 CCE4F8 F8FFFF`, C `06041A 0C3040 105068 2C8CA0 48C8C0 C0FFF0 F8FFFF`, amber `0A0618 3A2008 7A4A10 F0A838 FFD060 FFF4C8 B87820`.
+Tile pools: right `$100..$150` (sheet 40 holds `$100-$13F`, sheet 41 `$140-$17F`), left `$180..$1A8`; `$1BF` = the transparent tile that wipes BG1. Capacity: the compressed sheets must fit 1334 / 1376 / 849 bytes (checked by `gfx_insert.py`). The stream budget is the ledger row `$0CDD6D-$0CDEE1` (373 B); 18 bytes are left (a glow halo around the lantern would fit in a few).

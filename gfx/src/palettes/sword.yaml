@@ -4,25 +4,25 @@ groups:
     decision: reuse-as
     rom_rows: [$1BD630]
     colours:
-    - [A878F0, C9ABFF, 4B2E8C]
+    - [8858E8, D0F8F8, '302068']
   pal_sword_01:
     decision: reuse-as
     rom_rows: [$1BD636]
     colours:
-    - [A878F0, C9ABFF, 4B2E8C]
+    - [8858E8, D0F8F8, '302068']
   pal_sword_02:
     decision: reuse-as
     rom_rows: [$1BD63C]
     colours:
-    - [A878F0, C9ABFF, 4B2E8C]
+    - [8858E8, D0F8F8, '302068']
   pal_sword_03:
     decision: reuse-as
     rom_rows: [$1BD642]
     colours:
-    - [A878F0, C9ABFF, 4B2E8C]
+    - [8858E8, D0F8F8, '302068']
   pal_sword_04:
     decision: reuse-as
     rom_rows: [$1BD6E0, $1BD6E6]
     colours:
-    - [A878F0, C9ABFF, 4B2E8C]
-    - [A878F0, C9ABFF, 4B2E8C, ECE8FF]
+    - [8858E8, D0F8F8, '302068']
+    - [8858E8, D0F8F8, '302068', E0F8F8]

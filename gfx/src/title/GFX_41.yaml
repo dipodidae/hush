@@ -19,16 +19,16 @@ size_px:
 - 32
 tile_order: row-major, 16 tiles per row
 palette:
-  family: title
-  note: title screen sheets (indices 1-7); same colours in every title palette row
+  family: title-logo
+  note: "RIGHT half of BG rows 2/3/4: logo letters. Shown: set A (violet); the game uses A, B, C per cell row"
   indices:
-    1: '#07061A deep (shadow/outline)'
-    2: '#2A2660 indigo panel'
-    3: '#5A54A8 logo shadow'
-    4: '#B8B2F0 lavender (spare)'
-    5: '#F2A93B AMBER accent: rules, PRESS START'
-    6: '#ECE8FF logo letters (near white)'
-    7: '#171436 dark indigo (spare)'
+    1: "#000018 outline"
+    2: "#181050 outer glow (dither)"
+    3: "#282078 inner glow"
+    4: "#5838C0 letter shade"
+    5: "#8860F0 letter main"
+    6: "#D8C8F8 letter highlight"
+    7: "#F8F8F8 sparkle"
 slot:
   rom: $13ECE5
   compressed: true
