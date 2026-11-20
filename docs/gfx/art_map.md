@@ -1,5 +1,9 @@
 # Art map: which pixel of which `gfx/src` PNG ends up where in the real game
 
+> **T0 SUPERSEDES sections 1 (rows 1, 2a-2c, 3), 3.1 and 3.5 (tile words, cells, variants).** Background tiles are now the autotiled set of `design/tiles.md`
+> (`tools/autotile.py`, painted by `tools/art/autotile_art.py apply` into GFX_00 ids 0-63 and GFX_10 ids 128-191; GFX_06 is unused by rooms). Each room is blitted by `Hush_Blit`;
+> collision comes from the rewritten `UnderworldTileTypes`. The tables below describe the pre-T0 build and are kept for history. Sprites, HUD and palettes are unchanged.
+
 Owner: engine/art helper (research for the director). **Measured, not guessed**: every row below was read out of MesenCE
 (headless, `build/hush.sfc` built 2026-11-19 13:25 from the working tree, all 21 rooms of `design/rooms`) and cross-checked
 against the usdasm loaders (cited as `bank_XX.asm:line`). Method and how to re-run it: section 13.

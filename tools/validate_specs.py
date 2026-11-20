@@ -37,7 +37,7 @@ MOVES = {"patrol", "still"}
 GUARD_IDS = "abcdefgh"
 GRID_ROWS, GRID_COLS = 14, 16
 # one char = one 16x16 px cell of the visible 256x224 window
-GRID_SYMBOLS = "#.SXp" + GUARD_IDS
+GRID_SYMBOLS = "#.SXpDOW" + GUARD_IDS      # T0 (design/tiles.md): D doorway (walk), O pit, W water (visual obstacles, solid)
 
 # field -> (python type(s), required)
 FIELDS = {
@@ -96,7 +96,25 @@ def check_grid(data: dict, gids: list, err) -> None:
     if set(letters) != {g for g in gids if g}:
         err(f"grid guard letters {sorted(set(letters))} must match guards[].id {sorted(g for g in gids if g)}")
     # reachability is advisory (guards stand on floor; Link needs a 4-connected path S -> every X)
-    solid = {"#", "p"}
+    solid = {"#", "p", "O", "W"}
+    for r in range(GRID_ROWS):
+        for c in range(GRID_COLS):
+            ch = grid[r][c]
+            if ch == "D":
+                if not (1 <= r < GRID_ROWS - 1 and 1 <= c < GRID_COLS - 1 and r >= 2):
+                    err(f"grid: 'D' at (row {r}, col {c}) must not be on the border (rows 0, 1, {GRID_ROWS - 1} / cols 0, {GRID_COLS - 1})")
+                    continue
+                if grid[r][c - 1] != "#" or grid[r][c + 1] != "#" or grid[r - 1][c] in solid or grid[r + 1][c] in solid:
+                    err(f"grid: 'D' at (row {r}, col {c}) needs '#' west and east and non-solid cells north and south (a one-cell doorway in a horizontal wall)")
+                if "D" in (grid[r][c - 1], grid[r][c + 1], grid[r - 1][c], grid[r + 1][c]):
+                    err(f"grid: 'D' at (row {r}, col {c}) touches another 'D'")
+            if ch in "OW":
+                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    n = grid[r + dr][c + dc] if 0 <= r + dr < GRID_ROWS and 0 <= c + dc < GRID_COLS else "#"
+                    if n in "SX" + GUARD_IDS:
+                        err(f"grid: '{ch}' at (row {r}, col {c}) is next to '{n}' (S, X and guard cells must not touch a pit / water)")
+                    if n in "OW" and n != ch:
+                        err(f"grid: pit 'O' and water 'W' touch at (row {r}, col {c})")
     start = next(((r, c) for r in range(GRID_ROWS) for c in range(GRID_COLS) if grid[r][c] == "S"), None)
     if start:
         seen, todo = {start}, [start]

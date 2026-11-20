@@ -587,3 +587,14 @@ QA: this is a bug that was latent since E2 (not in `docs/bugs.md`); the engine a
 ### 15.6 Results
 
 See the final report of the E7 change (`make build`, `make test`, `make chaos`, `HUSH_CHAOS_STRICT=1 make chaos`): pasted there, not here, because the numbers belong to the run.
+
+## 16. T0: autotiled background (design/tiles.md)
+
+Replaces sections 12-13 for the room tiles (the object-based draw, the E5 variant objects and the tile-id collision constraints). Collision and placement now follow the grid.
+
+* **Data**: `tools/roomgen.py` calls `tools/autotile.py place()` per room: 32 x 28 chars (one per 8x8 tile), regrouped into 16 x 14 cells of 4 tile words. A global dictionary (`Hush_CellWords`, 8 bytes per distinct cell, 81 for the 21 rooms) plus per room a RLE of cell ids (pairs count / id, `0,0` ends; 4.4 KB for all rooms) replace the object streams. The vanilla object stream of each room is an empty stub (floor byte + layout 7). Whole ROM data: 5.7 KB of the 12 032 B row `$1F8780-$1FB67F`.
+* **Decoder**: `Hush_BuildRoom` calls `Hush_Blit` (`$1FB680`, 256 B carved from the room-data row) right after `LoadAndBuildRoom`; it writes 4 words per cell into `$7E2000` at (tile 16, 18) with a 128-byte row stride, using only DP `$00-$0F`. The DMA of the window is unchanged.
+* **Collision**: `UnderworldTileTypes` (`$0E9659`, 256 B) is rewritten by roomgen: `$00` / `$01` per tile id of the new tileset (GFX_00 ids 0-63, GFX_10 ids 128-191). `Hush_AttrSet` still derives `$7F2000` from `$7EFE00 + id`, so guard vision, guard box, knife and arrows see the same `$00` / `$01` map as before. `Hush_AttrSet` lost the unused "types `$10-$1B` take the flip bits" rule to make room for the 4-byte `JSL Hush_Blit` (the `$0FFE72` block is full).
+* **Tile ids are free** now: no vanilla type constraint. Palette rows are unchanged (floor 3, exit 4, pillar and water 5, face 6, roof and pit 7). Sheets: `tools/art/autotile_art.py apply`.
+* **Gallery**: `tests/dev/rooms/gallery.yaml` (dev ROM only) exercises every case, including pit and water, which no shipped room uses (no sight / arrow semantics defined, see `design/tiles.md` Decisions).
+* **Verified**: `make test` (26 pass, 2 pre-existing savestate skips; unit autotile test; `visual_tiles` 18 816 tiles + collision vs the grid; `visual_gallery`; leakcheck clean). Before / after: `docs/gfx/screenshots/env_r05_f1_dark.png` vs `t0_r05_f1_dark.png`, `env_r09_f2_lit.png` vs `t0_r09_f2_lit.png`.

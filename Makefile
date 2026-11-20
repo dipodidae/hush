@@ -46,6 +46,7 @@ validate:
 
 test: build build-dev
 	$(PY) tools/gfx_compress.py --selftest
+	$(PY) tests/unit/test_autotile.py
 	$(PY) tools/run_test.py --suite smoke --suite solutions $(if $(STRICT),--strict)
 	$(MAKE) --no-print-directory leakcheck
 

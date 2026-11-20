@@ -51,3 +51,12 @@ Acceptance is a command that must pass or a named human check.
 | A1 | Colour/art pass: floors, decor, HUD, menu, guards, Link, tools, title | done |
 | B-006 | Lag with 5-6 guards + pot/dart spam | open (needs ~190 free bytes in bank $07) |
 | M5 | `dist/hush.bps` | built; human approval pending |
+
+## T0: autotiled background (human-requested)
+
+| ID | Task | Status |
+|---|---|---|
+| T0-1 | `design/tiles.md` spec (autotile, doorway / pit / water, engine contract) | done |
+| T0-2 | `tools/autotile.py` + painted tileset (113 cells) + `Hush_Blit` + grid-driven collision | done |
+| T0-3 | Tests: unit autotile (oracle), visual_tiles, visual_gallery | done |
+| T0-4 | Use doorway / pit / water in a shipped room | open: needs a decision on guard sight over pits and water (`design/tiles.md` Decisions 1) |

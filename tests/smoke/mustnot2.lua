@@ -54,7 +54,7 @@ local function at(r, cx, cy)
   if cy < 0 or cy >= #r.grid or cx < 0 or cx >= 16 then return "#" end
   return r.grid[cy + 1]:sub(cx + 1, cx + 1)
 end
-local function solid(r, cx, cy) local c = at(r, cx, cy); return c == "#" or c == "p" end
+local function solid(r, cx, cy) local c = at(r, cx, cy); return c == "#" or c == "p" or c == "O" or c == "W" end
 local function tele(r, cx, cy, dx, dy) local x, y = cellpx(r, cx, cy, dx, dy); bot.teleport(x, y) end
 local function face(code) bot.poke(0x7E002F, code) end
 local function alive(slot) return bot.peek(0x7E0DD0 + slot) == 9 end

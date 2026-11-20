@@ -66,6 +66,11 @@ assumes a tool it did not give.
 In: awareness states, conditional damage, instant restart, ~20 rooms, final
 heist room, the three tools, lit-room detection range, BPS release.
 
+In (human-approved extension, see `design/tiles.md`): autotiled background
+(walls, floor, edges, corners), grid-driven tile placement, and visual-only
+doorway / pit / water tiles. No guard-AI or sight change; no shipped room uses
+pit or water until `design/tiles.md` question 1 is decided.
+
 Out (do not build, do not design for): overworld, new bosses, new items beyond
 the three tools, dialogue/story scenes, multiple save files, any new engine
 subsystem not named in AGENTS.md.

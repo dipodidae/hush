@@ -114,7 +114,7 @@ function bot.path(room)
   end
   local function blocked(cx, cy)
     local ch = g[cy + 1]:sub(cx + 1, cx + 1)
-    return ch == "#" or ch == "p" or ch:match("[a-h]") ~= nil
+    return ch == "#" or ch == "p" or ch == "O" or ch == "W" or ch:match("[a-h]") ~= nil
   end
   local prev, queue, head = { [sy * 16 + sx] = -1 }, { { sx, sy } }, 1
   while head <= #queue do

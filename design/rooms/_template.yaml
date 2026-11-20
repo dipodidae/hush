@@ -17,6 +17,8 @@ grid:                        # exactly 14 rows x 16 chars; one char = one 16x16 
                              #   X  exit cell (>=1; touching any X ends the room)
                              #   p  pillar / cover (solid, same as #, may be drawn differently)
                              #   a-h  a guard standing on floor (each letter at most once; must match guards[].id)
+                             #   PROPOSED in design/tiles.md (not valid until approved + validate_specs updated):
+                             #   D  doorway (walkable)   O  pit (solid, visual)   W  water (solid, visual)
                              # Rows 0,1 (hidden under the HUD) and 13, columns 0 and 15 must be all #.
   - "################"
   - "################"

@@ -1,0 +1,41 @@
+# DEV room (T0, design/tiles.md section 8): the tile gallery. One screen with every autotile case: wall outline with L / U / 1-cell gap / staircase /
+# 1-cell pillar of wall, a pit and a water basin (3x3, single cell, L), a doorway, a pillar, S, X and one standing guard.
+# Not a playable puzzle; tests/unit/test_autotile.py and tests/smoke/visual_gallery.lua use it. Pit / water are NEVER used in design/rooms (tiles.md question 1).
+id: gallery
+status: draft
+seq: 9
+floor: 1
+teaches: >-
+  Dev gallery: every neighbour case of the wall, floor, pit and water autotile, plus doorway, pillar and exit.
+layout: >-
+  Mixed wall shapes, two basins, a doorway in a one-cell horizontal wall, one guard.
+grid:
+  - "################"
+  - "################"
+  - "#.......##.....#"
+  - "#.OOO...##.WWW.#"
+  - "#OOOOO.p##WWWWW#"
+  - "#.OOO......WWW.#"
+  - "#.......#D#...##"
+  - "####.####......#"
+  - "#...S..#.......#"
+  - "#.O..#.........#"
+  - "#...###..X.OO..#"
+  - "#..#####.......#"
+  - "#.a............#"
+  - "################"
+lighting: dark
+guards:
+  - type: lantern_guard
+    patrol: stands still
+    facing: right
+    id: a
+    move: still
+tools_given: []
+intended_solution: >-
+  None (gallery).
+solution_inputs: tests/solutions/dev1.inputs
+par_time_sec: 10
+ghost_possible: true
+must_not:
+  - Walking through walls.

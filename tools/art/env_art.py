@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """env_art: the E5 environment tiles (floor variants, wall-top variants, wall faces with torches/banners) as pixel grids.
 
-  tools/art/env_art.py apply      paint every tile below into gfx/src/bg_tileset/GFX_00/06/10.png (indexed writes, palette untouched)
+  tools/art/env_art.py apply      (PRE-T0, do NOT run: it repaints the old E5 art over the T0 sheets; use tools/art/autotile_art.py apply) paint every tile below into gfx/src/bg_tileset/GFX_00/06/10.png (indexed writes, palette untouched)
   tools/art/env_art.py preview    write build/art_preview/env_tiles_<group>.png (every block in the six room palettes, 4x)
 
 The digits are sheet indices 1-7 (index i = CGRAM colour 8+i of the BG row the tile word selects; docs/gfx/art_map.md section 3).

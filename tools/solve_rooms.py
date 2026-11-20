@@ -112,7 +112,7 @@ class Room:
         self.solid = [[False] * 64 for _ in range(64)]
         for cy, row in enumerate(self.grid):
             for cx, ch in enumerate(row):
-                if ch in "#p":
+                if ch in "#pOW":
                     for ty in (18 + 2 * cy, 19 + 2 * cy):
                         for tx in (16 + 2 * cx, 17 + 2 * cx):
                             self.solid[ty][tx] = True

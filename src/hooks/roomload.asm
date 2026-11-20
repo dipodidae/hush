@@ -17,7 +17,9 @@
 ;         Outside the window $7F2000 keeps its power-on / intro value 0 (walkable but unreachable behind the solid rim). Then the vanilla LoadComplexObjectAttributes and
 ;         LoadDoorObjectAttributes run (via Hush_AttrTail in bank 01: they are JSR-only; HUSH rooms have no stairs / doors so they only clear the counters), the crystal-peg flip
 ;         and `STZ $0200` as at the end of LoadEveryObjectAttributeSet (bank_01.asm:10640-10655).
-; Hook 3  free block NULL_01B53C (bank_01.asm:9965): Hush_AttrTail = JSR $B967 : JSR $BE17 : RTL (7 bytes after Hush_DrawVariant).
+; T0 (design/tiles.md): Hush_Blit (free row $1FB680, below) writes the room's autotiled window into $7E2000 right after LoadAndBuildRoom. Collision stays Hush_AttrSet's
+;         table lookup, but UnderworldTileTypes ($0E9659, 256 bytes, hook row) now carries $00 / $01 for the new tile ids (generated into build/rooms_gen.asm).
+; Hook 3  free block NULL_01B53C (bank_01.asm:9965): Hush_AttrTail = JSR $B967 : JSR $BE17 : RTL (7 bytes at $01B54F).
 ;
 ; Space: src/FREESPACE.md rows $02C583, $02827D, $01B53C (extended), $0FFE72 (NULL_0FFE72 "FREE ROM: 0x018E", bank_0F.asm:5337; all $FF, no references).
 ; =============================================================================
@@ -37,7 +39,8 @@ assert pc() <= $01B560                   ; the free block NULL_01B53C ends at $0
 
 org $0FFE72
 Hush_BuildRoom:                          ; M = X = 8 bit, in LoadAndDrawRoom
-    JSL $01873A                          ; LoadAndBuildRoom
+    JSL $01873A                          ; LoadAndBuildRoom (draws the empty stub stream: floor + layout 7)
+    JSL Hush_Blit                        ; T0: the 16 x 14 cells of the room -> the window of the BG2 buffer $7E2000
     SEP #$20
     LDA.b #$80 : STA.w $2115             ; VMAIN: word writes, increment after the high byte
     LDA.b #$7E : STA.w $4304             ; DMA0 source bank
@@ -89,13 +92,7 @@ Hush_AttrSet:                            ; M = X = 8 bit
     LDA.b [$00],Y : STA.b $04            ; tile word
     AND.w #$03FF : TAX
     SEP #$20
-    LDA.l $7EFE00,X                      ; tile type
-    CMP.b #$10 : BCC .store
-    CMP.b #$1C : BCS .store
-    STA.b $06
-    LDA.b $05                            ; types $10-$1B: the flip bits of the tile select the variant
-    ASL A : ROL A : ROL A : AND.b #$03
-    ORA.b $06
+    LDA.l $7EFE00,X                      ; tile type (T0: only $00 walk / $01 solid occur, the vanilla "$10-$1B take the flip bits" rule is dropped)
 .store
     LDX.b $0A
     STA.l $7F2000,X
@@ -118,3 +115,51 @@ Hush_AttrSet:                            ; M = X = 8 bit
     RTL
 Hush_RoomLoad_End:
 assert pc() <= $0FFFA0                       ; E6: the block must stay inside its src/FREESPACE.md row (pc = the first free byte)
+
+; ---- T0: Hush_Blit ---------------------------------------------------------------------------------------------------------------------------
+; Free row $1FB680-$1FB77F (the tail of the old room-data row; bank $1F, JSL from Hush_BuildRoom). Entered with any M/X, returns with the same (PHP/PLP).
+; Input:  !hush_room = room index; the room's ROOM TABLE record +24..26 = 24-bit pointer to its cell RLE: pairs (count 1..255, cell id), (0, 0) ends.
+;         Hush_CellWords = global cell dictionary, 8 bytes per id = tile words TL, TR, BL, BR (tools/roomgen.py).
+; Output: the 16 x 14 cells = 32 x 28 tiles of the window (tile x 16..47, y 18..45) in the BG2 tile buffer $7E2000 (128 bytes per tile row).
+; Scratch: direct page $00-$0F only ($10-$1F are live game variables). Y = destination offset between runs, X = destination inside a run.
+org $1FB680
+Hush_Blit:
+    PHP
+    REP #$30
+    LDA.l !hush_room : AND.w #$00FF
+    ASL A : ASL A : ASL A : ASL A : ASL A
+    TAX
+    LDA.l Hush_RoomTable+24,X : STA.b $00
+    LDA.l Hush_RoomTable+26,X : AND.w #$00FF : STA.b $02
+    LDY.w #(18*128+32)                   ; offset of tile (16, 18)
+    LDA.w #16 : STA.b $0E                ; cells left in this cell row
+.pair
+    LDA.b [$00] : INC.b $00 : INC.b $00
+    PHA
+    AND.w #$00FF : BEQ .end
+    STA.b $04                            ; run length
+    PLA : XBA : AND.w #$00FF
+    ASL A : ASL A : ASL A : TAX          ; cell id * 8
+    LDA.l Hush_CellWords+0,X : STA.b $06
+    LDA.l Hush_CellWords+2,X : STA.b $08
+    LDA.l Hush_CellWords+4,X : STA.b $0A
+    LDA.l Hush_CellWords+6,X : STA.b $0C
+    TYX
+.cell
+    LDA.b $06 : STA.l $7E2000,X
+    LDA.b $08 : STA.l $7E2002,X
+    LDA.b $0A : STA.l $7E2080,X
+    LDA.b $0C : STA.l $7E2082,X
+    INX : INX : INX : INX
+    DEC.b $0E : BNE +
+    TXA : CLC : ADC.w #192 : TAX         ; next cell row: 2 tile rows down (256), minus the 16 cells just written (64)
+    LDA.w #16 : STA.b $0E
++   DEC.b $04 : BNE .cell
+    TXY
+    BRA .pair
+.end
+    PLA
+    PLP
+    RTL
+Hush_Blit_End:
+assert pc() <= $1FB780                   ; the free row ends at $1FB77F
