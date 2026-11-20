@@ -29,9 +29,9 @@ tiles or palettes).
 
 ## Download
 
-**[Download `hush.bps` (latest)](https://github.com/dipodidae/hush/releases/download/latest/hush.bps)**,
-or see the [release page](https://github.com/dipodidae/hush/releases/tag/latest).
-It is republished automatically whenever `dist/hush.bps` changes on `main`.
+**[Download `hush.bps`](https://github.com/dipodidae/hush/raw/main/dist/hush.bps)**
+(always the patch on `main`). Also on the
+[latest release](https://github.com/dipodidae/hush/releases/tag/latest), which is republished automatically whenever `dist/hush.bps` changes on `main`.
 The patch in the repo is [`dist/hush.bps`](dist/hush.bps); a pre-commit hook
 (`make hooks` to enable) rebuilds and stages it on every commit to `main`, so it
 always matches the source. CI never sees the ROM.
