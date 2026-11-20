@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# HUSH pre-commit: on main, rebuild dist/hush.bps and stage it, so the
+# committed patch (published by .github/workflows/release-patch.yml) always
+# matches the committed source. Enable once with `make hooks`.
+# Skip for one commit with: HUSH_SKIP_PATCH=1 git commit ...
+set -euo pipefail
+
+branch=$(git symbolic-ref --short -q HEAD || true)
+[[ "$branch" == "main" ]] || exit 0
+[[ -z "${HUSH_SKIP_PATCH:-}" ]] || { echo "pre-commit: HUSH_SKIP_PATCH set, not rebuilding patch"; exit 0; }
+
+# Safety: never let ROM data or non-BPS patches into a commit.
+if git diff --cached --name-only | grep -Ei '\.(sfc|smc|srm|ips|ups|mss|mst)$'; then
+  echo "pre-commit: ROM-derived file staged (above); refusing to commit." >&2
+  exit 1
+fi
+
+if [[ ! -f rom/vanilla.sfc ]]; then
+  echo "pre-commit: rom/vanilla.sfc missing; cannot rebuild dist/hush.bps." >&2
+  echo "            Place the ROM or commit with HUSH_SKIP_PATCH=1." >&2
+  exit 1
+fi
+
+echo "pre-commit: on main, running make patch..."
+if ! make --no-print-directory patch >/tmp/hush-precommit.log 2>&1; then
+  tail -20 /tmp/hush-precommit.log >&2
+  echo "pre-commit: make patch failed; commit aborted (full log /tmp/hush-precommit.log)." >&2
+  exit 1
+fi
+
+git add dist/hush.bps
+if git diff --cached --quiet -- dist/hush.bps; then
+  echo "pre-commit: dist/hush.bps unchanged."
+else
+  echo "pre-commit: dist/hush.bps rebuilt and staged."
+fi

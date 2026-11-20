@@ -1,0 +1,45 @@
+# Publishes the committed dist/hush.bps to a rolling "latest" GitHub Release.
+# CI never builds the patch: that needs the vanilla ROM, which must never be
+# uploaded anywhere (AGENTS.md). Run `make patch` locally and commit dist/hush.bps.
+name: Publish patch
+
+on:
+  push:
+    branches: [main]
+    paths: [dist/hush.bps]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-patch
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity-check the patch
+        run: |
+          test -s dist/hush.bps
+          head -c 4 dist/hush.bps | grep -q '^BPS1$' || { echo "dist/hush.bps is not a BPS file"; exit 1; }
+          if git ls-files | grep -Ei '\.(sfc|smc|ips|ups)$'; then
+            echo "ROM or non-BPS patch file is tracked; refusing to publish"; exit 1
+          fi
+
+      - name: Update the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag -f latest
+          git push -f origin latest
+          notes="Built from ${GITHUB_SHA::7}. Apply to a headerless US 1.0 ALttP ROM (CRC32 777AAC2F). See README: How to install."
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest --title "HUSH (latest)" --notes "$notes" --prerelease
+          else
+            gh release create latest --title "HUSH (latest)" --notes "$notes" --prerelease
+          fi
+          gh release upload latest dist/hush.bps --clobber

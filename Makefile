@@ -2,7 +2,7 @@
 PY := .venv/bin/python
 SHELL := /usr/bin/env bash
 
-.PHONY: help setup vendor rooms build build-dev patch test chaos validate check freespace clean refdump leakcheck leakcheck-control gfx gfx-selftest
+.PHONY: help setup hooks vendor rooms build build-dev patch test chaos validate check freespace clean refdump leakcheck leakcheck-control gfx gfx-selftest
 
 help:
 	@echo "make setup     install/build local tools into .tools/ and .venv/ (needs apt for cmake, xvfb, libsdl2)"
@@ -17,10 +17,15 @@ help:
 	@echo "make check     build + validate + freespace + test (the gate before 'done')"
 	@echo "make gfx       regenerate inventory + placeholders from gfx tools (art step; needs vendor/ + build/ref)"
 	@echo "make leakcheck scan VRAM/CGRAM dumps of every HUSH scene for vanilla tiles/palettes (fails on a leak)"
+	@echo "make hooks     enable .githooks/ (pre-commit rebuilds + stages dist/hush.bps on main)"
 	@echo "make clean     remove build/ (keeps dist/ and rom/)"
 
 setup:
 	tools/setup.sh
+
+hooks:
+	git config core.hooksPath .githooks
+	@echo "hooks enabled: .githooks/pre-commit"
 
 vendor:
 	tools/fetch_vendor.sh

@@ -27,7 +27,34 @@ tiles or palettes).
 > own legally obtained US 1.0 ROM. The only distributable output is a BPS
 > patch (`make patch` -> `dist/hush.bps`).
 
-## What you must do manually
+## Download
+
+**[Download `hush.bps` (latest)](https://github.com/dipodidae/hush/releases/download/latest/hush.bps)**,
+or see the [release page](https://github.com/dipodidae/hush/releases/tag/latest).
+It is republished automatically whenever `dist/hush.bps` changes on `main`.
+The patch in the repo is [`dist/hush.bps`](dist/hush.bps); a pre-commit hook
+(`make hooks` to enable) rebuilds and stages it on every commit to `main`, so it
+always matches the source. CI never sees the ROM.
+
+## How to install
+
+1. Get your own legally obtained *A Link to the Past* ROM, **US 1.0**,
+   headerless (1,048,576 bytes, CRC32 `777AAC2F`). If your file is 1,049,088
+   bytes it has a 512-byte copier header; remove it first
+   (`tail -c +513 in.smc > alttp.sfc`).
+2. Download `hush.bps` from the link above.
+3. Apply the patch with a BPS patcher:
+   - In the browser: [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/)
+     (pick the ROM, pick `hush.bps`, *Apply patch*).
+   - Or the command line, with [Floating IPS](https://github.com/Alcaro/Flips):
+     `flips --apply hush.bps alttp.sfc hush.sfc`
+4. Open `hush.sfc` in an SNES emulator (MesenCE, bsnes, snes9x) or on a
+   flash cart.
+
+If the patcher reports a checksum mismatch, your ROM is not the right version
+or still has a header.
+
+## What you must do manually (developers)
 
 1. **Place the ROM** at `rom/vanilla.sfc`: headerless, 1,048,576 bytes,
    CRC32 `777AAC2F`. (`make build` checks this and refuses anything else. A
