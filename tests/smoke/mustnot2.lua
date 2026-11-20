@@ -273,12 +273,16 @@ hush.test("mustnot2: shortcuts and adversarial moves are blocked", function()
     { "r14", 1, 9, 700, "west of the lit hall" },
     { "r14", 7, 5, 500, "waiting for the smoke" },
     { "r15", 1, 12, 900, "south hall" },
-    { "r15", 1, 6, 900, "middle corridor, west of col 6 (spec: not seen by the lane guards)", nil, "B-004" },
+    -- r15 (1,6): B-004 was resolved by a spec change (design/rooms/r15.yaml must_not 6: (1,6) is a transit cell that b DOES see);
+    -- the old XFAIL(B-004) "hidden at (1,6)" case is replaced by the positive case "r15 (1,6) seen by b at col 3" below.
+    -- B-008 was resolved by a spec change too (design/rooms/r15.yaml:86 must_not 5: (2,6) is the ONLY hiding cell of the corridor, all
+    -- three guards count; :88-89 must_not 7 / 8: (3,6)-(5,6) are transit cells, see the "r15 seen at (x,6)" cases below).
+    { "r15", 2, 6, 900, "middle corridor (2,6), the only hiding cell (r15 must_not 5)" },
     { "r18", 3, 4, 600, "10 cells from the nearest guard" },
     { "r18", 3, 7, 600, "10 cells from the nearest guard" },
     { "r18", 3, 10, 600, "10 cells from the nearest guard" },
     { "r20", 8, 5, 500, "waiting for the smoke" },
-    { "final", 8, 5, 500, "waiting for the smoke" },
+    -- final (8,5): replaced by the per-y sweep "final hidden at (8,5) y 9939-9946" below (final.yaml:102, 900 frames each, centre 9944 included)
     { "final", 3, 12, 700, "f's cone is vertical (only f counts: a at (2,11) is asleep in the real run)", { f = true } },
     { "r12", 3, 4, 500, "10 cells from the door guard (lit range 8)" },
     { "r12", 3, 7, 500, "10 cells from the door guard (lit range 8)" },
@@ -312,6 +316,108 @@ hush.test("mustnot2: shortcuts and adversarial moves are blocked", function()
       local f = nil
       for i = 1, 20 do hush.hold({}, 1); if aware_max(r) >= S.SUSPICIOUS or caught_now() then f = i; break end end
       hush.assert(f ~= nil, "standing there for 20 frames raised no awareness")
+    end)
+  end
+  -- r15 must_not 6 (design/rooms/r15.yaml:79): "(1,6) is NOT a hiding cell: standing still there while guard b walks west must get you
+  -- Suspicious when b passes col 3". Link stands at (1,6) from the room start; b (start (12,8), walking west) must turn Suspicious, he must
+  -- be the first guard to notice, and he must do it around col 3 (cols 2-4 accepted: centre-to-centre diagonal at col 3, +-1 cell for the
+  -- 2/4-frame look phase). Spec intended_solution: "about 3.2 s of play time after the room starts" -> limit 600 frames.
+  case("H", "r15 seen at (1,6) by b when he passes col 3 (must_not 6, ex-B-004)", function()
+    local r = enter("r15")
+    local slot = {}
+    for k = 0, #r.guards - 1 do slot[r.guards[k + 1].id] = k end
+    tele(r, 1, 6)
+    local f
+    for i = 1, 600 do
+      hush.hold({}, 1)
+      local first
+      for k = 0, #r.guards - 1 do local a = aware(k); if a ~= S.ASLEEP and a > 0 then first = first or r.guards[k + 1].id end end
+      if first then
+        hush.assert_eq(first, "b", "the first guard to notice Link at (1,6)")
+        local s = hush.sprite(slot.b)
+        local col = (s.x - r.base_x - m.win_x + 8) // 16
+        hush.assert(col >= 2 and col <= 4, string.format("b noticed Link from col %d, the spec says when he passes col 3", col))
+        f = i
+        break
+      end
+      hush.assert(not caught_now(), "caught before any guard was Suspicious")
+    end
+    hush.assert(f ~= nil, "600 frames at (1,6): b never noticed Link (spec: he does when he passes col 3)")
+    print(string.format("[mn2] r15 (1,6): b Suspicious after %d frames", f))
+  end)
+
+  -- Link stands still from room entry (teleported at frame 0, no input); within `limit` frames some guard must leave Unaware and the
+  -- FIRST guard to do so must be `who` (a guard id, or a set { id = true, ... } when any of them may be first). Being caught before any
+  -- guard was Suspicious fails. `y` overrides Link's y (px), and then Link's y is asserted to stay in [y_lo, y_hi] the whole time (he
+  -- must not drift out of the spec's band).
+  local function first_noticer(rid, cx, cy, who, limit, y, y_lo, y_hi)
+    local ok_who = type(who) == "table" and who or { [who] = true }
+    local who_s = {}
+    for id in pairs(ok_who) do who_s[#who_s + 1] = id end
+    table.sort(who_s)
+    who_s = table.concat(who_s, " or ")
+    local r = enter(rid)
+    local x0, y0 = cellpx(r, cx, cy)
+    bot.teleport(x0, y or y0)
+    for i = 1, limit do
+      hush.hold({}, 1)
+      if y then
+        local ly = hush.read("link_y")
+        hush.assert(ly >= y_lo and ly <= y_hi, string.format("set-up: Link's y drifted to %d (band %d-%d) after %d frames", ly, y_lo, y_hi, i))
+      end
+      local first, who_all = nil, {}
+      for k = 0, #r.guards - 1 do
+        local a = aware(k)
+        who_all[#who_all + 1] = r.guards[k + 1].id .. "=" .. a
+        if a ~= S.ASLEEP and a > 0 then first = first or r.guards[k + 1].id end
+      end
+      if first then
+        hush.assert(ok_who[first], string.format("the first guard to notice Link at (%d,%d) is %s, the spec says %s (frame %d: %s)",
+          cx, cy, first, who_s, i, table.concat(who_all, " ")))
+        print(string.format("[mn2] %s (%d,%d)%s: %s Suspicious after %d frames (%s)", rid, cx, cy, y and (" y=" .. (y or y0)) or "", first, i,
+          table.concat(who_all, " ")))
+        return
+      end
+      hush.assert(not caught_now(), "caught before any guard was Suspicious")
+    end
+    hush.assert(false, string.format("%d frames at (%d,%d): no guard noticed Link (spec: %s does)", limit, cx, cy, who_s))
+  end
+  -- r15 must_not 7 (design/rooms/r15.yaml:88): (3,6) must get you Suspicious within 900 frames, b first.
+  case("H", "r15 seen at (3,6) within 900 frames, b first (must_not 7, ex-B-008)", function() first_noticer("r15", 3, 6, "b", 900) end)
+  -- r15 must_not 8 (design/rooms/r15.yaml:89): (4,6) and (5,6) must get you Suspicious within 900 frames, a first.
+  case("H", "r15 seen at (4,6) within 900 frames, a first (must_not 8, ex-B-008)", function() first_noticer("r15", 4, 6, "a", 900) end)
+  case("H", "r15 seen at (5,6) within 900 frames, a first (must_not 8, ex-B-008)", function() first_noticer("r15", 5, 6, "a", 900) end)
+
+  -- final (8,5), ex-B-009 (spec changed by the designer 2026-11-20):
+  -- final.yaml:103: "Standing in the top 3 px of (8,5) (Link y 9936-9938) without smoke must get you Suspicious from d or e (either may
+  -- notice first)". One case per y; 900 frames (the spec gives no limit; same as r15); Link's y asserted constant; a first noticer other
+  -- than d or e (c) fails.
+  for y = 9936, 9938 do
+    case("H", string.format("final seen at (8,5) top band y %d within 900 frames, d or e first (final.yaml:103)", y), function()
+      first_noticer("final", 8, 5, { d = true, e = true }, 900, y, y, y)
+    end)
+  end
+  -- final.yaml:102: "(8,5) is hidden at Link y 9939-9946 (the centre is y 9944): standing still at any of these y values for 900 frames
+  -- from arrival must leave every guard Unaware." One case per y; every guard counts (c is awake at room entry: stricter than the real run,
+  -- where c is asleep); being caught fails too; Link's y asserted constant (a drifting Link would not test that y).
+  for y = 9939, 9946 do
+    case("H", string.format("final hidden at (8,5) y %d for 900 frames, every guard Unaware (final.yaml:102)", y), function()
+      local r = enter("final")
+      local x0, yc = cellpx(r, 8, 5)
+      if y == 9944 then hush.assert_eq(yc, 9944, "final.yaml:102 says the centre of (8,5) is Link y 9944") end
+      bot.teleport(x0, y)
+      for f = 1, 900 do
+        hush.hold({}, 1)
+        local ly = hush.read("link_y")
+        hush.assert(ly == y, string.format("set-up: Link's y drifted to %d (want %d) after %d frames", ly, y, f))
+        local who, bad = {}, false
+        for k = 0, #r.guards - 1 do
+          local a = aware(k)
+          who[#who + 1] = r.guards[k + 1].id .. "=" .. a
+          if a ~= S.UNAWARE then bad = true end
+        end
+        if bad or caught_now() then hush.assert(false, string.format("seen after %d frames (%s)", f, table.concat(who, " "))) end
+      end
     end)
   end
 

@@ -76,6 +76,26 @@ function hush.read(name, index)
   error("unsupported size " .. e.bytes .. " for '" .. name .. "'", 2)
 end
 
+-- hush.write("hush_meter", 4)          -> poke a 1-byte variable
+-- hush.write("spr_aware", 1, slot)     -> poke one slot of a 16-slot array
+-- (2-byte names are written little endian.) Test-only: forcing states the spec says are RAM-observable.
+function hush.write(name, v, index)
+  local e = hush.ram[name]
+  if not e then error("unknown RAM name '" .. tostring(name) .. "' (see docs/ram_map.md)", 2) end
+  if e.bytes == 16 then
+    if index == nil or index < 0 or index > 15 then
+      error("RAM array '" .. name .. "' needs a slot index 0..15", 2)
+    end
+    emu.write(e.addr + index, v & 0xFF, WRAM)
+  elseif e.bytes == 2 then
+    emu.write(e.addr, v & 0xFF, WRAM); emu.write(e.addr + 1, (v >> 8) & 0xFF, WRAM)
+  elseif e.bytes == 1 then
+    emu.write(e.addr, v & 0xFF, WRAM)
+  else
+    error("unsupported size " .. e.bytes .. " for '" .. name .. "'", 2)
+  end
+end
+
 -- Sprite position helper: (hi << 8) | lo, same coordinate space as Link.
 function hush.sprite(slot)
   return {

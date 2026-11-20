@@ -36,7 +36,7 @@ row 7  $50(V) $56    $50(VH)
   arrows (15-16), key (col 18: blank `$247F` when no key, `:17525`). Digits of all counters share palette group 1 (the tilemap code writes `$2400`).
 * Hearts row 3 from col 20 (`$7EC768`, up to 10 per row, then next row +`$40`): `$A0` full, `$A1` half, `$A2` empty container (`HeartTiles` `:17000`;
   max hearts drawn with `FullHeartTiles` `:16995`); `$A3`, `$A4` = refill animation frames (`HeartFlipTiles` `:17005`, used `:16606`).
-* `LIFE` label: `$AB $AC` (16x8, cols 24-25) with decorations `$8B $8F` either side (H-flipped on the right).
+* Meter label (was `LIFE`, now **`HUSH`**): `$AB $AC` (16x8, cols 24-25) with decorations `$8B $8F` either side (H-flipped on the right).
 
 ## 3. Cell table
 
@@ -60,11 +60,11 @@ row 7  $50(V) $56    $50(VH)
 | `$88` `$89` | DE 8 (8,0), DE 9 (9,0) | bomb counter icon 16x8 -> mini Ink Pot | 3 | violet pot | (12,2) (13,2) |
 | `$A7` `$A9` | DE 39 (7,2), DE 41 (9,2) | arrow counter icon 16x8 -> mini Hush Dart | 0 | teal dart | (15,2) (16,2) |
 | `$90`-`$99` | DE 16-25 (0..9,1) | digits 0-9 (5x7 glyph + 1 px shadow) | 1 | white digits, dark-violet shadow | (8..10,3) (12,13,3) (15,16,3) (18,3 key digit) |
-| `$A0` | DE 32 (0,2) | heart full | 1 | violet heart, white glint, dark outline (idx 3) | (20..22,3) |
-| `$A1` | DE 33 (1,2) | heart half | 1 | left half filled (dark outline), right half = violet (idx 2) outline only | (20..,3) |
-| `$A2` | DE 34 (2,2) | heart empty (container) | 1 | violet (idx 2) outline only, so it shows on dark floors | (20..,3) |
+| `$A0` | DE 32 (0,2) | heart full -> **stealth meter cell, filled** (section 10) | 1 / 5 | solid 6x6 block idx 2 (violet in p1, amber in p5), 2 px glint idx 1 | (20..27,3) |
+| `$A1` | DE 33 (1,2) | heart half (unused by the meter: 1 cell = 4 units, never half) | 1 | old half heart, left as is | - |
+| `$A2` | DE 34 (2,2) | heart empty -> **stealth meter cell, drained** (section 10) | 1 / 5 | hollow 6x6 frame idx 2, dark interior idx 3 | (20..27,3) |
 | `$A3` `$A4` | DE 35 (3,2), DE 36 (4,2) | heart refill animation frames (turning, edge-on) | 1 | narrow hearts | row 3 during a refill |
-| `$AB` `$AC` | DE 43 (11,2), DE 44 (12,2) | "LIFE" label (16x8) | 1 | 3x5 letters, violet + dark shadow | (24,2) (25,2) |
+| `$AB` `$AC` | DE 43 (11,2), DE 44 (12,2) | "LIFE" label (16x8) -> **stealth meter label "HUSH"** (section 10) | 1 | 3x6 letters, violet idx 2 + dark shadow idx 3 | (24,2) (25,2) |
 | `$8B` `$8F` | DE 11 (11,0), DE 15 (15,0) | decoration either side of LIFE (H flip on the right) | 2 | teal diamond + line | (22,2) (23,2); (26,2) (27,2) H |
 | `$7F` | DD 127 | blank (everything else) | any | untouched (blank) | all other cells |
 
@@ -85,12 +85,12 @@ Two shared dark colours since the menu pass: **PANEL `1A2456`** (group 1 idx 3: 
 | `pal_hud_02` (p2) | frame, Hush Dart icon; menu: pendant/equipment window frames, text box frame, rule | `80D8D0` pale teal (outer line, dart) | `308088` mid teal (inner line, dart shading) | `0A1028` DARK |
 | `pal_hud_03` (p3) | Ink Pot icons; menu: Shade Knife blade | `D8C8FF` light violet (rim, blade edge) | `A878F0` violet (pot) | `0A1028` |
 | `pal_hud_04` (p4) | menu: the three empty floor sockets | `5CB8B8` bright ring | `24505E` dim ring | `0A1028` hollow |
-| `pal_hud_05` (p5) | not used (spare) | `E8E8F8` | `A878F0` | `1A2456` |
+| `pal_hud_05` (p5) | **stealth meter danger state only**: lost-cell flash, low-meter blink (section 10) | `F8D888` light amber (glint) | `F0A030` **amber = danger** (cell) | `1A2456` PANEL (drained interior) |
 | `pal_hud_06` (p6) | text box / dialogue text (font idx 1), text box tile fill if the engine makes it opaque (section 8) | `F4F0FF` white | `A878F0` | `0A1028` |
 | `pal_hud_07` (p7) | gem, meter fill; menu: **active window frame, cursor ring**, cloak icon | `B898F8` **violet** (was white: the gem outline is violet now) | `80D8D0` teal | `0A1028` dark gauge fill |
 | `pal_hud_08-0F` | not used in rooms | untouched placeholder (`ECE8FF 6C66C8 14123A`) | | |
 
-Rules kept: amber is not used anywhere (amber = danger); violet = player stuff (hearts, ink pot, LIFE, knife, cursor); teal = secondary (frame, dart, gem, sockets);
+Rules kept: amber appears only in p5, the stealth meter's danger state (amber = danger); violet = player stuff (hearts, ink pot, LIFE, knife, cursor); teal = secondary (frame, dart, gem, sockets);
 no pale gold. Colour 0 is transparent in every group. The `ui` role has no colour rule (`gfx_convert.py check` passes, 227 files).
 Digits cannot be teal for the dart/ink counters: all counters share tile `$90-$99` with palette group 1 (set by the vanilla HUD code), so the
 **icons** carry the colour (teal dart, violet ink pot) and the digits are white.
@@ -199,3 +199,31 @@ Dark indigo panels, teal frames (the active window has a violet outer line), dar
 3. **FLOORS window**: three empty sockets are drawn; to light one set bit 0/1/2 of `$7EF374` (red / blue / green colourway, `DrawPendantsWindow` `bank_0D.asm:15170`): the lit-socket art exists (section 7.2). Window title and abilities window (`HUSH`, empty) can stay as they are.
 4. **Optional, bolder font**: the ROM advance table is 6 px for most glyphs, so the 5 px stems stay 1 px thick. Widening the table (`$0ECADF`, 98 bytes) to 7 px would allow 2 px stems; `font_art.py` would then need a second glyph set (not done).
 5. Death screen (module `$12`): sprite placeholder labels (`UNUSED`) come from a sprite sheet that is not part of any HUSH room; unreachable while the room controller refills health.
+
+## 10. Stealth meter cells (design/pillars.md "Stealth meter", HUD part) — PLACEHOLDER art
+
+**Placeholder quality, original** (drawn from ASCII in `tools/gfx_placeholder.py` `METER_CELLS` and `LABEL_GLYPHS`; no vanilla pixel read). A human should approve or redraw.
+Re-run: `.venv/bin/python tools/gfx_placeholder.py hud-meter [--check] [--preview]` (patches only DE 32, 34, 43, 44 of `gfx/src/hud/GFX_DE.png`, prints the cells that changed,
+validates and checks the compressed size; `--check` writes nothing and exits 1 if the sheet differs; `--preview` writes `build/art_preview/hud_label.png`).
+**Warning (open):** `tools/art/hud_art.py` still draws hearts into DE 32/34 and `LIFE` into DE 43/44; re-running it reverts the meter and the label.
+Run `gfx_placeholder.py hud-meter` after it until `hud_art.py` imports `hud_cells()` from `gfx_placeholder` (art may not edit `tools/art/`).
+
+| label | tiles | sheet cells | palette group | art |
+|---|---|---|---|---|
+| **`HUSH`** (was `LIFE`) | `$AB` `$AC` (16x8) | DE 43, DE 44 | 1 (tilemap unchanged) | 4 letters 3x6 px, 1 px gap (15 px) + 1 px dark shadow = 16 px; rows 1-6, centred on the ornament line (rows 3-4). idx 2 violet `A878F0`, idx 3 PANEL `1A2456`. No amber. |
+
+"HUSH" fits the 16 px exactly; "SHADE" (5 letters) would need 19 px at 3 px letters, so it does not fit two tiles.
+
+| state | tile | sheet cell | palette group | tilemap word (`vhopppcc cccccccc`, priority set like vanilla `$24A0`) |
+|---|---|---|---|---|
+| filled, violet (normal) | `$A0` | DE 32 | 1 (`pal_hud_01`) | **`$24A0`** |
+| drained, violet (normal) | `$A2` | DE 34 | 1 | **`$24A2`** |
+| filled, amber (lost-cell flash; low-meter blink) | `$A0` | DE 32 | 5 (`pal_hud_05`) | **`$34A0`** |
+| drained, amber (spare; not required by the spec) | `$A2` | DE 34 | 5 | **`$34A2`** |
+
+* Colour index of the cell colour: **idx 2** in both groups. p1 idx 2 = `A878F0` violet; p5 idx 2 = `F0A030` amber. idx 1 = glint (`E8E8F8` / `F8D888`), idx 3 = dark (`1A2456` in both).
+  CGRAM: p1 = entries 4-7 (violet = CGRAM 6), p5 = entries 20-23 (amber = CGRAM 22). Engine switches colour by toggling palette bits only (`$24xx` <-> `$34xx`, XOR `$1000`).
+* Shape: filled = solid 6x6 block, drained = hollow 6x6 frame with a dark interior; 1 px clear border = 2 px gap between cells, so the 8 cells can be counted. Full vs empty reads by shape, not colour alone.
+* Tile count: 2 tiles (8x8, 2bpp, 16 B each). Colours: 3 opaque per cell (2bpp max). Role `ui` (sheet `GFX_DE`): no role colour rule, but violet = you (p1) and amber only in the danger state (p5) per pillars.
+* Sizes for engine: no new ROM space. `GFX_DE` is re-inserted in its own slot: 2048 B raw, **1217 B compressed / 1634 B slot** (with the HUSH label). Palette: one 8-byte row `pal_hud_05` at `$1BD688` (vanilla HUD palette row, already in the insert set).
+* `$A1` (half heart) and `$A3` `$A4` (refill frames) are unchanged; the meter never needs them. The engine must not let the vanilla heart-refill animation draw `$A3`/`$A4` into the bar.

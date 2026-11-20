@@ -748,5 +748,135 @@ def write_gallery(rows, inv):
     GALLERY.write_text("\n".join(out))
 
 
+# ---- stealth meter cells (design/pillars.md "Stealth meter", HUD part) ------------------------------
+# PLACEHOLDER-quality but ORIGINAL: two 8x8 2bpp cells drawn from the ASCII below, nothing read from vanilla.
+# They overwrite the old heart cells in GFX_DE (docs/gfx/hud_map.md section 3), because the engine already
+# points the hearts row at these tile ids:  $A0 (DE idx 32) = filled cell,  $A2 (DE idx 34) = drained cell.
+# Index meaning (same in both palette groups, so only the palette bits change the colour):
+#   1 = glint (light), 2 = cell colour (violet in pal_hud_01, amber in pal_hud_05), 3 = dark interior.
+# Filled vs drained differ by SHAPE (solid block vs hollow frame), not colour alone.
+# 6x6 block inside an 8x8 cell, 1 px clear border -> 2 px gap between neighbouring cells, so cells can be counted.
+METER_CELLS = {
+    32: ["........",   # $A0 filled: solid cell, glint top-left
+         ".222222.",
+         ".211222.",
+         ".212222.",
+         ".222222.",
+         ".222222.",
+         ".222222.",
+         "........"],
+    34: ["........",   # $A2 drained: empty container, cell-colour outline, dark interior
+         ".222222.",
+         ".233332.",
+         ".233332.",
+         ".233332.",
+         ".233332.",
+         ".222222.",
+         "........"],
+}
+
+
+# ---- meter label (replaces "LIFE" in the same two cells: $AB = DE 43, $AC = DE 44; tilemap unchanged) --------
+# PLACEHOLDER-quality but ORIGINAL. "HUSH": 4 letters of 3x6 px with a 1 px gap = 15 px, + 1 px shadow = 16 px.
+# Letters on rows 1-6 (centre 3.5 = the centre of the ornament line $8B/$8F on rows 3-4), shadow down-right on rows 2-7.
+# Indices: 2 = violet (pal_hud_01 A878F0, "violet = you"), 3 = dark shadow (PANEL 1A2456). No amber.
+LABEL_TEXT = "HUSH"
+LABEL_GLYPHS = {
+    "H": ["#.#", "#.#", "###", "#.#", "#.#", "#.#"],
+    "U": ["#.#", "#.#", "#.#", "#.#", "#.#", "###"],
+    "S": ["###", "#..", "###", "..#", "..#", "###"],
+}
+
+
+def meter_label() -> list[str]:
+    """16x8 label, glyph ink 2 over a 1 px down-right shadow 3"""
+    grid = [["."] * 16 for _ in range(8)]
+    for ink, dx, dy in (("3", 1, 1), ("2", 0, 0)):
+        for i, ch in enumerate(LABEL_TEXT):
+            for y, r in enumerate(LABEL_GLYPHS[ch]):
+                for x, c in enumerate(r):
+                    if c == "#":
+                        grid[1 + y + dy][i * 4 + x + dx] = ink
+    return ["".join(r) for r in grid]
+
+
+def hud_cells() -> dict[int, list[str]]:
+    """GFX_DE cell idx -> 8 ASCII rows, for every cell this generator owns"""
+    lab = meter_label()
+    cells = dict(METER_CELLS)
+    cells[43] = [r[0:8] for r in lab]   # $AB
+    cells[44] = [r[8:16] for r in lab]  # $AC
+    return cells
+
+
+def label_preview(out: Path, zoom: int = 8) -> None:
+    """zoomed preview of ornaments + label + 8 meter cells in pal_hud_01/02 colours on the room-dark backdrop"""
+    p1 = [None, (0xE8, 0xE8, 0xF8), (0xA8, 0x78, 0xF0), (0x1A, 0x24, 0x56)]
+    p2 = [None, (0x80, 0xD8, 0xD0), (0x30, 0x80, 0x88), (0x0A, 0x10, 0x28)]
+    im = Image.open(SRC / "hud" / "GFX_DE.png")
+    src = im.load()
+    canvas = Image.new("RGB", (8 * 8, 16), (0x14, 0x12, 0x3A))
+    c = canvas.load()
+
+    def put(idx, pal, cx, cy, hflip=False):
+        ox, oy = (idx % 16) * 8, (idx // 16) * 8
+        for y in range(8):
+            for x in range(8):
+                v = src[ox + (7 - x if hflip else x), oy + y]
+                if v:
+                    c[cx * 8 + x, cy * 8 + y] = pal[v]
+    # row 2 of the HUD, cols 22-27: $8B $8F $AB $AC $8F(H) $8B(H)
+    for col, (idx, pal, h) in enumerate([(11, p2, False), (15, p2, False), (43, p1, False), (44, p1, False),
+                                         (15, p2, True), (11, p2, True)]):
+        put(idx, pal, col + 1, 0, h)
+    for col in range(8):  # row 3: 5 filled + 3 drained meter cells
+        put(32 if col < 5 else 34, p1, col, 1)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    canvas.resize((canvas.width * zoom, canvas.height * zoom), Image.NEAREST).save(out)
+    print(f"preview: {out.relative_to(ROOT)}")
+
+
+def hud_meter(check: bool = False, preview: bool = False) -> int:
+    """Patch the meter cells (DE 32, 34) and the meter label (DE 43, 44) into gfx/src/hud/GFX_DE.png.
+    No other cell and no palette change. Prints every 8x8 cell whose pixels differ from the file before the write.
+    --check: write nothing, exit 1 if the sheet differs from these definitions."""
+    import gfx_convert
+    path = SRC / "hud" / "GFX_DE.png"
+    im = Image.open(path)
+    assert im.mode == "P" and im.size == (128, 64), (im.mode, im.size)
+    before = im.copy().load()
+    px = im.load()
+    for idx, rows in hud_cells().items():
+        assert len(rows) == 8 and all(len(r) == 8 for r in rows), idx
+        ox, oy = (idx % 16) * 8, (idx // 16) * 8
+        for y, r in enumerate(rows):
+            for x, ch in enumerate(r):
+                px[ox + x, oy + y] = 0 if ch == "." else int(ch)
+    changed = [i for i in range(128)
+               if any(before[(i % 16) * 8 + x, (i // 16) * 8 + y] != px[(i % 16) * 8 + x, (i // 16) * 8 + y]
+                      for y in range(8) for x in range(8))]
+    print(f"GFX_DE cells changed vs file on disk: {changed if changed else 'none'}")
+    if check:
+        return 1 if changed else 0
+    if changed:
+        im.save(path, transparency=0)
+    if preview:
+        label_preview(ROOT / "build" / "art_preview" / "hud_label.png")
+    errors: list[str] = []
+    warnings: list[str] = []
+    data = gfx_convert.process(path, False, errors, warnings)
+    for e in errors:
+        print("ERROR", e)
+    if data is None:
+        return 1
+    cap = yaml.safe_load((SRC / "hud" / "GFX_DE.yaml").read_text())["slot"]["capacity_bytes"]
+    size = len(compress(data))
+    print(f"GFX_DE: meter cells DE 32 ($A0 filled), DE 34 ($A2 drained), label '{LABEL_TEXT}' DE 43-44 ($AB $AC); "
+          f"{len(data)} B raw, {size} B compressed / slot {cap} B -> {'fits' if size <= cap else 'DOES NOT FIT'}")
+    return 0 if size <= cap else 1
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["hud-meter"]:
+        sys.exit(hud_meter(check="--check" in sys.argv, preview="--preview" in sys.argv))
     sys.exit(main())

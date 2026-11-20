@@ -35,3 +35,8 @@ make build                                          # build/hush.sfc + build/roo
 * Game time = ticks of `$1A`. The item menu pauses the game; with five or six guards and a sleeping one the game loop overruns the
   frame (see docs/bugs.md B-001), so emulator frames and game frames differ in those rooms. The planner works in game frames.
   E4 (custom guard drawing) removed that lag; `r20.inputs` and `final.inputs`, which had been recorded under lag, were re-recorded (the other 19 are unchanged).
+* `final.inputs` (2026-11-20) is hand-timed by QA, not by the planner: `tests/dev/plans/final_qa.plan` (each wait cites a step of
+  design/rooms/final.yaml:80-91), recorded with `tests/dev/record_final.lua` (record_room.lua with fixed paths: run_test.py passes no env)
+  and checked with `tests/dev/final_probe.lua` (every awareness transition with slot -> spec letter, Link / guard cells, the ink cloud).
+  The planner's version walked into row 4 two frames before the cloud was up, so guard e (slot 1) went "?" (meter 28). The recorder's
+  last `goto` reports "stuck" in the final room (the ending fade keeps hush_room = 20); the inputs were trimmed at the exit frame.

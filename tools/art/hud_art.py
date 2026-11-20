@@ -10,7 +10,7 @@ Tile numbers and positions do NOT change (the ROM tilemap is vanilla): only pixe
 
 ASCII keys: '.' = index 0 (transparent), '1' '2' '3' = palette index 1 2 3 of the tile's palette group.
 Palette groups (gfx/src/palettes/hud.yaml, one per tilemap palette bits p -> group pal_hud_0p):
-  p0 dart counter icon   p1 hearts, digits, LIFE label   p2 frame + dart item icon
+  p0 dart counter icon   p1 meter cells, digits, HUSH label   p2 frame + dart item icon
   p3 ink pot icons       p7 loot gem + meter interior
 Frame lines are 2 px: index 1 on the outside of a box, index 2 on the inside (shared wall: 2 2).
 """
@@ -25,6 +25,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import gfx_convert  # noqa: E402
+import gfx_placeholder  # noqa: E402  single source: stealth meter cells + HUSH label
 
 HUD = ROOT / "gfx" / "src" / "hud"
 
@@ -153,35 +154,7 @@ def gauge_tile(h: int) -> list[str]:
 
 # ---------------------------------------------------------------------------------------------
 # icons
-LIFE_LETTERS = {
-    "L": ["#..", "#..", "#..", "#..", "###"],
-    "I": ["###", ".#.", ".#.", ".#.", "###"],
-    "F": ["###", "#..", "##.", "#..", "#.."],
-    "E": ["###", "#..", "##.", "#..", "###"],
-}
-
-
-def life_label() -> list[str]:
-    """16x8 'LIFE', 3x5 letters, one px gap, violet (2) with a dark (3) shadow"""
-    grid = [["."] * 16 for _ in range(8)]
-    for i, ch in enumerate("LIFE"):
-        g = LIFE_LETTERS[ch]
-        for y, r in enumerate(g):
-            for x, c in enumerate(r):
-                if c == "#":
-                    X, Y = i * 4 + x, y + 1
-                    if grid[Y + 1][X + 1] == ".":
-                        grid[Y + 1][X + 1] = "3"
-    for i, ch in enumerate("LIFE"):
-        g = LIFE_LETTERS[ch]
-        for y, r in enumerate(g):
-            for x, c in enumerate(r):
-                if c == "#":
-                    grid[y + 1][i * 4 + x] = "2"
-    return ["".join(r) for r in grid]
-
-
-# ornaments either side of LIFE: outer cell ($8B) = small diamond + start of the line, inner cell ($8F) = line
+# ornaments either side of the label: outer cell ($8B) = small diamond + start of the line, inner cell ($8F) = line
 ORN_OUTER = [
     "........",
     "........",
@@ -288,10 +261,10 @@ def cell_map() -> dict[tuple[str, int], list[str]]:
     # digits 0-9: DE idx 16..25 (tile $90-$99)
     for d, rows in DIGITS.items():
         m[("DE", 16 + d)] = glyph_tile(rows)
-    # hearts: DE $A0 full, $A1 half, $A2 empty, $A3 / $A4 refill animation frames
-    m[("DE", 32)] = heart("full")
+    # hearts: $A1 half, $A3 / $A4 refill animation frames (unused by the meter HUD; kept so no hex junk shows)
+    # $A0 / $A2 (DE 32 / 34) are the stealth meter cells and $AB / $AC (DE 43 / 44) the HUSH label:
+    # single source is gfx_placeholder.hud_cells() (docs/gfx/hud_map.md section 10)
     m[("DE", 33)] = heart("half")
-    m[("DE", 34)] = heart("empty")
     m[("DE", 35)] = HEART_TURN
     m[("DE", 36)] = HEART_EDGE
     # frame (DD idx = tile id) and the meter interior / empty slot cell (DE 117)
@@ -299,9 +272,10 @@ def cell_map() -> dict[tuple[str, int], list[str]]:
         m[("DE", t - 128) if t >= 128 else ("DD", t)] = rows
     for t, h in GAUGE.items():
         m[("DD", t)] = gauge_tile(h)
-    # LIFE label: DE $AB $AC (idx 43 44); ornaments $8B $8F (idx 11 15)
-    ll = to_cells(life_label(), 2, 1)
-    m[("DE", 43)], m[("DE", 44)] = ll
+    # meter cells DE 32 / 34 and HUSH label DE 43 / 44
+    for idx, rows in gfx_placeholder.hud_cells().items():
+        m[("DE", idx)] = rows
+    # ornaments either side of the label: $8B $8F (idx 11 15)
     m[("DE", 11)] = ORN_OUTER
     m[("DE", 15)] = ORN_INNER
     # counters icons: ink mini $88 $89 (DE 8 9), dart mini $A7 $A9 (DE 39 41), gem $A8 (DE 40)

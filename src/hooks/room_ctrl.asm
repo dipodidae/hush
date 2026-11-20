@@ -123,7 +123,7 @@ Hush_LoadRoom:
     LDA.b #$02 : STA.l !hush_trans       ; transition.asm: Hush_Wipe fades the loaded room in (submodule $0F)
     LDA.b #$00 : STA.l !hush_tcnt
     JSR Hush_GrantTools
-    JSL Hush_ResetRuntime                ; E2: caught / flash / ink cloud / palette flag cleared
+    JSL Hush_MeterLoad                   ; M5 (meter.asm): Hush_ResetRuntime (E2: caught / flash / ink cloud / palette flag cleared), then the meter refill
     REP #$30
     LDA.l !hush_room : AND.w #$00FF : CLC : ADC.w #!HUSH_ROOM_FIRST : ASL A
     TAX

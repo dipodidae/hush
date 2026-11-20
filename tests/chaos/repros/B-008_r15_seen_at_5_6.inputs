@@ -1,0 +1,10 @@
+# B-008: r15 intended_solution step 2 / must_not 5 say the middle corridor cells (2,6)-(5,6) are hidden from both lane guards and step 2
+# says "walk east to (5,6) and wait there". Guard a (lane 1, row 4) sees Link at (5,6) through the gap (6,5)/(7,5) when he walks west past it.
+# Real inputs: from the start (1,12) straight up col 1 to (1,6) (before b reaches col 3), east to (5,6), then wait.
+# Expected: no guard leaves Unaware. Actual: guard a turns Suspicious (then Alert, then catches Link).
+#   .venv/bin/python tools/run_test.py tests/dev/b008_probe.lua      (prints every awareness transition with cells)
+# @room r15
+# frames  buttons
+120 up
+42 right
+900 -

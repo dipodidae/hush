@@ -1,6 +1,8 @@
 -- Solutions (QA): every room of the tower is played from its recorded input script (tests/solutions/<id>.inputs) on the real ROM
 -- (build/hush.sfc, rooms of design/rooms) and must be cleared: touching the exit advances hush_room to the next room (the last room
--- ends in the ending screen) and no guard caught Link (no fast restart, hush_caught / hush_flash never set).
+-- ends in the ending screen) and no guard caught Link (no fast restart, hush_caught / hush_flash never set). Stealth meter criterion 9
+-- (design/pillars.md:115-117): vanilla health == max at the end of every gameplay frame, game-over module never runs (tests/lib/meter.lua).
+-- The meter budget itself is tests/solutions/meter_budget.lua.
 -- One cold boot + new game, then each room is entered with the debug jump (hush_room_req) so the replay starts from a fresh load;
 -- the real new game -> room 1 path is covered by smoke/newgame. Regenerate the .inputs with `tools/solve_rooms.py` (README).
 -- Output: one `SOLUTION:` line per room (also shown by tools/run_test.py), a summary, and the test fails on any unexpected result.
@@ -9,6 +11,7 @@
 package.path = os.getenv("HUSH_ROOT") .. "/tests/lib/?.lua;" .. package.path
 local hush = require("hush")
 local bot = require("bot")
+local meter = require("meter")
 
 -- Rooms known to be unsolvable with the current engine/spec: room id -> bug id in docs/bugs.md. They are EXPECTED to fail and are
 -- reported as XFAIL (never silently skipped); an XFAIL room that suddenly passes is reported as XPASS and fails the test so the
@@ -19,10 +22,13 @@ local EXPECTED_FAIL = {
 local function replay(idx, r, steps)
   local ng = #r.guards
   local frames, caught, max_aware, g = 0, 0, 0, 0
-  local first_aware
+  local first_aware, vanilla
   local last1a, lagged = bot.peek(0x7E001A), 0
   local function check()
     frames = frames + 1
+    -- stealth meter criterion 9 (design/pillars.md:115-117): health == max every gameplay frame, game-over module never runs
+    local v = meter.vanilla_ok()
+    if v and not vanilla then vanilla = string.format("frame %d: %s", frames, v) end
     local a1 = bot.peek(0x7E001A)       -- frame counter: no tick = the game loop overran the frame (lag)
     if a1 == last1a and hush.read("game_mode") == 0x07 and hush.read("submodule") == 0 then lagged = lagged + 1 end
     last1a = a1
@@ -44,7 +50,7 @@ local function replay(idx, r, steps)
   if not advanced then
     for _ = 1, 30 do hush.hold({}, 1); if check() then advanced = true; break end end
   end
-  return { advanced = advanced, frames = frames, caught = caught, max_aware = max_aware, first_aware = first_aware, lagged = lagged }
+  return { advanced = advanced, frames = frames, caught = caught, max_aware = max_aware, first_aware = first_aware, lagged = lagged, vanilla = vanilla }
 end
 
 hush.test("solutions: every room cleared from its recorded inputs", function()
@@ -74,8 +80,10 @@ hush.test("solutions: every room cleared from its recorded inputs", function()
         local res = replay(idx, r, steps)
         total_frames = total_frames + res.frames
         local final = (i == m.count)
-        local ok = res.advanced and res.caught == 0
-        if ok then
+        local ok = res.advanced and res.caught == 0 and res.vanilla == nil
+        if res.vanilla then
+          detail = "criterion 9 (pillars.md:115-117): " .. res.vanilla
+        elseif ok then
           if final then
             -- the last room fades out into the ending screen (module $13)
             local t = 0

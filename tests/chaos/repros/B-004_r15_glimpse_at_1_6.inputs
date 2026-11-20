@@ -1,7 +1,9 @@
-# B-004: r15 spec must_not 4 says waiting at (1,6) must NOT get Link seen by the lane guards. Guard b (lane 2, row 8, patrols west) turns
+# B-004 (resolved by a spec change, 2026-11-20): design/rooms/r15.yaml must_not 6 now REQUIRES this: (1,6) is a transit cell and b
+# sees Link there when he passes col 3. Kept as a demo of the specified behaviour (tests/smoke/mustnot2.lua `H r15 seen at (1,6) ...`).
+# Original report: r15 spec must_not 4 said waiting at (1,6) must NOT get Link seen by the lane guards. Guard b (lane 2, row 8, patrols west) turns
 # Suspicious when he passes col 3: Link (1,6) is exactly on the diagonal edge of his 90-degree cone (|dx| = |dy| = 32 px, edges inclusive)
 # and the line passes the open cell (2,7). The recorded solution never waits there, so it is not affected.
-# Expected: max awareness 0. Actual: guard b reaches 1 (suspicious) within ~400 frames.
+# Old expectation: max awareness 0. Actual (now the spec): guard b reaches 1 (suspicious) within ~400 frames.
 #   HUSH_REPLAY=tests/chaos/repros/B-004_r15_glimpse_at_1_6.inputs .venv/bin/python tools/run_test.py tests/dev/chaos_replay.lua
 # @room r15
 # frames  buttons

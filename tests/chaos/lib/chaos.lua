@@ -12,7 +12,7 @@
 --     (the ending), as long as the game comes back to the title and a new game starts; hush_room only changes by +1 (an exit), by a
 --     jump the run itself asked for (run:jump), or to the same room (restart);
 --   * (play: mode 7, submodule 0) camera constant ($E2/$E8 = room base + window), Link inside the window and never inside a solid
---     cell of $7F2000, health full, Link's layer constant;
+--     cell of $7F2000, health full, Link's layer constant, hush_meter 0..32 and a multiple of 4; the game-over module $12 never runs;
 --   * sprites: only the room's guards (type $41, state 9 or 0), no sprite in a slot >= #guards, spr_aware in 0..3, guards not inside
 --     walls, awareness transitions only along the spec (0->1, 0->2, 0->3, 1->0, 1->2, 2->0, 3->0), a Suspicious / Alert guard never dies;
 --   * ancillae: no slot keeps one thing for > 700 frames (leak); hush_ink_t <= 300;
@@ -328,6 +328,8 @@ function Run:check()
   end
 
   -- module
+  -- stealth meter criterion 9 (design/pillars.md:115-117): the vanilla game-over module ($12) never runs, not even in the last room
+  if mode == 0x12 then self:fail("the vanilla game-over module ($12) ran") end
   local last_room = (room == self.nrooms - 1)
   if not ALLOWED_MODE[mode] then
     if last_room or self.ending or (mode == 0x17 and not C.STRICT) then
@@ -381,6 +383,9 @@ function Run:check()
   -- health
   local hp, hpmax = rd(0xF36D), rd(0xF36C)
   if hp ~= hpmax or hp == 0 then self:fail(string.format("health %d / %d (must stay full)", hp, hpmax)) end
+  -- stealth meter range (design/pillars.md:47-48): 0..32, always a multiple of 4
+  local mt = rd(hush.ram.hush_meter.addr)
+  if mt > 32 or mt % 4 ~= 0 then self:fail(string.format("hush_meter = %d (must be 0..32, a multiple of 4)", mt)) end
 
   -- Link
   local lx, ly = rd16(0x22), rd16(0x20)

@@ -97,6 +97,27 @@ The other guard variables are listed in the header of `src/hooks/guard_ai.asm`.
 Vanilla variables the E6 code relies on (documented where used): `$012C` song request, `$012D/$012E/$012F` SFX1/2/3 requests (NMI: `bank_00.asm:239-291`),
 `$0130` current song, `$0132` entrance song, `$0133` last song sent to the APU, `$0136` underworld song bank loaded, `$13` screen brightness, `$16` HUD upload flag, `$F4` new button presses.
 
+## HUSH stealth meter (design/pillars.md "Stealth meter"; defines in src/ram.asm)
+
+Block `$7EC950-$7EC98F`, inside HUSH's `$7EC900-$7EC9FF` (free per the E1 note above and A `WRAM.asm:8823`). Re-verified
+for these bytes: no `$7EC9xx` operand anywhere in `vendor/usdasm/`, and every `$C95x-$C98x` match in `vendor/usdasm/` is a
+`dw` tile / MAP16 data word (`bank_00.asm:4927-7155`, `bank_0F.asm:1054-3542`, `bank_0C.asm:5614`), not a RAM operand.
+No other HUSH hook uses them (E1-E7 use `$7EC900-$7EC943`; grep of `src/`). Per-guard arrays are indexed by sprite slot
+like `spr_aware` (16 slots, `base + slot`).
+
+| Name | Address | Bytes | Meaning | Source |
+|---|---|---|---|---|
+| `hush_meter` | `$7EC950` | 1 | Stealth meter, 0..32, always a multiple of 4; 32 on every room entry (new game, advance, restart). A hit to 0 sets `hush_caught` | pillars.md:42-75; `src/ram.asm` |
+| `hush_mflash` | `$7EC951` | 1 | HUD hit flash: 16 .. 1 frames left (lost cells drawn amber), 0 = none | pillars.md:92; `src/ram.asm` |
+| `hush_mlost` | `$7EC952` | 1 | Meter value before the last hit; while `hush_mflash` > 0 the cells between `hush_meter` and this value are amber | pillars.md:92; `src/ram.asm` |
+| `hush_cd_small` | `$7EC960` | 16 | Per sprite slot: small (4) hit cooldown, 121 .. 0. Set to 121 by a hit in frame H; decremented at the start of each meter check, then tested (0 = allowed), so H+1..H+120 are blocked and H+121 is allowed; cleared on room entry | pillars.md:65-70, :107-109; `src/ram.asm`; `src/hooks/meter.asm` (B-007) |
+| `hush_cd_big` | `$7EC970` | 16 | Per sprite slot: big (16) hit cooldown, 121 .. 0, same rule as `hush_cd_small`; cleared on room entry | pillars.md:65-70; `src/ram.asm`; `src/hooks/meter.asm` (B-007) |
+| `hush_aprev` | `$7EC980` | 16 | Per sprite slot: the `spr_aware` value seen at the last meter check (a hit fires on 0->1 small, 0->2 / 1->2 big); reset on room entry | pillars.md:52-59; `src/ram.asm` |
+
+Vanilla bytes the meter code (`src/hooks/meter.asm`) relies on: `$0373` Link's pending damage, zeroed before `LinkControlHandler` applies it (`bank_07.asm:109-130`);
+`$7EF36C` / `$7EF36D` health max / health (copied at the end of every gameplay frame); `$16` HUD upload flag (`bank_00.asm:1951`); `$1A` frame counter (low-meter blink, bit 4);
+HUD buffer cells `$7EC768-$7EC777` (BG3 row 3, cols 20-27, `docs/gfx/hud_map.md:37`). Scratch: `$00`.
+
 ## Sprite slot arrays (16 slots each, index 0 to 15)
 
 Read slot `i` at `base + i`.

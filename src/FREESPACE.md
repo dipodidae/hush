@@ -104,6 +104,9 @@ LoROM SNES addresses (inclusive range). Type is `free` or `hook`.
 | $14FFFC | $16A26D | hook | tools/gfx_insert.py | A0: sprite sheets GFX_7F-GFX_9D (graphics.asm:~176-215) replaced in place (<= vanilla slot size each, padded $FF) |
 | $16A275 | $18BFB4 | hook | tools/gfx_insert.py | A0: sprite sheets GFX_9F-GFX_D9, followers, HUD GFX_DA-DE (graphics.asm:~216-262) replaced in place |
 | $18C000 | $18FFFF | hook | tools/gfx_insert.py | A0: WorldMap_Mode7TileGFX 8bpp (graphics.asm:281) replaced by magenta CUT placeholder |
+| $07807F | $078083 | hook | src/hooks/meter.asm | M5: LinkControlHandler entry `LDA.w $0373 : BEQ .no_damage` (bank_07.asm:109-111, AD 73 03 F0 77) -> `STZ.w $0373 : BRA .no_damage` (vanilla damage dropped; the game-over branch bank_07.asm:170-188 is unreachable) |
+| $0DFB94 | $0DFB99 | hook | src/hooks/meter.asm | M5: UpdateHUDBuffer_skip_item `SEP #$30 : LDA.b #FullHeartTiles : STA.b $0A` (bank_0D.asm:17327-17331, E2 30 A9 FD 85 0A) -> `JSL Hush_MeterHud : BRA UpdateHUDBuffer_skip_hearts` (the meter bar replaces the hearts) |
+| $1BB1E0 | $1BB33F | free | src/hooks/meter.asm | M5: Hush_MeterFrame, Hush_MeterHud, Hush_MeterRefill / _Load / _Restart. Head of NULL_1BB1E0 (bank_1B.asm:6-209, "FREE ROM: 0x0629 including garbage"; the garbage is $1BB1D7-$1BB1DF, not claimed): every byte `$FF` in the disassembly listing of the vanilla ROM, no `$1BB1xx-$1BB7xx` operand or label reference in vendor/usdasm (grep) |
 | $1BD218 | $1BEBB3 | hook | tools/gfx_insert.py | A0: PaletteData colour words (bank_1B.asm:4646-5879) replaced in place; no pointer changes |
 
 ## Notes
@@ -175,6 +178,12 @@ overwrite vanilla data in place. Why that is safe:
 - Space left (bytes) after E7: `$07FFE9-$07FFFF` 23, `$07FF79-$07FF7F` 7, `$07FCE0-$07FCFF` 32, `$07F9FA-$07F9FF` 6, `$0EF1E9-$0EF21F` 55, `$0EF3FD-$0EF3FF` 3, `$0EFDED-$0EFDFF` 19, `$0EFFF4-$0EFFFF` 12, `$0FFFF1-$0FFFFF` 15, `$04EC9x-$04ECBF` ~30, `$02FFF4-$02FFFF` 12, `$07FC3C-$07FC3F` 4.
   A hand-written draw for the held ink cloud (B-006, engine_notes 15.4) needs ~190 contiguous bytes in bank `$07`: not available without shrinking `Hush_BoxProbe`.
 
+## M5 notes (stealth meter)
+
+- Free row `$1BB1E0-$1BB33F` (`src/hooks/meter.asm`, ends `$1BB327`): the head of `NULL_1BB1E0` (`bank_1B.asm:13-209`, all `$FF` in the listing, which is generated from the vanilla ROM; grep of `vendor/usdasm` finds no `$1BB1xx-$1BB7xx` operand and no reference to the label). The underworld song-bank transfer that precedes it ends with its `dw $0000` terminator at `$1BB1D3` (`sound.asm:1122`), and the 9 "garbage" bytes `$1BB1D7-$1BB1DF` are left untouched. `$1BB340-$1BB7FF` stays unclaimed.
+- Hook rows `$07807F-$078083` (5 bytes, `LinkControlHandler`) and `$0DFB94-$0DFB99` (6 bytes, `UpdateHUDBuffer_skip_item`); original bytes in the `meter.asm` header (from `vendor/usdasm`; `make build`'s ROM diff confirms only ledger bytes changed). Both branches are emitted as `db $80, target-next` because `BRA <number>` assembled to a wrong offset (game froze).
+- Three same-size call redirections inside existing HUSH blocks (no new rows): `Hush_Refills` (`transition.asm`), `Hush_LoadRoom` (`room_ctrl.asm`), `Hush_FastRestart` (`guard_runtime.asm`).
+
 ## Ledger history
 
 - A0 (graphics overhaul): nine `hook` rows added, all for `tools/gfx_insert.py` (not asm). They are
@@ -190,3 +199,4 @@ overwrite vanilla data in place. Why that is safe:
 - E4 (guard drawing): hook row `$0DB0C1-$0DB0C3` (OAM entries per soldier type) and free row `$07FD00-$07FFFF` (`Hush_DrawGuard`; the E2 runtime row shrank to `$07FB00-$07FCFF`).
 - E6 (feel): hook rows `$028158 $028279 $028286 $02931D $028856 $018A1F $02C583 $02827D $008074 $008090 $0080AC $02891E`; free rows `$0EF220-$0EF3FF` (split from the AI row), `$0EFE00-$0EFFFF` (split from the vision row), `$0FFE72-$0FFFFF`, `$04EC1C-$04ECBF`, `$02FF6E-$02FFFF`, `$07FC40-$07FCFF` (split from the runtime row); the E5 row `$01B53C-$01B55F` grew to the whole NULL block.
 - E7 (B-003 / B-005 / B-006, menu polish): hook rows `$08955A $088DAE $008174 $008265 $0ED387 $0ED397`; free rows `$07FEC8-$07FF7F` (split from the draw row, which now ends `$07FEC7`), `$07FF80-$07FFA9`, `$07FFAA-$07FFFF`, `$07FA98-$07FAFF` (split from the new_game row, which now ends `$07FA97`).
+- M5 (stealth meter): hook rows `$07807F` (damage dropped), `$0DFB94` (HUD bar); free row `$1BB1E0-$1BB33F` (head of `NULL_1BB1E0`).

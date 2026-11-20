@@ -1,20 +1,27 @@
-# recorded by tests/dev/record_room.lua from final.plan: room 20 (final), 1069 frames
+# recorded by tests/dev/record_room.lua from final_qa.plan: room 20 (final), 1152 frames (tests/dev/record_final.lua; last run trimmed at the exit)
+# design/rooms/final.yaml:80-91, step by step (verified frame by frame with tests/dev/final_probe.lua): 1 dart a from (14,11) while f
+# is paused at the top end of his lane (row 10); 2 door + f's lane passed while f is paused at that end facing up, then (3,11) -> (3,12);
+# 3 up col 3 across the row-8 lane while b is at the east end (14,8) facing east (11 cells, back turned); 4 dart c from (3,6), 11 cells,
+# and wait until c is asleep; 5 east to (8,6), up to (8,5), pot north; 6 wait ~3 s, start north ~30 frames after the cloud is up.
+# 0 awareness transitions except the two sleeps (and a waking up while Link is at (8,5)); hush_meter 32 at the exit.
 2 start
 31 -
 2 start
 31 -
 1 left
-22 -
+258 -
 3 y
-374 -
-104 left
+162 -
+115 left
 1 -
 1 left
+1 -
+2 left
 1 -
 10 down
 1 -
 1 down
-3 -
+1 -
 63 up
 1 -
 1 up
@@ -22,10 +29,8 @@
 1 right
 2 -
 3 y
-67 -
-41 right
-1 -
-1 right
+79 -
+52 right
 1 -
 1 right
 1 -
@@ -46,5 +51,5 @@
 1 up
 2 -
 3 y
-154 -
-39 up
+187 -
+34 up

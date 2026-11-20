@@ -93,7 +93,7 @@ Hush_FastRestart:
 +   LDA.b #$00
 ++  STA.b $2F
     JSR Hush_GrantTools                  ; refill darts / ink pots
-    JSL Hush_CountRetry                  ; E6 (ending.asm): the ending screen shows the retries
+    JSL Hush_MeterRestart                ; M5 (meter.asm): Hush_CountRetry (E6, ending.asm: the ending screen shows the retries), then the meter refill
     LDA.b #$26 : STA.w $012E             ; SFX2.26: Link's hurt cry (bank_07.asm:153-156, the damage routine), the "caught" sound
     JSL Hush_FlashBegin                  ; feedback.asm: 6 frames (Hush_Tick), the first 5 with the white-amber colour-math flash
     PLP

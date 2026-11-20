@@ -232,7 +232,7 @@ Hush_Refills:                            ; JSL from $028856 (M = X = 8)
     SEP #$30
     JSL Hush_HudClean
     SEP #$30
-    JSL Hush_SaveLink                    ; E7 (feedback.asm): the end of the frame, after the guards ran: Link's position for Hush_Solid next frame
+    JSL Hush_MeterFrame                  ; M5 (meter.asm): Hush_SaveLink (E7, feedback.asm: Link's position for Hush_Solid next frame), then the stealth meter + its HUD cells
     RTL
 
 Hush_FloorChunks:                        ; JML from $018A1F; M = X = 16 bit, DB = $01

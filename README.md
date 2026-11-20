@@ -9,8 +9,19 @@ rooms across 3 floors plus a final heist room.
 Rules, game summary, milestones and the agent roster: **[AGENTS.md](AGENTS.md)**.
 Design: [design/pillars.md](design/pillars.md).
 
-Status: **M0 (harness)**. No game features yet; the build is byte-identical to
-vanilla.
+Status: **M5 candidate**. All 21 rooms, guard AI, art, audio and the ending are
+built. Hearts are replaced by a **stealth meter**: every guard that turns
+suspicious ("?") or alert ("!") drains it, and an empty meter restarts the room.
+
+| | |
+|---|---|
+| ![Title screen](docs/screenshots/title.png) | ![A guard turns suspicious; the stealth meter loses half a cell](docs/screenshots/suspicious.png) |
+| **HUSH** title | A guard spots something: "?" and a small hit to the meter |
+| ![An alerted amber guard; lost meter cells flash amber](docs/screenshots/alert.png) | ![The final heist room with an Ink Pot cloud](docs/screenshots/heist_ink.png) |
+| Alerted: the guard turns amber and the lost cells flash | The heist room: an Ink Pot cloud makes alerted guards lose you |
+
+Screenshots show only HUSH's own placeholder art (`make leakcheck`: 0 vanilla
+tiles or palettes).
 
 > This repository contains no ROM and no copyrighted assets. You supply your
 > own legally obtained US 1.0 ROM. The only distributable output is a BPS

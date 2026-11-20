@@ -85,8 +85,9 @@ intended_solution: >-
   Wait there below the lane gap (cols 3-4) for a clear lane: guard b either more than 8 cells
   away or with his back to the gap; then go straight up col 3 across the lane to (3,6) at the
   west end of the middle corridor, 11 cells from guard c. 4. Face east and fire a dart along the
-  corridor: c sleeps. 5. Walk east along the corridor to (8,6) and up to (8,5), the gap cell
-  below the top corridor (hidden from d and e by the wall corners). Face north and place an Ink
+  corridor: c sleeps. 5. Walk east along the corridor to (8,6) and up to the centre of (8,5),
+  the gap cell below the top corridor (hidden from d and e by the wall corners; do not step
+  further north: d and e see the top 3 px of the cell, Link y 9936-9938). Face north and place an Ink
   Pot. 6. Wait about 3 s for the smoke, then walk north through the smoke (8,4), (8,3) to the
   exit (8,2). Darts spent: 2 (of 8); pots: 1.
 solution_inputs: tests/solutions/final.inputs
@@ -98,5 +99,6 @@ must_not:
   - "Crossing the lane while b is within 8 cells of cols 3-4 and facing them must get you Suspicious."
   - "Standing in the middle corridor at col 6 or more before sleeping c must get you Suspicious."
   - "Crossing the top corridor without smoke must get you Suspicious from d and e."
-  - "Waiting at (8,5) for the smoke must NOT get you seen by d, e or c (asleep)."
+  - "Waiting at (8,5) for the smoke, standing at the cell centre, must NOT get you seen by d, e or c (asleep). (8,5) is hidden at Link y 9939-9946 (the centre is y 9944): standing still at any of these y values for 900 frames from arrival must leave every guard Unaware. Only the top 3 px of the cell are visible (Link y 9936-9938, measured by qa 2026-11-20, bug B-009, repro tests/dev/final_top_probe.lua). The intended solution stops at the centre; the grid is unchanged."
+  - "Standing in the top 3 px of (8,5) (Link y 9936-9938) without smoke must get you Suspicious from d or e (either may notice first; at y 9936-9937 the order depends on start frame parity, at y 9938 only e notices): leaning into the top corridor counts as being in it."
   - "Waiting at (3,12) must NOT get you seen by f (his cone is vertical, 3 cols away)."

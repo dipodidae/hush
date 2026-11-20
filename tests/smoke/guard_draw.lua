@@ -174,13 +174,16 @@ hush.test("guard_draw: OAM contract of the custom guard drawing", function()
   hush.wait(10)
   local g = guards_alive()
   hush.assert_eq(#g, 4, "r14 has 4 guards")
-  -- park Link in the start corner so the guards neither catch nor restart anything during the sweep
+  -- park Link in the start corner so the guards neither catch nor restart anything during the sweep.
+  -- The poses are forced, not earned: hush_aprev (the meter's last-seen spr_aware, docs/ram_map.md) is set to the forced state so the
+  -- stealth meter (design/pillars.md:52-59) sees no transition and does not drain; the meter is not what this test checks.
   local sheets = { [0] = "unaware", [1] = "suspicious", [2] = "alert", [3] = "asleep" }
   for state = 0, 3 do
     for rot = 0, 3 do
       for rep = 1, 6 do
         for k, s in ipairs(g) do
           bot.poke(0x7E0D80 + s, state)
+          hush.write("hush_aprev", state, s)
           bot.poke(0x7E0DE0 + s, (k - 1 + rot) % 4)
           bot.poke(0x7E0E10 + s, 250); bot.poke(0x7E0DF0 + s, 250); bot.poke(0x7E0D90 + s, 5); bot.poke(0x7E0EE0 + s, 60)
         end

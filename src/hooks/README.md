@@ -32,4 +32,5 @@ The hook site and any freespace routine must both have rows in
 | `guard_hooks.asm` | E2: arrows put an unaware guard to sleep; bombs become ink clouds, no damage | `$06ECB7`, `$089815` |
 | `room_visuals.asm` | E3: tile data of the unused vanilla objects `$07`, `$B8/$92`, `$B9/$93` (wall face, pillar, exit marker) + `UnderworldPaletteSets` rows 1-5 (dark/lit x floor 1-3); data only | `$009EDA`, `$00BAA4`, `$0ED464` |
 | `guard_runtime.asm` | E2: per-frame tick, fast restart, runtime palettes (not a hook; free block of bank `$07`, called from `room_ctrl.asm`) | - |
+| `meter.asm` | M5: stealth meter (hits per awareness transition, cooldowns, refill on entry, empty = caught), HUD bar instead of hearts, vanilla damage dropped | `$07807F`, `$0DFB94` |
 | `guard_draw.asm` | E4: the guard drawing `Hush_DrawGuard` (head, lantern, body, icon, shadow = 5 OAM entries from `GFX_BC`; replaces the vanilla soldier draw; not a hook, JSL'd from `guard_ai.asm`; free block of bank `$07`) | - |

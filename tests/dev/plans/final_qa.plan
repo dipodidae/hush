@@ -1,0 +1,29 @@
+room 20   # final  (hand-timed by QA from design/rooms/final.yaml intended_solution, lines 80-91; tests/dev/record_final.lua)
+# step 1: dart a from the start (14,11) along row 11 while f is off row 11
+item bow
+until 3
+face left
+until 262            # f is at the top end of his lane (row 10, y <= 10032), not on row 11
+shoot
+# step 2: through the door (7,11), past f's lane at (6,11), to (3,12)
+until 427
+goto 6320 10040 xy   # cell (3, 11)
+goto 6320 10056 yx   # cell (3, 12)
+# step 3: wait for a clear lane (b far or back turned), straight up col 3 to (3,6)
+until 549
+goto 6320 9960 yx   # cell (3, 6)
+# step 4: dart c from 11 cells
+until 615
+face right
+until 618
+shoot
+# step 5: east to (8,6), up to (8,5), pot north
+until 712            # c is asleep (the 11-cell dart lands ~74 game frames after the shot) before Link walks east
+goto 6400 9960 xy   # cell (8, 6)
+goto 6400 9944 yx   # cell (8, 5)
+item bombs
+face up
+shoot
+# step 6: wait for the smoke (the cloud appears ~163 game frames after the pot; "about 3 s"), then north through it to the exit
+wait 185
+goto 6400 9896 yx   # cell (8, 2)

@@ -1,4 +1,4 @@
-note: 'HUD / menu / text 2bpp palettes: [transparent, 1, 2, 3]. Colours are RGB hex; the build converts to BGR555. HUSH HUD groups 00 01 02 03 07 are the ones the in-room HUD uses (docs/gfx/hud_map.md); 04-06 and 08-0F are untouched placeholders (menu/text).'
+note: 'HUD / menu / text 2bpp palettes: [transparent, 1, 2, 3]. Colours are RGB hex; the build converts to BGR555. HUSH HUD groups 00 01 02 03 07 are the ones the in-room HUD uses, 05 = amber stealth-meter flash/blink (docs/gfx/hud_map.md); 04 06 and 08-0F are untouched placeholders (menu/text).'
 groups:
   pal_hud_00:
     decision: redraw
@@ -29,7 +29,7 @@ groups:
     decision: redraw
     rom_rows: [$1BD688]
     colours:
-    - ['000000', 'E8E8F8', 'A878F0', '1A2456']  # p5: spare (not used by HUSH screens)
+    - ['000000', 'F8D888', 'F0A030', '1A2456']  # p5: stealth meter DANGER state (amber = danger): same indices as p1, idx 2 = amber where p1 has violet; used only for the lost-cell flash and the low-meter blink
   pal_hud_06:
     decision: redraw
     rom_rows: [$1BD690]

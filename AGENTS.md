@@ -17,8 +17,10 @@ across 3 floors, plus a final heist room.
   guard), Hush Darts (bow slot, ranged, ~8 s sleep on an unaware guard), Ink Pots
   (bomb slot, darkness cloud that makes alerted guards lose you).
 - **Guard states:** Unaware (no icon) -> Suspicious ("?", turns and
-  investigates) -> Alert ("!", amber, charges). Caught = instant room restart.
+  investigates) ->   Alert ("!", amber, charges). Caught = instant room restart.
   Alerted guards return to patrol after losing sight of you.
+- **Stealth meter** (replaces hearts): an 8-cell bar, 32 units. A guard turning "?" costs 4 and
+  turning "!" costs 16. Empty = room restart. Full on every room entry. Spec: `design/pillars.md`.
 - Lit rooms increase guard detection range.
 - **Art:** deep indigo + warm amber; the player and their tools are faint
   violet. **Amber = danger, violet = you.**

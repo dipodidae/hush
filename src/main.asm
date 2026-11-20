@@ -12,6 +12,8 @@
 
 lorom
 
+incsrc "ram.asm"                    ; shared WRAM defines (docs/ram_map.md); no bytes emitted
+
 ; Hooks are included here, one line each, e.g.:
 ; incsrc "hooks/awareness_detect.asm"
 incsrc "hooks/intro_skip.asm"       ; A0: boot straight to the title screen
@@ -33,3 +35,4 @@ incsrc "hooks/bomb_fast.asm"        ; E7: B-006 the held ink cloud skips the bom
 incsrc "hooks/menu_ui.asm"          ; E7: solid text box, the pause menu hides the room, FLOORS sockets
 incsrc "hooks/feedback.asm"        ; E6: sound effects, caught flash, room music
 incsrc "hooks/ending.asm"          ; E6: ending screen, stats
+incsrc "hooks/meter.asm"           ; M5: stealth meter (hits, refill, HUD bar), vanilla damage ignored
