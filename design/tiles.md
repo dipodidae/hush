@@ -33,13 +33,13 @@ connect; borders and surface transitions continue across tile boundaries. No mor
 
 ## 2. Tile vocabulary
 
-Collision comes from the grid (engine builds `$7F2000` from the grid, not from tile ids). Priority: 1 = hides sprites, 0 = sprites in front.
+Collision comes from the grid (engine builds `$7F2000` from the grid, not from tile ids). Priority: 1 = hides sprites, 0 = sprites in front. **Every surface is priority 0**: the view is top-down single-screen, a sprite never stands behind a wall, and a 2-tile-high actor (Link, a guard, its "?"/"!" icon) in a lane under a wall must never have its top clipped by the wall above.
 
 | surface | role | collision | priority | BG palette row (existing numbering) |
 |---|---|---|---|---|
 | floor | walkable ground, brick skeleton (mortar rows y=0,8; joints x=0,8) | walk | 0 | 3 |
-| wall roof | top surface of a wall mass | solid | 1 | 7 |
-| wall face | front of a wall seen from below (floor south of it) | solid | 1 | 6 |
+| wall roof | top surface of a wall mass | solid | 0 | 7 |
+| wall face | front of a wall seen from below (floor south of it) | solid | 0 | 6 |
 | pillar | free-standing cover, own 16x16 art incl. base shadow | solid | 0 | 5 |
 | exit | glow marker on floor (`X`) | walk | 0 | 4 |
 | door | open archway threshold in a one-cell wall gap (`D`) | walk | 0 (whole cell: a lintel must never hide a sprite) | 6 (frame), 3 (threshold) |

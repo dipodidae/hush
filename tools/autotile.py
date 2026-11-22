@@ -24,7 +24,7 @@ PAL = yaml.safe_load((ROOT / "gfx" / "src" / "palettes" / "bg_dungeon.yaml").rea
 
 W, H = 16, 14
 ROW = {"floor": 3, "exit": 4, "pillar": 5, "face": 6, "roof": 7, "pit": 7, "water": 5, "door_top": 6, "door_bot": 3}
-PRIO = {"floor": 0, "exit": 0, "pillar": 0, "face": 1, "roof": 1, "pit": 0, "water": 0, "door_top": 0, "door_bot": 0}
+PRIO = {"floor": 0, "exit": 0, "pillar": 0, "face": 0, "roof": 0, "pit": 0, "water": 0, "door_top": 0, "door_bot": 0}
 SOLID = {"roof", "face", "pit", "water", "pillar"}   # surfaces whose cells block Link / guards (design/tiles.md section 2)
 SOLID_BASIN = {"O": "pit", "W": "water"}
 

@@ -26,8 +26,8 @@ Conventions used in every table:
 | # | What | Sheet (file) | Cells (col,row) -> PNG px | Row + expansion | Notes |
 |---|---|---|---|---|---|
 | 1 | **Floor** (every floor cell `.`, `S`, guard letters: 2090 cells over the 21 rooms) | `bg_tileset/GFX_06.png` | block (12,2) = px (96,16) 16x16 | BG row 3, right | the plain block; **E5: ~21% of the `.` cells use one of the 14 floor variants** of section 3.5 (cracks, soot, moss, rune, lamp glow, wall contact shadow) |
-| 2a | **Wall top surface** (`#` whose cell below is wall/pillar/outside the grid; the ceiling) | `bg_tileset/GFX_00.png` | **one** cell (5,1) = px (40,8) 8x8, fills all 4 quarters of the cell | BG row 7, right, **priority 1** | hides sprites that overlap it |
-| 2b | **Wall face** (`#` whose cell below is floor: the vertical front side of the wall) | `bg_tileset/GFX_00.png` | top half of the 16x16 cell = the wall-top cell (5,1) twice; **bottom half = face A (4,2) px (32,16) + face B (5,2) px (40,16)** (A on the even tile column, B on the odd one: a 16x8 strip) | face strip BG row **6**, right, priority 1 | solid; added in E3 |
+| 2a | **Wall top surface** (`#` whose cell below is wall/pillar/outside the grid; the ceiling) | `bg_tileset/GFX_00.png` | **one** cell (5,1) = px (40,8) 8x8, fills all 4 quarters of the cell | BG row 7, right, priority 0 | sprites draw in front |
+| 2b | **Wall face** (`#` whose cell below is floor: the vertical front side of the wall) | `bg_tileset/GFX_00.png` | top half of the 16x16 cell = the wall-top cell (5,1) twice; **bottom half = face A (4,2) px (32,16) + face B (5,2) px (40,16)** (A on the even tile column, B on the odd one: a 16x8 strip) | face strip BG row **6**, right, priority 0 | solid; added in E3 |
 | 2c | **Pillar `p`** (own art, solid) | `bg_tileset/GFX_00.png` | block (12,2) = px (96,16) 16x16 = cells (12,2) (13,2) / (12,3) (13,3) = px (96,16) (104,16) / (96,24) (104,24) | BG row **5**, right, **priority 0** (Link and guards draw IN FRONT of it) | solid; added in E3 |
 | 3 | **Exit marker `X`** (walkable, never solid) | `bg_tileset/GFX_06.png` | block (0,0) = px (0,0) 16x16 = cells (0,0) (1,0) / (0,1) (1,1) = px (0,0) (8,0) / (0,8) (8,8) | BG row **4**, right, priority 0 | floor type `$00`; added in E3 |
 | 4 | **Guard** (head + body + lantern, all 4 facings, all steps, all states) | `sprite/GFX_BC.png` | **14 blocks** (12 of 16x16, 2 of 8x8), see section 5 (E4 contract) | OBJ row 4 (calm), **OBJ row 6 (alert)**, left | alert only swaps the row, not the pixels |
@@ -104,7 +104,7 @@ Cell kinds are chosen by `tools/roomgen.py` (`cell_kinds`), collision is **ident
 
 The four sheet areas are disjoint (GFX_00: (5,1), (4,2), (5,2), (12..13, 2..3); GFX_06: (12..13, 2..3), (0..1, 0..1)). Painting rules that follow from the tile wiring:
 * **Wall face A/B are a 16x8 strip that repeats every cell**: A is the left 8 px, B the right 8 px of a cell, so a long wall repeats a 16-px pattern. The 8 px above the strip are the wall-top tile (5,1); paint the face so that it meets a top-surface edge at the strip's top row.
-* The pillar is a standalone 16x16, draw its own top/front. Priority 0: Link/guards overlapping it draw on top of it (they stand in front); a pillar never hides them, a wall (priority 1) does.
+* The pillar is a standalone 16x16, draw its own top/front. Priority 0: Link/guards overlapping it draw on top of it (they stand in front); nothing in a room hides them (section 3.2).
 * The exit marker is a floor-level decal on a 16x16 floor cell, nothing hides it; there is no floor tile under it (the 16x16 replaces the floor block), so paint its background too.
 * Why these cells: the vanilla tile *types* (collision) of the ids are what the cell needs (`UnderworldTileTypes`, `bank_0E.asm:274`): ids `$024 $025 $02C $02D $03C $03D` = solid, `$0C0 $0C1 $0D0 $0D1` = floor. Other cells of the sheets have other types
   (e.g. `$02` standard, `$27`, ...): **do not move the art to other cells without checking the type table**, a type other than `$00`/`$01` changes how Link and the guards collide.
@@ -140,7 +140,7 @@ Every 16x16 below is the usual TL TR / BL BR cell group; "px" is the PNG pixel o
 | `fc_sconce` (**dark rooms**) | wall face, ~every 6th face cell | `GFX_10` cells (4,0) (5,0) -> px (32,0) | `$84 $85` (top row = plain wall top `$15`) | 6 (bottom) / 7 (top), **1** | unlit iron sconce with a dead torch stub: dark rooms have no flames |
 
 Unused spare cells: `GFX_10` (4,1) (5,1) (`$94 $95`, solid), (6..13,1) and everything not listed. **Do not move art to other tile ids without checking the type table** (`UnderworldTileTypes`, `bank_0E.asm:274`): every id above is type `$00` (floor variants) or `$01` (wall variants); the verified free lists are in `docs/engine_notes.md` section 13.
-Draw rules that follow: floor variants must keep the brick skeleton (mortar rows y=0 and y=8, vertical joints x=0 / x=8) so they tile with the plain block (except the rune flagstone); `_h` variants are H-flipped copies, so keep the light direction readable when mirrored; wall variants are priority 1 (they hide sprites, section 3.2).
+Draw rules that follow: floor variants must keep the brick skeleton (mortar rows y=0 and y=8, vertical joints x=0 / x=8) so they tile with the plain block (except the rune flagstone); `_h` variants are H-flipped copies, so keep the light direction readable when mirrored; wall variants are priority 0 like every room tile (section 3.2).
 Placement (`variant_plan`): torches never within one column of an exit cell below and never above a guard; banners/sigils/cracks >= 3 cells from other decorations; floor variants never on `S`/`X`/guard cells, never directly below a wall, never next to another variant (the shadow line excepted); wall-top variants on ~55% of the `ceil` cells (crack/seam blocks never directly above a face).
 Counts over the 21 rooms (`visual_tiles` log): 41 torches in the 7 lit rooms, 44 sconces in the 14 dark rooms.
 
@@ -161,9 +161,10 @@ Palette additions that go with it (`gfx/src/palettes/bg_dungeon.yaml`, groups 00
 
 ### 3.2 Priority (important for painting walls)
 
-Wall top, wall face and the ceiling tile have the BG priority bit set. In Mode 1 BG2 priority-1 tiles draw **above** sprites with OAM priority <= 2; guards (`attr $29`) and Link (`$2E`) are priority 2. So a guard or Link whose
-sprite overlaps a wall cell is **covered by the wall tile** (Link's head sticks up 8 px above his box). The placeholder shows it: with Link on the top free row his head is cut flat at the wall edge (`tools/art/probe_priority.lua`). Draw wall art so that this looks right (e.g. a dark top face).
-The wall-face strip is priority 1 as well (it is the bottom 8 px of the cell, i.e. what Link's head overlaps when he stands directly under a wall). **Pillars and the exit marker are priority 0** (sprites in front).
+**Every room tile is priority 0** (design/tiles.md section 2; was priority 1 for wall top / face / ceiling until the lane-clipping fix).
+Guards (`attr $29`) and Link (`$2E`) are OAM priority 2, which draws above BG2 priority-0 tiles in Mode 1, so a sprite that overlaps a wall cell
+(Link's head and a guard's helmet stick up 8 px above the box; the "?"/"!" icon sits 22 px up) is always drawn **in front of** the wall.
+Before the fix a 2-tile-high actor in a one-cell lane under a wall had its top cut flat at the wall edge.
 
 ### 3.3 Palettes of the room tiles (six variants)
 
@@ -456,7 +457,7 @@ Roles come from each sheet's yaml. Which PNG indices are amber/violet in the aut
 2. ~~Four sheets in use are labelled unused/debug~~ fixed in A0-art: `role: player`, FX palette, painted (section 7).
 3. ~~`GFX_D1` palette mismatch~~ fixed (section 9.1: art in idx 1-3, idx 4-7 not magenta any more).
 4. ~~`GFX_BC` has role env~~ fixed: role `danger`. The alert/ink rows are still asm constants (`Hush_PalAlert`, `Hush_PalInk`), documented in sections 5 and 7; to get teal sparkles in the ink cloud `Hush_PalInk` would have to contain a teal (engine decision).
-5. Walls hide sprites (priority 1, section 3.2); wall art must be designed with that.
+5. Sprites always draw in front of walls (priority 0, section 3.2).
 6. Bow limbs (`GFX_73` cells (8..10, 0..1)) are drawn with row 1 = the ink palette and are not painted (they show only while aiming); the dart itself uses row 2. Painted in A0-art as a violet bow: cell (9,0) = the curve rising to the right, (9,1) its vertical mirror, (10,0)/(10,1) the tip stubs (row 1 = the ink palette: idx 7 violet bow, idx 5 shade).
 7. The title sheets are painted (section 14). The HUD, the START item menu, the text box and the font are painted too (`docs/gfx/hud_map.md`, `tools/art/hud_art.py`, `menu_art.py`, `font_art.py`; every cell a HUSH screen shows). Unpainted but never visible in HUSH: LINK.png cells not listed in section 8, GFX_B9, GFX_86, GFX_C7, GFX_D2, GFX_D3, GFX_D8, the HUD/menu cells of items HUSH does not have, file select / name entry graphics.
 8. Placeholder tile art of different sheets is identical (same label text per cell), so a pixel comparison of VRAM against `gfx/src` **cannot** tell sheets apart; do not rely on it. The trace ROM (section 13) can.
