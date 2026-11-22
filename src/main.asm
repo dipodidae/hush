@@ -36,3 +36,4 @@ incsrc "hooks/menu_ui.asm"          ; E7: solid text box, the pause menu hides t
 incsrc "hooks/feedback.asm"        ; E6: sound effects, caught flash, room music
 incsrc "hooks/ending.asm"          ; E6: ending screen, stats
 incsrc "hooks/meter.asm"           ; M5: stealth meter (hits, refill, HUD bar), vanilla damage ignored
+incsrc "hooks/light.asm"           ; L1: lantern light = guard sight (BG1 light layer added by colour math), design/lighting.md

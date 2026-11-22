@@ -65,7 +65,7 @@ org $028286
     JSL Hush_InitTilesets
 
 org $02931D
-    JSL Hush_Wipe
+    JSL Hush_LightWipe                   ; L1 (light.asm): Hush_Wipe, then the light colours + soft shadow palette before the first fade-in frame
     NOP : NOP : NOP
 
 org $028856

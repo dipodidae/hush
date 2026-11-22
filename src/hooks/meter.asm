@@ -111,6 +111,7 @@ Hush_MeterFrame:                         ; JSL from Hush_Refills ($028856), M = 
     JSL Hush_MeterHud
     LDA.b #$01 : TSB.b $16               ; HUD buffer upload stays on
 .out
+    JSL Hush_LightWork                   ; L1 (light.asm): lantern light in the spare time of the frame (checks module 7 itself)
     PLP
     RTL
 

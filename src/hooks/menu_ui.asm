@@ -44,6 +44,7 @@ pullpc
 
 org $07FFAA
 Hush_NmiTM:                              ; M = 8 bit (NMI), DB = $00
+    JSL Hush_LightNmi                    ; L1 (light.asm): light rows to VRAM; no light behind the item menu
     LDA.b $10
     CMP.b #$0E
     BNE .room

@@ -107,6 +107,8 @@ LoROM SNES addresses (inclusive range). Type is `free` or `hook`.
 | $07807F | $078083 | hook | src/hooks/meter.asm | M5: LinkControlHandler entry `LDA.w $0373 : BEQ .no_damage` (bank_07.asm:109-111, AD 73 03 F0 77) -> `STZ.w $0373 : BRA .no_damage` (vanilla damage dropped; the game-over branch bank_07.asm:170-188 is unreachable) |
 | $0DFB94 | $0DFB99 | hook | src/hooks/meter.asm | M5: UpdateHUDBuffer_skip_item `SEP #$30 : LDA.b #FullHeartTiles : STA.b $0A` (bank_0D.asm:17327-17331, E2 30 A9 FD 85 0A) -> `JSL Hush_MeterHud : BRA UpdateHUDBuffer_skip_hearts` (the meter bar replaces the hearts) |
 | $1BB1E0 | $1BB33F | free | src/hooks/meter.asm | M5: Hush_MeterFrame, Hush_MeterHud, Hush_MeterRefill / _Load / _Restart. Head of NULL_1BB1E0 (bank_1B.asm:6-209, "FREE ROM: 0x0629 including garbage"; the garbage is $1BB1D7-$1BB1DF, not claimed): every byte `$FF` in the disassembly listing of the vanilla ROM, no `$1BB1xx-$1BB7xx` operand or label reference in vendor/usdasm (grep) |
+| $1FB780 | $1FC3FF | free | src/hooks/light.asm | L1: Hush_LightInit / Work / Nmi + the light engine (design/lighting.md). Vanilla room object data of rooms HUSH never loads (RoomDataTiles_00A1 at $1FB763 .. RoomDataTiles_0056, rooms.asm:750-866); same evidence as the E1 room-data row `$1F8780`: HUSH never loads a vanilla room (see "E1 notes") |
+| $1FC400 | $1FC9FF | hook | build/rooms_gen.asm | L1: Hush_LightTab (ray wedges, steps, BG1 light tile words; tools/roomgen.py lighting_asm), copied to WRAM by Hush_LightInit. Same vanilla room object data as the row above |
 | $1BD218 | $1BEBB3 | hook | tools/gfx_insert.py | A0: PaletteData colour words (bank_1B.asm:4646-5879) replaced in place; no pointer changes |
 
 ## Notes

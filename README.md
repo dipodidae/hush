@@ -13,12 +13,24 @@ Status: **M5 candidate**. All 21 rooms, guard AI, art, audio and the ending are
 built. Hearts are replaced by a **stealth meter**: every guard that turns
 suspicious ("?") or alert ("!") drains it, and an empty meter restarts the room.
 
+**Lantern light is guard sight** ([design/lighting.md](design/lighting.md)).
+Like the lamp in the castle escape of the original, the light is a second
+background layer added onto the room, but here every guard carries one and it
+is rebuilt live from the AI's own rules: the cone, the range (longer in lit
+rooms), walls (the light stops at them, wall faces catch it) and the ink cloud
+(it eats the light). Stand in amber and you are seen; the faint fringe is
+"maybe"; shadow is safe. A suspicious guard lights all around him, an alerted
+one burns brighter. The rest of the room is soft shadow, and a faint violet
+glow marks where you stand.
+
 | | |
 |---|---|
 | ![Title screen](docs/screenshots/title.png) | ![A guard turns suspicious; the stealth meter loses half a cell](docs/screenshots/suspicious.png) |
-| **HUSH** title | A guard spots something: "?" and a small hit to the meter |
+| **HUSH** title | A guard spots something: "?", a small hit to the meter, and his light swings all around; you stand in its faint fringe |
 | ![An alerted amber guard; lost meter cells flash amber](docs/screenshots/alert.png) | ![The final heist room with an Ink Pot cloud](docs/screenshots/heist_ink.png) |
-| Alerted: the guard turns amber and the lost cells flash | The heist room: an Ink Pot cloud makes alerted guards lose you |
+| Alerted: the guard turns amber, his lantern lights everything around him, the lost cells flash | The heist room: the guards' light fills the lanes; an Ink Pot cloud eats the light and makes alerted guards lose you |
+| ![A guard's lantern cone shines down through a doorway and spreads out below](docs/screenshots/light_cone.png) | ![Four guards light their lanes in a lit room](docs/screenshots/light_lanes.png) |
+| r09: one cone, cut by the wall and the doorway: exactly what he can see | r14: every lantern lights its own lane; walk the dark between them |
 
 Screenshots show only HUSH's own placeholder art (`make leakcheck`: 0 vanilla
 tiles or palettes).

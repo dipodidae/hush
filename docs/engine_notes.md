@@ -598,3 +598,21 @@ Replaces sections 12-13 for the room tiles (the object-based draw, the E5 varian
 * **Tile ids are free** now: no vanilla type constraint. Palette rows are unchanged (floor 3, exit 4, pillar and water 5, face 6, roof and pit 7). Sheets: `tools/art/autotile_art.py apply`.
 * **Gallery**: `tests/dev/rooms/gallery.yaml` (dev ROM only) exercises every case, including pit and water, which no shipped room uses (no sight / arrow semantics defined, see `design/tiles.md` Decisions).
 * **Verified**: `make test` (26 pass, 2 pre-existing savestate skips; unit autotile test; `visual_tiles` 18 816 tiles + collision vs the grid; `visual_gallery`; leakcheck clean). Before / after: `docs/gfx/screenshots/env_r05_f1_dark.png` vs `t0_r05_f1_dark.png`, `env_r09_f2_lit.png` vs `t0_r09_f2_lit.png`.
+
+## 16. L1: lantern light = guard sight (`src/hooks/light.asm`, design/lighting.md)
+
+* **Technique** (vanilla castle-escape lamp: `OrientLampLightCone` `bank_00.asm:15413`, `RoomDraw_LampCones` `bank_01.asm:5679`, a BG1 cone added by colour math):
+  BG1 goes on the sub screen (`$1D` bit 0), `CGWSEL $99 = $02` (sub screen addend), `CGADSUB $9A = $22` (add to BG2 + backdrop; not OBJ, not BG3). Where BG1 is
+  transparent the addend is COLDATA = 0, so the room is unchanged. Measured in a room before L1: `TM $16`, `TS $00`, `$99 $02`, `$9A $20`, BG1 hidden and holding the floor copy
+  that `transition.asm` reuses as the BG2 floor source, so the light never touches the `$7E4000` buffer: it has its own WRAM tile buffer and uploads only the BG1 **VRAM** window.
+* **Calls (no new vanilla bytes):** `Hush_AttrSet` ends with `JML Hush_LightInit` (collision ready, forced blank: state reset, solidity + faces, BG1 window := no light);
+  the submodule-$0F hook calls `Hush_LightWipe` = `Hush_Wipe` + the light palette (row 2 colours 9-12, rooms rows 3-7 dimmed to 11/16 dark, 13/16 lit) before the first fade-in
+  frame (`LoadUnderworldPalettes` runs after `Hush_AttrSet`, `bank_02.asm:426`); `Hush_MeterFrame` ends with `JSL Hush_LightWork`; `Hush_NmiTM` starts with `JSL Hush_LightNmi`.
+* **Frame budget:** the worker runs at the end of the gameplay frame and spends only spare time: before each unit it reads the V counter (latch `$2137`, `$213F`, `$213D` twice,
+  as `bank_00.asm:15150`) and stops at line 195 or when the counter wrapped. Units: pick (8 signatures), clear, 12 ray entries, half a cell row of commit; each <= ~10 lines.
+  Measured (`tests/dev/nmi_probe.lua`, 180 frames walking, final / r20 / r19): end of logic max 213 / 212 / 212 with light, 205 / 187 / 177 without; **0 lag frames**.
+  The NMI reaches `Hush_NmiTM` at line 250; <= 4 dirty cell rows (512 bytes) are uploaded per NMI.
+* **Correctness:** `tests/smoke/lighting.lua` compares every guard's committed light map with an independent Lua oracle of design/lighting.md (all 21 rooms, an ink case),
+  checks the composite, glow, tile words, the BG1 VRAM window, liveness (light catches up with its guard) and the colour-math shadows.
+* **Range:** the job reads the lit flag from the ROOM TABLE (+19 bit 0), not `hush_range`: `Hush_Tick` only updates that in submodule 0.
+* **Item menu:** `Hush_LightNmi` clears `$1D` while module `$0E` submodule 1 runs (TM is BG3 only there, and the backdrop would still get the light added).

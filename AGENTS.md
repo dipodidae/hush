@@ -129,4 +129,4 @@ starts. The director stops and asks at every gate.
 | **M4** | Full tower (~20 rooms + heist room) + chaos suite | Human playthrough; chaos suite green |
 | **M5** | Instant respawn, polish, BPS release | Human approves `dist/hush.bps` |
 
-Current milestone: **M5 candidate** (all 21 rooms, AI, art, audio, ending built; `dist/hush.bps` produced). Human gates were waived by the human for this build pass; M0 savestate tests (`tests/states/test_room.mss`) are still skipped. Open: B-006 (30 fps dips with 5-6 guards plus pot/dart spam).
+Current milestone: **M5 candidate** (all 21 rooms, AI, art, audio, ending, lantern lighting (`design/lighting.md`) built; `dist/hush.bps` produced). Human gates were waived by the human for this build pass; M0 savestate tests (`tests/states/test_room.mss`) are still skipped. Open: B-006 (30 fps dips with 5-6 guards plus pot/dart spam).

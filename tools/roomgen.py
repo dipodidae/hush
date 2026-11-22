@@ -84,6 +84,11 @@ HDR_BASE = 0x04F782               # 14-byte headers
 HDR_END = 0x04F8D1
 SPR_BASE = 0x09D92E               # sprite lists
 SPR_END = 0x09DBCD
+LIGHT_DATA = 0x1FC400             # lighting tables (design/lighting.md; src/FREESPACE.md row owned by build/rooms_gen.asm)
+LIGHT_END = 0x1FC9FF
+LIGHT_PAD = 8                     # light grid = the 16 x 14 cells padded by 8 on every side: 32 x 30, index (cy + 8) * 32 + cx + 8
+LIGHT_W = 32
+LIGHT_RMAX = 9                    # lit sight 8 cells + the fringe ring
 ROOM_REC = 32                     # bytes per ROOM TABLE record (+24..26: 24-bit pointer to the room's cell RLE)
 
 # EntranceData tables (bank_02.asm:13125-15440): name -> (base, bytes per row)
@@ -363,6 +368,9 @@ def build_asm(rooms: list[dict]) -> tuple[str, dict]:
         w(f"    db {hexlist(bytes(tt[i:i + 16]))}")
     w("")
 
+    # ---- lighting tables (design/lighting.md, docs/engine_notes.md section 16) -------------
+    w(lighting_asm())
+
     # ---- EntranceData rows ---------------------------------------------------------------
     w("; ---- EntranceData rows 0..N-1 (entrance k loads room k; LoadUnderworldEntrance, bank_02.asm:15456) ----")
     rows: dict[str, list[bytes]] = {k: [] for k in ENT}
@@ -400,6 +408,68 @@ def build_asm(rooms: list[dict]) -> tuple[str, dict]:
                  hdr_budget=HDR_END - HDR_BASE + 1, spr_used=scur - SPR_BASE, spr_budget=SPR_END - SPR_BASE + 1,
                  table_bytes=ROOM_REC * n)
     return "\n".join(out) + "\n", stats
+
+
+def light_wedge() -> list[tuple[int, int, int, int]]:
+    """Entries (d, b, parent, edge) of one 90-degree wedge facing +along, d = 1..LIGHT_RMAX, b = lateral -d..d, sorted by d then |b|.
+    parent = index of the cell one step closer to the origin on the line origin -> (d, b) (round half toward zero), or the origin (= len)."""
+    ent = [(d, b) for d in range(1, LIGHT_RMAX + 1) for b in sorted(range(-d, d + 1), key=lambda v: (abs(v), v))]
+    idx = {e: i for i, e in enumerate(ent)}
+    out = []
+    for d, b in ent:
+        if d == 1:
+            par = len(ent)
+        else:
+            q = b * (d - 1) / d
+            pb = int(q + 0.5) if q > 0 and q - int(q) > 0.5 else (int(q - 0.5) if q < 0 and int(q) - q > 0.5 else int(q))
+            par = idx[(d - 1, pb)]
+        out.append((d, b, par, 1 if abs(b) == d else 0))
+    return out
+
+
+def light_levels() -> list[list[int]]:
+    """[class * 2 + lit][d] light step (design/lighting.md section 3): class 0 cone, 1 suspicious (cap 4), 2 alert (+1, cap 6)."""
+    base = {0: [6, 6, 5, 4, 3, 2, 1, 0, 0, 0], 1: [6, 6, 6, 5, 5, 4, 3, 3, 2, 1]}     # d = R + 1: the fringe (step 1)
+    out = []
+    for cls in range(3):
+        for lit in (0, 1):
+            v = base[lit]
+            out.append([min(x, 4) if cls == 1 else (min(x + 1, 6) if cls == 2 and x else x) for x in v])
+    return out
+
+
+def lighting_asm() -> str:
+    """The lighting tables for src/hooks/light.asm: tile words, 4 rotated wedges (facing 0 right, 1 left, 2 down, 3 up), steps."""
+    o = ["; ---- lighting tables (design/lighting.md; src/hooks/light.asm) ----", f"org ${LIGHT_DATA:06X}"]
+    o.append(f"!HUSH_LIGHT_N = {len(light_wedge())}    ; entries per wedge (d <= {LIGHT_RMAX}); d <= R uses the first R*R + 2R")
+    n = len(wedge := light_wedge())
+    o.append(f"; Hush_LightTab is copied as one block to $7EE210 by Hush_LightInit: delta {8 * n}, parent {2 * n}, dist {2 * n}, steps 96, tile words 18")
+    o.append("Hush_LightTab:")
+    wedge = light_wedge()
+    rot = {0: lambda d, b: (d, b), 1: lambda d, b: (-d, b), 2: lambda d, b: (b, d), 3: lambda d, b: (b, -d)}
+    o.append("Hush_LightDelta:    ; [facing][entry] signed offset in the padded 32-wide light grid (dy * 32 + dx); facing 0 right, 1 left, 2 down, 3 up")
+    for f in range(4):
+        vals = []
+        for d, b, _, _ in wedge:
+            dx, dy = rot[f](d, b)
+            vals.append((dy * LIGHT_W + dx) & 0xFFFF)
+        for i in range(0, len(vals), 16):
+            o.append("    dw " + ", ".join(f"${v:04X}" for v in vals[i:i + 16]))
+    o.append("Hush_LightPar:    ; [entry] 2 * parent entry (one step closer on the line to the origin); 2 * N = the origin")
+    for i in range(0, len(wedge), 16):
+        o.append("    dw " + ", ".join(f"${2 * e[2]:04X}" for e in wedge[i:i + 16]))
+    o.append("Hush_LightDist:    ; [entry] d (Chebyshev distance) | $80 on the cone diagonal (|b| = d: the soft edge)")
+    for i in range(0, len(wedge), 16):
+        o.append("    dw " + ", ".join(f"${e[0] | (e[3] << 7):04X}" for e in wedge[i:i + 16]))
+    o.append("Hush_LightLvl:    ; [(class - 1) * 2 + lit][d = 0..15] light step: class 1 cone, 2 suspicious, 3 alert (dark R = 5, lit R = 8)")
+    for row in light_levels():
+        o.append("    db " + ", ".join(f"${v:02X}" for v in row + [0] * (16 - len(row))))
+    o.append("Hush_LightWords:    ; BG1 tile words: amber steps 0..6, violet 1, 2 (tools/autotile.py light_words)")
+    o.append("    dw " + ", ".join(f"${v:04X}" for v in autotile.light_words()))
+    o.append(f"assert Hush_LightWords+18-Hush_LightTab == {12 * n + 96 + 18}")
+    o.append("Hush_LightData_End:")
+    o.append(f"assert pc() <= ${LIGHT_END + 1:06X}")
+    return "\n".join(o) + "\n"
 
 
 def build_report(rooms: list[dict], stats: dict, src: Path) -> str:

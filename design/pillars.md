@@ -34,6 +34,9 @@ change.** Every other agent treats it as read-only law.
 - Alerted guards **return to patrol** after losing sight of you for the
   de-alert time.
 - **Lit rooms increase guard detection range** (planned for late milestones).
+- **Lantern light shows sight** (human-approved, `design/lighting.md`): every
+  guard's lantern lights exactly the cells it can see (cone or all around,
+  range, walls, ink). Stand in amber light and you are seen; shadow is safe.
 - **Damage rule:** a hit from a player tool damages a guard only if the guard
   was Unaware (or asleep) at the moment of the hit. Alert guards take no damage.
 - **Stealth meter** replaces hearts (section below). Being noticed drains it;
@@ -140,7 +143,8 @@ assumes a tool it did not give.
 - Guards: steel-blue uniform with an amber lantern (alert = the whole guard turns amber).
 - Player: violet hooded thief with cyan eyes and a teal scarf. Exit cells: green glow marker.
 - The player and their tools are **faint violet**.
-- **Amber = danger and light sources** (lanterns, torches, alert guards, alert icon).
+- **Amber = danger and light sources** (lanterns, torches, alert guards, alert icon, and the lantern
+  light on the floor, which is the guard's sight: `design/lighting.md`). Shadow is soft, never black.
 - **Violet = you** (player, knife, darts, ink pots).
 - Violet never appears on guards or hazards; amber never appears on the player.
   `tools/gfx_convert.py` enforces this by file-name role prefix.

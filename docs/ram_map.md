@@ -118,6 +118,27 @@ Vanilla bytes the meter code (`src/hooks/meter.asm`) relies on: `$0373` Link's p
 `$7EF36C` / `$7EF36D` health max / health (copied at the end of every gameplay frame); `$16` HUD upload flag (`bank_00.asm:1951`); `$1A` frame counter (low-meter blink, bit 4);
 HUD buffer cells `$7EC768-$7EC777` (BG3 row 3, cols 20-27, `docs/gfx/hud_map.md:37`). Scratch: `$00`.
 
+## HUSH lighting (L1, `src/hooks/light.asm`, design/lighting.md)
+
+Block `$7ECA00-$7EE7FF`, inside the "seemingly Free RAM" `$7EC900-$7EE7FF` (A `WRAM.asm:8823`; the E1 note above: no `$7EC9xx-$7EE7xx`
+operand in `vendor/usdasm/` except the power-on clear). Not used by any other HUSH hook (E1-M5 use `$7EC900-$7EC98F`; grep of `src/`).
+The light code runs with DB = `$7E` and addresses these as `$CA00..`.
+
+| Name | Address | Bytes | Meaning | Source |
+|---|---|---|---|---|
+| `light_sol` | `$7ECA00` | 960 | Padded light grid (32 x 30, `p = (cy + 8) * 32 + cx + 8`): bit 0 solid, bit 1 face (solid with an open cell below: catches light), bit 6 ink cloud, bit 7 outside the 16 x 14 grid | L1 `src/hooks/light.asm` |
+| `light_scr` | `$7ECDC0` | 960 | Padded scratch: light steps of the running job | L1 `src/hooks/light.asm` |
+| `light_gmap` | `$7ED180` | 1792 | Committed light step per guard slot and cell: `slot * 224 + cy * 16 + cx` (slots 0-7) | L1 `src/hooks/light.asm` |
+| `light_comp` | `$7ED880` | 224 | Composite light step per cell (max over the guards), 0..6 | L1 `src/hooks/light.asm` |
+| `light_vio` | `$7ED960` | 224 | Player glow per cell: 2 Link's cell, 1 orthogonal neighbours (floor only), 0 none | L1 `src/hooks/light.asm` |
+| `light_tiles` | `$7EDA40` | 1792 | BG1 window tile words, 28 rows x 32 (uploaded by the NMI, dirty cell rows only) | L1 `src/hooks/light.asm` |
+| `light_vis` | `$7EE140` | 200 | Ray visibility of the current wedge, `[2 * entry]`; entry 99 = the origin (always 1) | L1 `src/hooks/light.asm` |
+| `light_tab` | `$7EE210` | 1302 | Copy of `Hush_LightTab` (ray deltas per facing, parents, distances, steps, tile words; 99 entries per wedge), made by `Hush_LightInit` | L1 `src/hooks/light.asm` |
+| `light_on` | `$7EE740` | 1 | 1 = lighting active (set by `Hush_LightInit` on every room load) | L1 `src/hooks/light.asm` |
+| `light_dirty` | `$7EE742` | 2 | Cell rows (bits 0-13) whose tile words wait for the NMI upload (worker `TSB`, NMI `TRB`) | L1 `src/hooks/light.asm` |
+| `light_sigc` | `$7EE748` | 32 | Committed signature per slot: class (0 none, 1 cone, 2 suspicious, 3 alert, $FF invalid), facing, padded cell (2) | L1 `src/hooks/light.asm` |
+| `light_job` | `$7EE768` | 30 | Worker state: tested / job signature, job slot (`$7EE770`, $FF idle), phase, wedges, entry, range end, step row, edge, commit half-row, round robin, glow cell (`$7EE77E`), ink centre, palette request, V counter at entry | L1 `src/hooks/light.asm` |
+
 ## Sprite slot arrays (16 slots each, index 0 to 15)
 
 Read slot `i` at `base + i`.

@@ -111,8 +111,7 @@ Hush_AttrSet:                            ; M = X = 8 bit
     JSL $01C22A                          ; FlipCrystalPegAttributes
     SEP #$30
 .nopegs
-    STZ.w $0200
-    RTL
+    JML Hush_LightInit                   ; L1 (light.asm): does the `STZ.w $0200 : RTL` that ended here, after the light state reset
 Hush_RoomLoad_End:
 assert pc() <= $0FFFA0                       ; E6: the block must stay inside its src/FREESPACE.md row (pc = the first free byte)
 

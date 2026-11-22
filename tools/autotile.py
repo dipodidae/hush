@@ -546,6 +546,27 @@ for _q in _universe():
 assert len(CHARS) <= 255, len(CHARS)     # char 0 stays free as "empty"
 assert len(CELLS) <= 192, len(CELLS)
 
+# ---- lighting (design/lighting.md): BG1 light tiles, added onto the room by colour math. Pixel index i -> colour 8+i of BG row LIGHT_ROW.
+# 1 amber edge, 2 amber mid, 3 amber core, 4 violet glow. Registered as raw cells (no H-flip canonicalisation: the checker phase must
+# stay the same in every tile so neighbouring tiles continue the pattern). Never in CHARS: BG1 has no collision.
+LIGHT_ROW = 2
+
+
+def _lt(a, b=None):
+    b = a if b is None else b
+    return tuple(tuple(a if (x + y) % 2 == 0 else b for x in range(8)) for y in range(8))
+
+
+LIGHT_PATTERNS = [_lt(0), _lt(1, 0), _lt(1), _lt(2, 1), _lt(2), _lt(3, 2), _lt(3),   # steps 0..6 (amber)
+                  _lt(4, 0), _lt(4)]                                                # violet glow 1, 2
+LIGHT_CELL: list = []
+for _p in LIGHT_PATTERNS:
+    if _p not in _CELL_OF:
+        _CELL_OF[_p] = len(CELLS)
+        CELLS.append(_p)
+    LIGHT_CELL.append(_CELL_OF[_p])
+assert len(CELLS) <= 192, len(CELLS)
+
 SHEET_ORDER = (("GFX_00", 0), ("GFX_10", 128), ("GFX_06", 192))     # sheet, first tile id (VRAM slots 0, 2, 3; docs/gfx/art_map.md 2.1)
 
 
@@ -561,6 +582,11 @@ def char_word(ci: int) -> int:
 
 def char_words() -> list:
     return [char_word(i) if i < len(CHARS) else 0 for i in range(256)]
+
+
+def light_words() -> list:
+    """BG1 tile words of the 9 light tiles (index = amber step 0..6, then violet 1, 2): palette row LIGHT_ROW, priority 0."""
+    return [tile_id(c) | (LIGHT_ROW << 10) for c in LIGHT_CELL]
 
 
 def tile_types() -> list:
