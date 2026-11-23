@@ -21,7 +21,11 @@ rooms), walls (the light stops at them, wall faces catch it) and the ink cloud
 (it eats the light). Stand in amber and you are seen; the faint fringe is
 "maybe"; shadow is safe. A suspicious guard lights all around him, an alerted
 one burns brighter. The rest of the room is soft shadow, and a faint violet
-glow marks where you stand.
+glow marks where you stand. The light is drawn as a smooth dithered gradient
+between the cells, not as blocks.
+
+Actors are layered against the walls like in a top-down 3/4 view: the wall
+below you covers your feet, and you stand in front of the wall above you.
 
 | | |
 |---|---|
@@ -29,8 +33,8 @@ glow marks where you stand.
 | **HUSH** title | A guard spots something: "?", a small hit to the meter, and his light swings all around; you stand in its faint fringe |
 | ![An alerted amber guard; lost meter cells flash amber](docs/screenshots/alert.png) | ![The final heist room with an Ink Pot cloud](docs/screenshots/heist_ink.png) |
 | Alerted: the guard turns amber, his lantern lights everything around him, the lost cells flash | The heist room: the guards' light fills the lanes; an Ink Pot cloud eats the light and makes alerted guards lose you |
-| ![A guard's lantern cone shines down through a doorway and spreads out below](docs/screenshots/light_cone.png) | ![Four guards light their lanes in a lit room](docs/screenshots/light_lanes.png) |
-| r09: one cone, cut by the wall and the doorway: exactly what he can see | r14: every lantern lights its own lane; walk the dark between them |
+| ![A guard's lantern cone spreads down the room toward a doorway](docs/screenshots/light_cone.png) | ![Four guards light their lanes in a lit room](docs/screenshots/light_lanes.png) |
+| r16: one cone, cut by the walls: exactly what he can see | r14: every lantern lights its own lane; guards stand behind the wall below them; walk the dark between them |
 
 Screenshots show only HUSH's own placeholder art (`make leakcheck`: 0 vanilla
 tiles or palettes).

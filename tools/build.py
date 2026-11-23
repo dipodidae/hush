@@ -76,9 +76,11 @@ def build(dev: bool = False) -> None:
 
     asar = tool_path("HUSH_ASAR", "asar")
     gen_asm = (gen_dir / "rooms_gen.asm").relative_to(ROOT)
+    light_asm = (gen_dir / "light_gen.asm").resolve()   # absolute: incsrc'd from src/hooks/light.asm (asar resolves relative to that file)
     cmd = [
         asar, "-werror", "--fix-checksum=off",
         f"-DHUSH_ROOMS_GEN=../{gen_asm}",   # src/main.asm: incsrc "!HUSH_ROOMS_GEN" (relative to src/)
+        f"-DHUSH_LIGHT_GEN={light_asm}",    # src/hooks/light.asm: incsrc "!HUSH_LIGHT_GEN" (smooth light tiles, LUTs, ramp; design/lighting.md 4)
         "--symbols=wla", f"--symbols-path={BUILD_DIR / ('hush_dev.sym' if dev else 'hush.sym')}",
         str(MAIN_ASM.relative_to(ROOT)), str(out_rom.relative_to(ROOT)),
     ]

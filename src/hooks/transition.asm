@@ -117,7 +117,7 @@ Hush_DecompAnim:                         ; Y = animated sheet id, set by the cal
 Hush_InitTilesets:
     LDA.l !hush_gfx
     BNE .skip
-    JSL $00E19B                          ; InitializeTilesets
+    JSL Hush_LightTilesets               ; L1 (light.asm): InitializeTilesets ($00E19B), then the light tiles again (it rewrites BG slots 4-6)
     SEP #$30
     LDA.b #$01
     STA.l !hush_gfx                      ; the HUSH room graphics are in VRAM now

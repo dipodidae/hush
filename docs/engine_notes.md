@@ -616,3 +616,14 @@ Replaces sections 12-13 for the room tiles (the object-based draw, the E5 varian
   checks the composite, glow, tile words, the BG1 VRAM window, liveness (light catches up with its guard) and the colour-math shadows.
 * **Range:** the job reads the lit flag from the ROOM TABLE (+19 bit 0), not `hush_range`: `Hush_Tick` only updates that in submodule 0.
 * **Item menu:** `Hush_LightNmi` clears `$1D` while module `$0E` submodule 1 runs (TM is BG3 only there, and the backdrop would still get the light added).
+* **L2 smooth look (design/lighting.md section 4 rev 2; supersedes the per-cell words, the row 2 colours 9-12 and the budget numbers above):**
+  * Data: `tools/autotile.py` (N = 7 amber levels = the steps, NV = 3 violet; 183 amber + 8 violet + 1 empty bilinear/Bayer 4bpp tiles) -> `tools/roomgen.py` writes
+    `build/light_gen.asm` (data only: ramp, `Hush_LightLutA` 2401 words, `Hush_LightLutV` 81 words, `Hush_LightChr` 6144 B) and the `light` table of `build/rooms_gen.lua`.
+    Included by `light.asm` in the row `$1FCA00-$1FFFFF` (`-DHUSH_LIGHT_GEN`, `tools/build.py`).
+  * VRAM: the tiles are BG tile ids `$100-$1BF` (BG chr slots 4-6, byte `$6000-$77FF`), uploaded at room load (`Hush_LightChrUp`) and again after a full tileset load
+    (`Hush_LightTilesets`, from `Hush_InitTilesets`). The vanilla animated-tile upload target `$0134` (`$3B00` in dungeons, `bank_00.asm:9365`) would overwrite tiles `$1B0-$1BF`
+    every NMI, so it is moved to `$3C00` (slot 7, never drawn by a room). Palette row 2 colours 1-12 amber ramp, 13-15 violet.
+  * Render: a COMP / VIO change marks the 4x4 tile block around the cell; a time-sliced render unit looks each tile up in a per-power-on table `light_lutf` (`$7FA000`,
+    built from the LUTs) via pre-multiplied padded cell grids `light_pgrid` (`$7F8000`). Jobs clear / commit only the box the old or new light can reach.
+  * Budget: `LIGHT_VMAX` 200, NMI uploads <= 6 cell rows. Measured: 0 lag frames (nmi_probe final, all 21 solution replays), worst end of logic line 219 of 225.
+    Catch-up (`tests/dev/light_latency.lua`, stale episodes, frames, median / p90 / max): r13 6 / 11 / 13, r19 11 / 19 / 61, final 9 / 28 / 55.

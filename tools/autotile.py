@@ -350,6 +350,16 @@ def autotile_px(grid) -> dict:
     return out
 
 
+def depth_prio(grid, c, r, qx, qy) -> int:
+    """design/tiles.md 2.1 rule 1: BG priority 1 exactly on the NW/NE quarters of a '#' / 'p' cell whose cell above is inside the grid and
+    not solid ('#' 'p' 'O' 'W'): an actor north of a wall / pillar is drawn behind its top edge. Everything else priority 0."""
+    return 1 if qy == 0 and r > 0 and grid[r][c] in "#p" and grid[r - 1][c] not in "#pOW" else 0
+
+
+def with_prio(q: Q, prio: int) -> Q:
+    return q if q.prio == prio else Q(q.surface, q.cls, q.name, q.px, q.row, prio)
+
+
 def autotile(grid) -> dict:
     """The QA contract: {(c, r, qx, qy): (surface, class_name, tile_name)}."""
     return {k: (q.surface, q.cls, q.name) for k, q in autotile_px(grid).items()}
@@ -389,9 +399,9 @@ def _build_decor() -> dict:
         g = [[0] * 16 for _ in range(16)]
         for y in range(8):
             g[8 + y] = list(strip[y])
-        qs = _tiles16(g, (7, 7, 6, 6), (1, 1, 1, 1), "face", name)
-        qs[0] = Q("face", "DECOR", name + ".NW", ROOF_FILL0(), 7, 1)
-        qs[1] = Q("face", "DECOR", name + ".NE", ROOF_FILL0(), 7, 1)
+        qs = _tiles16(g, (7, 7, 6, 6), (0, 0, 0, 0), "face", name)
+        qs[0] = Q("face", "DECOR", name + ".NW", ROOF_FILL0(), 7, 0)
+        qs[1] = Q("face", "DECOR", name + ".NE", ROOF_FILL0(), 7, 0)
         D[name] = ("face", qs)
 
     face_dec("fc_crack", env_art.face_crack())
@@ -399,7 +409,7 @@ def _build_decor() -> dict:
     face_dec("fc_sigil", env_art.face_sigil())
     face_dec("fc_warm", env_art.face_warm())
     face_dec("fc_sconce", env_art.sconce_strip())
-    D["fc_torch"] = ("face", _tiles16(env_art.torch_block(True), (6, 6, 6, 6), (1, 1, 1, 1), "face", "fc_torch"))
+    D["fc_torch"] = ("face", _tiles16(env_art.torch_block(True), (6, 6, 6, 6), (0, 0, 0, 0), "face", "fc_torch"))
     return D
 
 
@@ -512,6 +522,8 @@ def _universe() -> list:
                 U.append(Q(name, "FIXED", "", quarter(art, qx, qy), ROW[rk], PRIO[rk]))
     for name in sorted(DECOR):
         U.extend(DECOR[name][1])
+    # design/tiles.md 2.1: the top quarters of a wall / pillar cell (any surface or decoration they can carry) also exist with priority 1
+    U.extend([with_prio(q, 1) for q in list(U) if q.surface in ("roof", "face", "pillar")])
     return U
 
 
@@ -589,6 +601,128 @@ def light_words() -> list:
     return [tile_id(c) | (LIGHT_ROW << 10) for c in LIGHT_CELL]
 
 
+# ---- smooth light (design/lighting.md section 4, revision 2): bilinear gradient tiles with a 4x4 Bayer dither -----------------------------
+# Corner levels: amber 0..LIGHT_N-1 (N = 7: Q(step) = step), violet 0..LIGHT_NV-1. Tiles are raw 4bpp (not part of any 3bpp sheet): uploaded
+# by src/hooks/light.asm to the BG character slots 4-6 (tile ids $100-$1BF, VRAM byte $6000-$77FF; docs/gfx/art_map.md 2.1: never drawn by a
+# room). Pixel value = colour index of BG palette row LIGHT_ROW: amber ramp r1..r12 -> colours 1..12, violet v1..v3 -> colours 13..15.
+LIGHT_N, LIGHT_K, LIGHT_NV, LIGHT_KV = 7, 13, 3, 4
+LIGHT_TILE_BASE = 0x100
+LIGHT_TILE_MAX = 192
+LIGHT_BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
+# BGR555 components (r, g, b) of the ramps, ADDED by colour math: faint deep amber -> bright warm core; faint violet (4.2, 4.3)
+LIGHT_AMBER = [(2, 1, 0), (3, 1, 0), (5, 2, 0), (6, 3, 0), (8, 4, 0), (9, 5, 0), (11, 6, 0), (12, 7, 0), (14, 8, 0), (15, 9, 1), (16, 9, 1), (18, 10, 1)]
+LIGHT_VIOLET = [(1, 0, 3), (3, 1, 5), (4, 1, 8)]
+
+
+def _light_px(cor, n, k):
+    """design/lighting.md 4.2, exact rational arithmetic."""
+    from fractions import Fraction as Fr
+    a, b, c, d = cor
+    out = []
+    for y in range(8):
+        row = []
+        for x in range(8):
+            u, w = Fr(2 * x + 1, 16), Fr(2 * y + 1, 16)
+            lv = a * (1 - u) * (1 - w) + b * u * (1 - w) + c * (1 - u) * w + d * u * w
+            p = lv * (k - 1) / (n - 1)
+            lo = int(p)
+            row.append(lo + 1 if p - lo > Fr(2 * LIGHT_BAYER[y % 4][x % 4] + 1, 32) else lo)
+        out.append(row)
+    return out
+
+
+def _orients(t):
+    a, b, c, d = t
+    return {(0, 0): t, (1, 0): (b, a, d, c), (0, 1): (c, d, a, b), (1, 1): (d, c, b, a)}     # (hflip, vflip) -> shown corners
+
+
+def _light_q(total, den, n, vmax):
+    return (2 * total * (n - 1) + den * vmax) // (2 * den * vmax)      # floor(total / den * (n - 1) / vmax + 1/2)
+
+
+def _light_reachable(n, vmax, cells):
+    """Corner tuples of a NW quarter tile (a = cell corner, b = top edge, c = left edge, d = centre) over the cell value combos, all 4 orientations."""
+    out = set()
+    for C, H, V, D in cells:
+        t = (_light_q(C + H + V + D, 4, n, vmax), _light_q(C + V, 2, n, vmax), _light_q(C + H, 2, n, vmax), _light_q(C, 1, n, vmax))
+        if max(t):
+            out |= set(_orients(t).values())
+    return out
+
+
+def _glow_cells():
+    """(C, H, V, D) glow values of a 2x2 block (C at (1,1), H (0,1), V (1,0), D (0,0)) for any solidity and Link position (section 3 glow rule)."""
+    pos = ((1, 1), (0, 1), (1, 0), (0, 0))
+    for solid in range(16):
+        for lx in range(-2, 4):
+            for ly in range(-2, 4):
+                if (lx, ly) in pos and solid >> pos.index((lx, ly)) & 1:
+                    continue
+                yield tuple(0 if solid >> i & 1 else 2 if (x, y) == (lx, ly) else 1 if abs(x - lx) + abs(y - ly) == 1 else 0
+                            for i, (x, y) in enumerate(pos))
+
+
+def _build_light():
+    import itertools
+    amber = _light_reachable(LIGHT_N, 6, itertools.product(range(7), repeat=4))
+    violet = _light_reachable(LIGHT_NV, 2, _glow_cells())
+    tiles = [{"tile": LIGHT_TILE_BASE, "kind": "empty", "corners": (0, 0, 0, 0), "px": [[0] * 8 for _ in range(8)]}]
+    words = {}
+    for kind, tset, n, k in (("amber", amber, LIGHT_N, LIGHT_K), ("violet", violet, LIGHT_NV, LIGHT_KV)):
+        for canon in sorted({min(_orients(t).values()) for t in tset}):
+            tid = LIGHT_TILE_BASE + len(tiles)
+            tiles.append({"tile": tid, "kind": kind, "corners": canon, "px": _light_px(canon, n, k)})
+            for (h, v), shown in _orients(canon).items():
+                words.setdefault((kind, shown), tid | (LIGHT_ROW << 10) | (0x4000 if h else 0) | (0x8000 if v else 0))
+    assert len(tiles) <= LIGHT_TILE_MAX, len(tiles)
+    return tiles, words
+
+
+LIGHT_TILES, LIGHT_WORDS = _build_light()
+LIGHT_EMPTY_WORD = LIGHT_TILE_BASE | (LIGHT_ROW << 10)
+
+
+def light_tiles() -> list:
+    """One dict per stored (unflipped) BG1 light tile: tile id, kind, corners (a TL, b TR, c BL, d BR), 8x8 ramp indices (tests/unit/test_light_tiles.py)."""
+    return LIGHT_TILES
+
+
+def light_word(kind: str, corners) -> int:
+    """BG1 tile word shown for a corner tuple (KeyError if no stored tile can show it)."""
+    t = tuple(corners)
+    if max(t) == 0:
+        return LIGHT_EMPTY_WORD
+    return LIGHT_WORDS[(kind, t)]
+
+
+def light_colour(i: int) -> int:
+    """BGR555 word of colour i (1..15) of BG row LIGHT_ROW."""
+    r, g, b = (LIGHT_AMBER + LIGHT_VIOLET)[i - 1]
+    return r | (g << 5) | (b << 10)
+
+
+def light_chr() -> bytes:
+    """Raw 4bpp character data of the light tiles, tile id order from LIGHT_TILE_BASE (32 bytes per tile)."""
+    out = bytearray()
+    for t in LIGHT_TILES:
+        off = 0 if t["kind"] != "violet" else LIGHT_K - 1      # violet ramp v1.. -> colours 13..
+        px = [[(v + off) if v else 0 for v in row] for row in t["px"]]
+        lo, hi = bytearray(), bytearray()
+        for row in px:
+            bp = [sum(((row[x] >> p) & 1) << (7 - x) for x in range(8)) for p in range(4)]
+            lo += bytes((bp[0], bp[1]))
+            hi += bytes((bp[2], bp[3]))
+        out += lo + hi
+    return bytes(out)
+
+
+def light_lut(kind: str) -> list:
+    """BG1 word per corner tuple, index ((a * n + b) * n + c) * n + d; unreachable tuples -> the empty tile."""
+    n = LIGHT_N if kind == "amber" else LIGHT_NV
+    import itertools
+    return [LIGHT_WORDS.get((kind, t), LIGHT_EMPTY_WORD) if max(t) else LIGHT_EMPTY_WORD for t in itertools.product(range(n), repeat=4)]
+
+
 def tile_types() -> list:
     """UnderworldTileTypes[0..255] replacement: collision type per tile id ($00 walk / $01 solid). Unused ids walk ($00)."""
     t = [0] * 256
@@ -622,7 +756,7 @@ def place(rid: str, grid, lit: bool):
         dec = plan.get((c, r))
         if dec:
             q = DECOR[dec][1][qy * 2 + qx]
-        rows[r * 2 + qy][c * 2 + qx] = char_of(q)
+        rows[r * 2 + qy][c * 2 + qx] = char_of(with_prio(q, depth_prio(grid, c, r, qx, qy)))
     return rows, plan
 
 

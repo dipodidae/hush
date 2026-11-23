@@ -1,6 +1,8 @@
 # HUSH tile spec (T0): autotiled background
 
 Status: **revision 3, BUILT (T0). Human approved the look and said to pick the open questions' defaults (see "Decisions").** Spec comes before tests, art and code (AGENTS.md rule 2).
+**Revision 4 (2026-11-23, human-approved, specified, not built):** depth rule, section 2.1 (wall / pillar top halves next to open
+floor above are priority 1; icons OAM priority 3). Acceptance criterion 7.10.
 Supersedes the 5-kind cell model in `docs/gfx/art_map.md` section 3.1 and `tools/roomgen.py` `cell_kinds` once built.
 Scope extension: doorway, pit and water tiles and a grid-driven tile placement are outside the original MVP list in `design/pillars.md`.
 The human approved them for this task (director question, "Everything incl. new tile types" + "Direct tilemap blit"); `design/pillars.md` Scope
@@ -33,14 +35,43 @@ connect; borders and surface transitions continue across tile boundaries. No mor
 
 ## 2. Tile vocabulary
 
-Collision comes from the grid (engine builds `$7F2000` from the grid, not from tile ids). Priority: 1 = hides sprites, 0 = sprites in front. **Every surface is priority 0**: the view is top-down single-screen, a sprite never stands behind a wall, and a 2-tile-high actor (Link, a guard, its "?"/"!" icon) in a lane under a wall must never have its top clipped by the wall above.
+Collision comes from the grid (engine builds `$7F2000` from the grid, not from tile ids). Priority: 1 = hides sprites, 0 = sprites in front.
+
+### 2.1 Depth rule (actors vs walls; revision 4, human-approved 2026-11-23, replaces "every surface is priority 0")
+
+Human feedback: "If an actor is between two walls that stretch horizontally, the bottom wall should cover the actor and the top wall
+should be behind the actor." The rule is a pure function of the grid, per 8x8 quarter:
+
+1. **Priority 1 (hides sprites):** the two **top quarters (NW, NE)** of a cell C where
+   * C is a solid mass cell: `#` (wall roof or wall face cell) or `p` (pillar), **and**
+   * the cell directly above C is inside the grid and **not solid**: `.` `S` `X` `a-h` `D` (anything except `#` `p` `O` `W`).
+   Decoration variants on such a quarter keep priority 1: the bit follows the quarter's position, not its art.
+2. **Priority 0 (sprites in front): every other quarter**, in particular:
+   * the bottom quarters (SW, SE) of every cell, including the wall face strip (BRICK, END_CAP, FACE_INNER and face decor);
+   * the top quarters of a wall cell whose cell above is solid (roof rows deeper in a wall mass);
+   * room-edge cells in row 0 (the cell above is outside the grid and counts as wall, section 1: nobody stands north of them);
+   * door `D`: the whole cell, all 4 quarters (a lintel never hides a sprite, 3.4);
+   * floor, exit, pit `O` and water `W` (flat, at floor level; nothing stands behind them).
+3. **Sprites:** Link's and guards' bodies are OAM priority 2, so a priority-1 room quarter hides them and a priority-0 quarter does not.
+   Awareness icons "?" / "!" (drawn ~22 px above a guard) and the guard's alert lantern, if it is a separate OAM entry, are
+   **OAM priority 3**: drawn above every room tile, never hidden by a priority-1 wall top.
+4. **Why the bottom half stays 0** (kept from the old fix): a 2-tile-high actor (Link's head, a guard's helmet stick up 8 px) in a
+   one-cell lane under a wall overlaps the wall's face strip; that strip is priority 0, so the head is never clipped.
+5. **1-cell-thick wall between two lanes:** top half priority 1 (covers the actor in the lane above), bottom half (face) priority 0
+   (the actor in the lane below draws over it).
+
+Expected visual: an actor standing just north of a wall or pillar is drawn **behind** its top edge (feet / lower body hidden, as if
+standing behind it). In a one-cell lane between two horizontal walls, the actor's head overlaps the wall above and is drawn over it;
+the actor's feet overlap the wall below and are hidden by it.
+
+Light (BG1, `design/lighting.md`) is unaffected: it is added on the sub screen onto whatever the main screen shows, wall top or sprite.
 
 | surface | role | collision | priority | BG palette row (existing numbering) |
 |---|---|---|---|---|
 | floor | walkable ground, brick skeleton (mortar rows y=0,8; joints x=0,8) | walk | 0 | 3 |
-| wall roof | top surface of a wall mass | solid | 0 | 7 |
-| wall face | front of a wall seen from below (floor south of it) | solid | 0 | 6 |
-| pillar | free-standing cover, own 16x16 art incl. base shadow | solid | 0 | 5 |
+| wall roof | top surface of a wall mass | solid | NW/NE: 1 if the cell above is not solid (2.1), else 0; SW/SE: 0 | 7 |
+| wall face | front of a wall seen from below (floor south of it) | solid | 0 (bottom half); top half is roof, see wall roof | 6 |
+| pillar | free-standing cover, own 16x16 art incl. base shadow | solid | NW/NE: 1 if the cell above is not solid (2.1), else 0; SW/SE: 0 | 5 |
 | exit | glow marker on floor (`X`) | walk | 0 | 4 |
 | door | open archway threshold in a one-cell wall gap (`D`) | walk | 0 (whole cell: a lintel must never hide a sprite) | 6 (frame), 3 (threshold) |
 | pit | dark void with rim | solid (sight rule: open question 1) | 0 | see question 2 |
@@ -109,6 +140,7 @@ along the wall).
   posts and a lintel drawn inside the cell. **Whole cell priority 0**: a guard or Link standing in the doorway is fully visible.
 * **Pillar**: 2x2 fixed art with its own base shadow. Floor around it uses plain FILL so seams stay clean. Because `p` is open for the
   wall rules, walls beside a pillar (r05, r14) get rim tiles toward it; **r05 and r14 look different even though their collision is unchanged.**
+  Depth: the pillar's top quarters are priority 1 when the cell above is open (2.1), so an actor north of it stands behind it.
 * **Exit**: 2x2 fixed art with a floor background (the art includes the brick skeleton so it seams with floor FILL).
 
 ### 3.5 Decoration (kept from E5, rate-limited)
@@ -206,6 +238,11 @@ and compressed-slot plan.
 8. All 21 rooms load, walk-exit tests still pass, and `make leakcheck` has no vanilla tile or palette hits.
 9. Visual: before/after screenshots of r01, r05, r09, r14, r18 and final, plus the gallery with a guard standing in the doorway, are reviewed by
    the human before the engine change merges.
+10. **Depth (2.1):** for all 21 rooms and the gallery, the priority bit (bit 13 of the tile word) of every quarter in the `$7E2000` BG2
+    buffer is 1 iff the quarter is NW or NE, the cell is `#` or `p`, the cell is not in row 0, and the cell above is not `#` `p` `O` `W`;
+    0 otherwise (all `D` quarters 0). In-emulator: Link and guard body OAM entries have priority 2; "?" / "!" icon entries have priority 3.
+    Screenshot check: a guard in a one-cell lane between two horizontal walls has its head drawn over the upper wall and its feet
+    hidden by the lower wall's top edge; its icon is fully visible.
 
 ## 8. Gallery dev room (QA owns the file, `tests/dev/rooms/`)
 

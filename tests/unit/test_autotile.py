@@ -244,7 +244,13 @@ def main() -> int:
     if len(FAILS) > 30:
         print(f"  ... {len(FAILS) - 30} more")
     print("unit autotile:", "FAILED" if FAILS else "passed")
-    return 1 if FAILS else 0
+    # the other unit files (the Makefile runs only this one): design/tiles.md 2.1 depth rule, design/lighting.md 4 light tiles
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import test_depth  # noqa: E402
+    import test_light_tiles  # noqa: E402
+    rc_depth = test_depth.main()
+    rc_light = test_light_tiles.main()
+    return 1 if (FAILS or rc_depth or rc_light) else 0
 
 
 if __name__ == "__main__":

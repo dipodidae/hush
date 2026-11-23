@@ -131,13 +131,38 @@ The light code runs with DB = `$7E` and addresses these as `$CA00..`.
 | `light_gmap` | `$7ED180` | 1792 | Committed light step per guard slot and cell: `slot * 224 + cy * 16 + cx` (slots 0-7) | L1 `src/hooks/light.asm` |
 | `light_comp` | `$7ED880` | 224 | Composite light step per cell (max over the guards), 0..6 | L1 `src/hooks/light.asm` |
 | `light_vio` | `$7ED960` | 224 | Player glow per cell: 2 Link's cell, 1 orthogonal neighbours (floor only), 0 none | L1 `src/hooks/light.asm` |
-| `light_tiles` | `$7EDA40` | 1792 | BG1 window tile words, 28 rows x 32 (uploaded by the NMI, dirty cell rows only) | L1 `src/hooks/light.asm` |
+| `light_tiles` | `$7EDA40` | 1792 | BG1 window tile words, 28 rows x 32 (row stride 64 bytes; smooth look, design/lighting.md 4: one gradient tile per 8x8 tile from the 4 corner levels; uploaded by the NMI, dirty cell rows only) | L1 `src/hooks/light.asm` |
 | `light_vis` | `$7EE140` | 200 | Ray visibility of the current wedge, `[2 * entry]`; entry 99 = the origin (always 1) | L1 `src/hooks/light.asm` |
 | `light_tab` | `$7EE210` | 1302 | Copy of `Hush_LightTab` (ray deltas per facing, parents, distances, steps, tile words; 99 entries per wedge), made by `Hush_LightInit` | L1 `src/hooks/light.asm` |
 | `light_on` | `$7EE740` | 1 | 1 = lighting active (set by `Hush_LightInit` on every room load) | L1 `src/hooks/light.asm` |
-| `light_dirty` | `$7EE742` | 2 | Cell rows (bits 0-13) whose tile words wait for the NMI upload (worker `TSB`, NMI `TRB`) | L1 `src/hooks/light.asm` |
+| `light_dirty` | `$7EE742` | 2 | Bits 0-13: cell rows whose tile words wait for the NMI upload (worker `TSB`, NMI `TRB`); bit 15: render work pending (`light_tdirty` not empty). 0 = the BG1 VRAM window equals `light_tiles` | L1 `src/hooks/light.asm` |
 | `light_sigc` | `$7EE748` | 32 | Committed signature per slot: class (0 none, 1 cone, 2 suspicious, 3 alert, $FF invalid), facing, padded cell (2) | L1 `src/hooks/light.asm` |
-| `light_job` | `$7EE768` | 30 | Worker state: tested / job signature, job slot (`$7EE770`, $FF idle), phase, wedges, entry, range end, step row, edge, commit half-row, round robin, glow cell (`$7EE77E`), ink centre, palette request, V counter at entry | L1 `src/hooks/light.asm` |
+| `light_job` | `$7EE768` | 30 | Worker state: tested / job signature, job slot (`$7EE770`: 0-7 a guard job runs, $FE no job but render work pending, $FF idle = `light_tiles` matches COMP / VIO), phase, wedges, entry, range end, step row, edge, commit cell row (`$7EE77B`, job box rows), round robin, glow cell (`$7EE77E`), ink centre, palette request, V counter at entry | L1 `src/hooks/light.asm` |
+| `light_tdirty` | `$7EE786` | 112 | Tile render bitmap: byte `ty * 4 + (tx >> 3)`, bit `tx & 7` = BG1 tile (tx, ty) must be recomputed (a COMP / VIO change marks the 4 x 4 tiles around its cell, the glow ring 8 x 8) | L1 `src/hooks/light.asm`; inside the L1 block (free per the note above; `$7EE786-$7EE7F7` unused before, grep of `src/`) |
+| `light_rcur` | `$7EE7F6` | 2 | Render scan cursor (even byte offset into `light_tdirty`) | L1 `src/hooks/light.asm` |
+| `light_jbox` | `$7EE7F8` | 4 | Job box of the running job: first / last cell column, first / last cell row (`$7EE7FA` > `$7EE7FB` = empty box): the cells the slot's committed light or its new light can reach | L1 `src/hooks/light.asm` (`Hush_LightBox`); inside the L1 block, unused before (grep of `src/`) |
+| `light_jcx` | `$7EE7FC` | 1 | Commit cursor: next cell column of the row `light_job` + 19 (`$7EE77B`) | L1 `src/hooks/light.asm` |
+| `light_rscn` | `$7EE7FD` | 2 | Render: `light_tdirty` words found empty in a row since the last mark (56 = render done) | L1 `src/hooks/light.asm` |
+| `light_jrst` | `$7EE7FF` | 1 | 1 = the running job was already restarted once because its guard moved on (`Hush_LightStale`) | L1 `src/hooks/light.asm` |
+
+### HUSH lighting, bank $7F (smooth-light render caches)
+
+Block `$7F8000-$7FB3F1`, inside `$7F7667[0x6719]` "free ram" (A `WRAM.asm:9269`). Verified for HUSH: the only `$7F7xxx-$7FCxxx`
+operands in `vendor/usdasm/bank_*.asm` are the intro spotlight HDMA table `$7F7000` (`bank_00.asm:15122-15160`, 0x1C0 bytes), the dialogue
+pointer table `$7F71C0` (`bank_0E.asm:7322-10345`, ends `$7F7666`) and the intro's WRAM clear `Intro_Clear1kbBlocksOfWRAM`
+(`bank_0C.asm:88-113`, `STA.l $7F8000,X` / `$7FA000,X`: zeroes the block at the intro; harmless, `light_lutok` is then rebuilt). No HUSH
+file used bank `$7F` above `$7F2FFF` before (grep of `src/`: `$7F2000` collision map, `$7FDF80` sprite flags only). Written only by
+`src/hooks/light.asm` with DB = `$7F` (or by DMA channel 5 to WMDATA `$2180`, which nothing else uses: no `DMA5*` / `$435x` / WMADD operand
+in `vendor/usdasm`).
+
+| Name | Address | Bytes | Meaning | Source |
+|---|---|---|---|---|
+| `light_pgrid` | `$7F8000` | 8192 | 8 padded cell grids of 16 rows x 64 bytes (offset `G = (cy + 1) * 64 + (cx + 1) * 2`; rows -1 / 14 and columns -1 / 16 stay 0): `$7F8000` AW98 = 98(7C+W), `$7F8400` AW2 = 2(7C+W), `$7F8800` AE98 = 98(7C+E), `$7F8C00` AE2 = 2(7C+E) for C = `light_comp`; `$7F9000` VW18 = 18(3C+W), `$7F9400` VW2, `$7F9800` VE18, `$7F9C00` VE2 for C = `light_vio` (W / E = west / east neighbour, 0 outside the grid). Zeroed by DMA on every room load | L1 `src/hooks/light.asm` (`Hush_LightAmb`, `Hush_LightVio`, `Hush_LightZeroGrids`) |
+| `light_lutf` | `$7FA000` | 4802 | `(C, H, V, D)` amber cells (index `343C + 49H + 7V + D`, words) -> BG1 word of the NW tile of a cell C with west H, north V, north-west D (from `Hush_LightLutA`); the other quadrants use their own neighbours and an H / V flip | L1 `src/hooks/light.asm` (`Hush_LightBuild`) |
+| `light_lutfv` | `$7FB300` | 162 | The same for the violet glow (index `27C + 9H + 3V + D`, from `Hush_LightLutV`) | L1 `src/hooks/light.asm` |
+| `light_lutok` | `$7FB3F0` | 2 | `$4C48` = `light_lutf` / `light_lutfv` are built (built once per power-on / intro, ~3 frames of the first room load) | L1 `src/hooks/light.asm` |
+
+Vanilla byte the smooth light changes: `$7E0134` (word) = VRAM word address of the per-frame animated-tile upload in the NMI (`bank_00.asm:1936-1946`, $400 bytes from `[$0ADC]`; set to `$3B00` by `DecompressAnimatedUnderworldTiles`, `bank_00.asm:9365`). `Hush_LightChrUp` sets it to `$3C00` (BG tiles `$1C0-$1DF`, slot 7, never drawn by a room) so the upload no longer overwrites the light tiles `$1B0-$1BF`.
 
 ## Sprite slot arrays (16 slots each, index 0 to 15)
 

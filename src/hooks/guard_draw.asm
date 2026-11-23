@@ -12,7 +12,8 @@
 ;     entry 0  HEAD     16x16 at (X0, Y0-8)       head_down $40, head_up $42, head_side $44 (facing left; right = H flip), head_sleep $46
 ;     entry 1  LANTERN  8x8   at (X0+dx, Y0+dy)   lantern frame 0 / 1 = tile $68 / $69, frame alternates every 12 frames (flicker)
 ;     entry 2  BODY     16x16 at (X0, Y0)         by facing and walk phase (below)
-;     entry 3  ICON     8x8   at (X0+4, Y0-22)    '?' '!' 'Z' = GFX_C5 tiles $FC / $FD / $FE (state + $FB), attribute $29; hidden while UNAWARE
+;     entry 3  ICON     8x8   at (X0+4, Y0-22)    '?' '!' 'Z' = GFX_C5 tiles $FC / $FD / $FE (state + $FB), attribute $39 (OAM priority 3,
+;                                                 design/tiles.md 2.1 rule 3); hidden while UNAWARE. The lantern (entry 1) is always OAM priority 3.
 ;     entry 4  SHADOW   16x16 at (X0, Y0+$0A/$0C) vanilla shadow (tile $6C, name table 0), exactly what DrawSpriteShadow_custom draws
 ;   The lower OAM index is in front: head over lantern over body over icon over shadow.
 ;   Facing = $0DE0 (0 right, 1 left, 2 down, 3 up); pose class f = facing, 4 = asleep.
@@ -92,7 +93,7 @@ Hush_DrawGuard:
     LDA.b $00 : CLC : ADC.w Hush_LanternDX,X : STA.b ($90),Y : INY   ; entry 1: lantern
     LDA.b $02 : CLC : ADC.w Hush_LanternDY,X : STA.b ($90),Y : INY
     LDA.b $08 : STA.b ($90),Y : INY
-    LDA.b $05 : STA.b ($90),Y : INY
+    LDA.b $05 : ORA.b #$30 : STA.b ($90),Y : INY      ; lantern: OAM priority 3 (design/tiles.md 2.1 rule 3: the alert lantern is 3; one rule for all states)
     LDX.b $07                            ; X = p for the body tables
     LDA.b $00 : STA.b ($90),Y : INY                  ; entry 2: body
     LDA.b $02 : STA.b ($90),Y : INY
@@ -103,7 +104,7 @@ Hush_DrawGuard:
     LDA.b $00 : CLC : ADC.b #$04 : STA.b ($90),Y : INY
     LDA.b $02 : SEC : SBC.b #$16 : STA.b ($90),Y : INY
     LDA.b $0A : CLC : ADC.b #$FB : STA.b ($90),Y : INY   ; $FC '?', $FD '!', $FE 'Z' (GFX_C5 tiles 60-62)
-    LDA.b #$29 : STA.b ($90),Y : INY                     ; priority 2, palette 4, name table 1 (not recoloured while alert)
+    LDA.b #$39 : STA.b ($90),Y : INY                     ; priority 3 (design/tiles.md 2.1 rule 3: above every room tile), palette 4, name table 1 (not recoloured while alert)
     BRA .shadow
 .no_icon
     LDY.b #$0D : LDA.b #$F0 : STA.b ($90),Y              ; Y = $F0: not on screen
@@ -113,13 +114,12 @@ Hush_DrawGuard:
     LDA.b $02 : CLC : ADC.b $09 : STA.b ($90),Y : INY
     LDA.b #$6C : STA.b ($90),Y : INY
     LDA.b $05 : AND.b #$30 : ORA.b #$08 : STA.b ($90),Y
-    LDA.b #$02                                           ; size bytes: x bit 8 = 0 for every part (see Culling)
-    LDY.b #$00 : STA.b ($92),Y
-    LDY.b #$02 : STA.b ($92),Y
-    LDY.b #$04 : STA.b ($92),Y
-    LDA.b #$00
-    LDY.b #$01 : STA.b ($92),Y
-    LDY.b #$03 : STA.b ($92),Y
+    REP #$20                                             ; size bytes: x bit 8 = 0 for every part (see Culling);
+    LDA.w #$0002                                         ; 16x16 = 2 for entries 0, 2, 4, 8x8 = 0 for entries 1, 3 (one byte per entry)
+    LDY.b #$00 : STA.b ($92),Y                           ; entries 0, 1
+    LDY.b #$02 : STA.b ($92),Y                           ; entries 2, 3
+    SEP #$20
+    LDY.b #$04 : STA.b ($92),Y                           ; entry 4 (A = $02)
     LDX.b $0B
     PLB
     RTL

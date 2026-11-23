@@ -3,7 +3,11 @@
 --     window, exactly the word tools/roomgen.py computed (rooms_gen.lua `words`: tools/autotile.py autotile + decoration);
 --   * the collision map $7F2000 equals the GRID: `#` `p` `O` `W` solid ($01 on all four 8x8 tiles of the cell), everything else floor ($00). For the 21 shipped rooms this is the
 --     same map the pre-T0 build produced (only `#` and `p` occur), so collision cannot have regressed. Also equals rooms_gen.lua `solid`;
---   * the palette set follows floor / lighting (CGRAM BG rows differ between sets, the OBJ half of CGRAM is identical in every room).
+--   * the palette set follows floor / lighting (CGRAM BG rows differ between sets, the OBJ half of CGRAM is identical in every room);
+--   * DEPTH (design/tiles.md 2.1, revision 4; acceptance 7.10 first sentence): bit 13 of every $7E2000 / VRAM word is 1 iff the quarter is
+--     NW or NE, the cell is '#' or 'p', the cell is not in row 0 and the cell above is not '#' 'p' 'O' 'W'; 0 otherwise. Computed here from
+--     the grid (not from rooms_gen.lua `words`, which come from the same generator as the ROM). Mismatches are counted over all rooms and
+--     reported at the end, so the word / collision checks above still run in full.
 -- @timeout 240
 package.path = os.getenv("HUSH_ROOT") .. "/tests/lib/?.lua;" .. package.path
 local hush = require("hush")
@@ -21,6 +25,30 @@ local function vram_word(tx, ty)
 end
 local function wram_word(tx, ty) return emu.read16(0x2000 + (ty * 64 + tx) * 2, W, false) end
 local function col_byte(tx, ty) return emu.read(0x12000 + ty * 64 + tx, W, false) end   -- $7F2000 = WRAM offset $12000 (64x64 bytes)
+
+-- design/tiles.md 2.1 rules 1-2, per 8x8 tile (tx, ty) of the window
+local function depth_oracle(grid, tx, ty)
+  local cx, cy = tx // 2, ty // 2
+  if ty % 2 ~= 0 or cy == 0 then return 0 end
+  local ch, up = grid[cy + 1]:sub(cx + 1, cx + 1), grid[cy]:sub(cx + 1, cx + 1)
+  if (ch == "#" or ch == "p") and not (up == "#" or up == "p" or up == "O" or up == "W") then return 1 end
+  return 0
+end
+local depth = { bad = 0, p1 = 0, first = nil }
+local function check_depth(id, grid, tx, ty, wram, vram)
+  local want = depth_oracle(grid, tx, ty)
+  depth.p1 = depth.p1 + want
+  for _, w in ipairs({ { "$7E2000", wram }, { "VRAM", vram } }) do
+    local got = (w[2] >> 13) & 1
+    if got ~= want then
+      depth.bad = depth.bad + 1
+      if not depth.first then
+        depth.first = string.format("%s tile (%d,%d) cell (%d,%d) '%s' above '%s': %s priority %d, tiles.md 2.1 says %d", id, tx, ty, tx // 2, ty // 2,
+          grid[ty // 2 + 1]:sub(tx // 2 + 1, tx // 2 + 1), ty >= 2 and grid[ty // 2]:sub(tx // 2 + 1, tx // 2 + 1) or "(outside)", w[1], got, want)
+      end
+    end
+  end
+end
 
 hush.test("visual_tiles: autotiled tilemap words, grid collision, palette sets", function()
   local m = bot.rooms()
@@ -41,6 +69,7 @@ hush.test("visual_tiles: autotiled tilemap words, grid collision, palette sets",
         hush.assert_eq(vram_word(WIN_TX + tx, WIN_TY + ty), want, where .. ": VRAM tilemap word")
         hush.assert_eq(col_byte(WIN_TX + tx, WIN_TY + ty), solid_of(ch), where .. ": collision $7F2000 vs the grid")
         hush.assert_eq(r.solid[ty + 1][tx + 1], solid_of(ch), where .. ": rooms_gen.lua solid vs the grid")
+        check_depth(r.id, r.grid, tx, ty, wram_word(WIN_TX + tx, WIN_TY + ty), vram_word(WIN_TX + tx, WIN_TY + ty))
         distinct[want] = true
         nwords = nwords + 1
         nsolid = nsolid + solid_of(ch)
@@ -66,5 +95,9 @@ hush.test("visual_tiles: autotiled tilemap words, grid collision, palette sets",
   local sets = 0
   for _ in pairs(bg_by_set) do sets = sets + 1 end
   hush.assert(sets >= 2, "need at least a dark and a lit palette set among the rooms, found " .. sets)
-  hush.pass(string.format("%d rooms: %d tiles match the autotile words (%d distinct), %d solid tiles match the grid; %d palette sets", m.count, nwords, nd, nsolid, sets))
+  hush.assert(depth.p1 > 100, "only " .. depth.p1 .. " quarters where tiles.md 2.1 wants priority 1: the depth rule is not exercised")
+  hush.assert(depth.bad == 0, string.format("depth rule (tiles.md 2.1): %d tile words with the wrong priority bit (%d priority-1 quarters expected); first: %s",
+    depth.bad, depth.p1, tostring(depth.first)))
+  hush.pass(string.format("%d rooms: %d tiles match the autotile words (%d distinct), %d solid tiles match the grid; %d palette sets; priority bit = tiles.md 2.1 (%d priority-1 quarters)",
+    m.count, nwords, nd, nsolid, sets, depth.p1))
 end)

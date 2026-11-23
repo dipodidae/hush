@@ -5,6 +5,8 @@
 -- one on the return address reads back the 5 OAM entries it wrote through the OAM pointers $90 / $92, and a Lua model of the contract
 -- compares them. Scenarios: natural patrols (facings, walk phases), every state x facing forced on the 4 guards of r14, the culling window,
 -- the lantern flicker period. Screenshots of the forced poses go to build/test-results/smoke_guard_draw/.
+-- OAM priorities (design/tiles.md 2.1 rule 3, revision 4; acceptance 7.10): head and body 2; "?" / "!" icon 3 (attr $39); lantern 3
+-- while ALERT (2 or 3 otherwise: the spec says only "alert lantern"); "Z" icon 2 or 3 (not named by the spec); shadow follows the body.
 -- Real ROM (design rooms); needs build/hush.sym (make build).
 -- @timeout 180
 package.path = os.getenv("HUSH_ROOT") .. "/tests/lib/?.lua;" .. package.path
@@ -60,11 +62,15 @@ local function expect(s)
   if face ~= "sleep" and (s.v40 ~= 0 or s.v50 ~= 0) then phase = (s.e80 >> 3) & 3 end
   local body, bflip
   if face == "sleep" then body, bflip = 0x66, 0 else body, bflip = BODY[face][phase + 1][1], BODY[face][phase + 1][2] end
-  e.head = { x = s.x, y = s.y - 8, tile = HEAD[face], attr = attr | ((face == "right") and 0x40 or 0), size = 2 }
-  e.lantern = { x = s.x + LANTERN[face][1], y = s.y + LANTERN[face][2], attr = attr, size = 0 }  -- tile 0x68 / 0x69 checked apart
-  e.body = { x = s.x, y = s.y, tile = body, attr = attr | bflip, size = 2 }
+  e.head = { x = s.x, y = s.y - 8, tile = HEAD[face], attr = attr | ((face == "right") and 0x40 or 0), size = 2, prio = 2 }
+  -- lantern: priority bits checked apart (design/tiles.md 2.1 rule 3: "the guard's alert lantern, if it is a separate OAM entry" = 3;
+  -- the spec is silent on the lantern of a non-alert guard, so 2 or 3 is accepted there)
+  e.lantern = { x = s.x + LANTERN[face][1], y = s.y + LANTERN[face][2], attr = attr, size = 0, prio = (s.state == 2) and 3 or "2or3" }
+  e.body = { x = s.x, y = s.y, tile = body, attr = attr | bflip, size = 2, prio = 2 }
   if s.state ~= 0 then
-    e.icon = { x = s.x + 4, y = s.y - 22, tile = 0xFB + s.state, attr = 0x29, size = 0 }
+    -- design/tiles.md 2.1 rule 3 (rev 4): icons "?" / "!" are OAM priority 3 -> attr $39 (was $29: priority 2); palette 4, name table 1
+    -- unchanged (docs/gfx/art_map.md section 6). The spec names only "?" / "!": the "Z" (asleep, state 3) may be 2 or 3.
+    e.icon = { x = s.x + 4, y = s.y - 22, tile = 0xFB + s.state, attr = 0x39, size = 0, prio = (s.state == 3) and "2or3" or 3 }
   end
   e.shadow = { x = s.x, y = s.y + SHADOW_DY[facing_for_shadow], tile = 0x6C, attr = (attr & 0x30) | 0x08, size = 2 }
   e.face, e.phase = face, phase
@@ -119,7 +125,14 @@ local function check_call(s)
     else
       if got.x ~= want.x or got.y ~= (want.y & 0xFF) then bad(string.format("%s at (%d,%d), expected (%d,%d)", name, got.x, got.y, want.x, want.y)) end
       if want.tile and got.tile ~= want.tile then bad(string.format("%s tile $%02X, expected $%02X", name, got.tile, want.tile)) end
-      if got.attr ~= want.attr then bad(string.format("%s attr $%02X, expected $%02X", name, got.attr, want.attr)) end
+      -- attribute without the priority bits (4-5), then the priority on its own (design/tiles.md 2.1 rule 3)
+      if (got.attr & 0xCF) ~= (want.attr & 0xCF) then bad(string.format("%s attr $%02X, expected $%02X (priority bits aside)", name, got.attr, want.attr)) end
+      local gp = (got.attr >> 4) & 3
+      if want.prio == "2or3" then
+        if gp ~= 2 and gp ~= 3 then bad(string.format("%s OAM priority %d, expected 2 or 3", name, gp)) end
+      elseif want.prio then
+        if gp ~= want.prio then bad(string.format("%s OAM priority %d, design/tiles.md 2.1 rule 3 says %d (state %d)", name, gp, want.prio, s.state)) end
+      elseif got.attr ~= want.attr then bad(string.format("%s attr $%02X, expected $%02X", name, got.attr, want.attr)) end
       if got.size ~= want.size then bad(string.format("%s size bit %d, expected %d", name, got.size, want.size)) end
     end
   end
