@@ -32,6 +32,9 @@ Checks (each line cites the spec):
       violet: every tuple produced by the glow rule of section 3 (Link's cell 2, orthogonal floor neighbours 1, solid cells 0) on any
              2x2 cell block with any solidity and any Link position, Qv(v) = floor(v (NV-1)/2 + 1/2)  <- ASSUMPTION: lighting.md 4.3 gives
              violet "its own levels (at least 3: 0, 1, 2)" but no formula; this is the 4.1 formula with the violet maximum 2 instead of 6.
+    (rev 4: amber is never displaced, so every amber tuple the 4.1 lattice makes must still be STORED, not substituted)
+  * light_lut(kind) (4.5 item 4, section 5 "In-emulator"): all n^4 tuples; stored tuples show themselves, the rest show the stored
+    orientation minimizing E(t, s) (ties: larger corner sum, then smaller tuple), never empty when a corner >= 1; light_shown() agrees
   * not checked here: the palette row of the word (art / engine own the slot) and the pixel -> CGRAM index mapping; the in-emulator
     test (tests/smoke/lighting.lua) checks the exported ramp colours in CGRAM.
 Also prints the number of distinct amber tuples for N = 5, 6, 7 (to help the engine pick N).
@@ -209,6 +212,79 @@ def test_completeness():
         print(f"     {kind}: {len(tuples)} reachable corner tuples, {len(tuples) - len(bad)} resolved")
 
 
+def _metric():
+    """M with sum over the 64 tile pixels of (L_t - L_s)^2 * 256^2 = d^T M d, d = t - s (lighting.md 4.2: L is linear in the corners,
+    pixel weights (1-u)(1-w), u(1-w), (1-u)w, uw with u = (2x+1)/16, w = (2y+1)/16, here in 1/256 units)."""
+    m = [[0] * 4 for _ in range(4)]
+    for y in range(8):
+        for x in range(8):
+            u, w = 2 * x + 1, 2 * y + 1
+            wt = ((16 - u) * (16 - w), u * (16 - w), (16 - u) * w, u * w)
+            for i in range(4):
+                for j in range(4):
+                    m[i][j] += wt[i] * wt[j]
+    return m
+
+
+def test_lut_substitutes():
+    """lighting.md 4.5 item 4 + section 5 "In-emulator": light_lut(kind) (exported as light.lut_amber / lut_violet, the in-emulator oracle's
+    reference) maps EVERY corner tuple ((a*n + b)*n + c)*n + d to a word that shows: the empty tile for (0,0,0,0); the tuple itself if a
+    stored tile shows it in any H/V flip; else the stored orientation s minimizing E(t, s) = sum (L_t - L_s)^2 over the 64 pixels, ties ->
+    larger corner sum, then the lexicographically smaller tuple; never empty when a corner >= 1. Also light_shown() agrees with the LUT."""
+    if not hasattr(A, "light_lut"):
+        FAILS.append("tools/autotile.py has no light_lut (lighting.md 4.5 item 4 / section 5: the exported corner LUTs)")
+        return
+    tiles = A.light_tiles()
+    by_id = {t["tile"]: t for t in tiles}
+    m = _metric()
+    for kind, n in (("amber", A.LIGHT_N), ("violet", A.LIGHT_NV)):
+        stored = sorted({o for t in tiles if t["kind"] == kind for o in orientations(tuple(t["corners"]))})
+        lut = A.light_lut(kind)
+        if len(lut) != n ** 4:
+            FAILS.append(f"light_lut('{kind}') has {len(lut)} entries, want n^4 = {n ** 4}")
+            continue
+        bad, subst = [], 0
+        for t in itertools.product(range(n), repeat=4):
+            idx = ((t[0] * n + t[1]) * n + t[2]) * n + t[3]
+            w = lut[idx]
+            e = by_id.get(w & 0x3FF)
+            if e is None:
+                bad.append(f"{kind} {t}: word {w:#06x} is not a stored tile")
+                continue
+            shown = tuple(e["corners"])
+            if w & 0x4000:
+                shown = hflip(shown)
+            if w & 0x8000:
+                shown = vflip(shown)
+            if max(t) == 0:
+                if max(shown) != 0:
+                    bad.append(f"{kind} {t}: all-zero tuple shows {e['kind']} {shown}, want the empty tile")
+                continue
+            if e["kind"] != kind or max(shown) == 0:
+                bad.append(f"{kind} {t}: shows {e['kind']} {shown} (a tuple with a corner >= 1 is never drawn empty / of another kind)")
+                continue
+            if t in stored:
+                want = t
+            else:
+                subst += 1
+                best = None
+                for s in stored:
+                    d = [t[i] - s[i] for i in range(4)]
+                    err = sum(m[i][j] * d[i] * d[j] for i in range(4) for j in range(4))
+                    key = (err, -sum(s), s)
+                    if best is None or key < best:
+                        best = key
+                want = best[2]
+            if shown != want:
+                bad.append(f"{kind} {t}: LUT shows {shown}, the 4.5 substitute rule says {want}")
+            if hasattr(A, "light_shown") and tuple(A.light_shown(kind, t)) != shown:
+                bad.append(f"{kind} {t}: light_shown() = {tuple(A.light_shown(kind, t))} but the LUT word shows {shown}")
+        FAILS.extend(bad[:6])
+        if len(bad) > 6:
+            FAILS.append(f"{kind}: ... {len(bad) - 6} more LUT entries wrong ({len(bad)} of {n ** 4})")
+        print(f"     {kind} LUT: {n ** 4} tuples, {subst} via the 4.5 substitute rule, {len(bad)} wrong")
+
+
 def info_counts():
     for n in (5, 6, 7):
         ts = amber_tuples(n)
@@ -225,12 +301,12 @@ def main() -> int:
     ok = test_export_present()
     print(f"{'ok  ' if len(FAILS) == n0 else 'FAIL'} test_export_present")
     if ok:
-        for fn in (test_parameters, test_tile_pixels, test_completeness):
+        for fn in (test_parameters, test_tile_pixels, test_completeness, test_lut_substitutes):
             n0 = len(FAILS)
             fn()
             print(f"{'ok  ' if len(FAILS) == n0 else 'FAIL'} {fn.__name__}")
     else:
-        for fn in ("test_parameters", "test_tile_pixels", "test_completeness"):
+        for fn in ("test_parameters", "test_tile_pixels", "test_completeness", "test_lut_substitutes"):
             print(f"FAIL {fn} (not run: no export)")
     for m in FAILS[:30]:
         print("  -", m)

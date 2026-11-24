@@ -716,11 +716,58 @@ def light_chr() -> bytes:
     return bytes(out)
 
 
+def _light_metric():
+    """4x4 integer matrix M with sum over the 64 tile pixels of (L_t - L_s)^2 = (t - s)^T M (t - s) / 16^4 (L = the 4.2 bilinear value)."""
+    m = [[0] * 4 for _ in range(4)]
+    for y in range(8):
+        for x in range(8):
+            u, w = 2 * x + 1, 2 * y + 1                                       # in 16ths
+            wt = ((16 - u) * (16 - w), u * (16 - w), (16 - u) * w, u * w)
+            for i in range(4):
+                for j in range(4):
+                    m[i][j] += wt[i] * wt[j]
+    return m
+
+
+def _build_subst():
+    """design/lighting.md 4.5 (substitute tiles): a corner tuple that no stored tile shows (any flip) is drawn with the stored orientation s that
+    minimizes E(t, s) = sum over the 64 pixels of (L_t - L_s)^2 (4.2 bilinear values); ties -> larger corner sum, then the smaller tuple."""
+    import itertools
+    m = _light_metric()
+    pairs = [(i, j, m[i][j] * (1 if i == j else 2)) for i in range(4) for j in range(i, 4)]
+    out = {}
+    for kind, n in (("amber", LIGHT_N), ("violet", LIGHT_NV)):
+        shown = sorted(t for (k, t) in LIGHT_WORDS if k == kind)
+        for t in itertools.product(range(n), repeat=4):
+            if not max(t) or (kind, t) in LIGHT_WORDS:
+                continue
+            best = None
+            for s in shown:
+                d = (t[0] - s[0], t[1] - s[1], t[2] - s[2], t[3] - s[3])
+                e = sum(c * d[i] * d[j] for i, j, c in pairs)
+                key = (e, -sum(s), s)
+                if best is None or key < best:
+                    best = key
+            out[(kind, t)] = best[2]
+    return out
+
+
+LIGHT_SUBST = _build_subst()
+
+
+def light_shown(kind: str, corners) -> tuple:
+    """Corner tuple of the stored tile orientation that is drawn for `corners` (itself if stored, else its 4.5 substitute; (0,0,0,0) = empty)."""
+    t = tuple(corners)
+    if max(t) == 0:
+        return (0, 0, 0, 0)
+    return t if (kind, t) in LIGHT_WORDS else LIGHT_SUBST[(kind, t)]
+
+
 def light_lut(kind: str) -> list:
-    """BG1 word per corner tuple, index ((a * n + b) * n + c) * n + d; unreachable tuples -> the empty tile."""
+    """BG1 word per corner tuple, index ((a * n + b) * n + c) * n + d; tuples without a stored tile -> their 4.5 substitute's word."""
     n = LIGHT_N if kind == "amber" else LIGHT_NV
     import itertools
-    return [LIGHT_WORDS.get((kind, t), LIGHT_EMPTY_WORD) if max(t) else LIGHT_EMPTY_WORD for t in itertools.product(range(n), repeat=4)]
+    return [LIGHT_WORDS[(kind, light_shown(kind, t))] if max(t) else LIGHT_EMPTY_WORD for t in itertools.product(range(n), repeat=4)]
 
 
 def tile_types() -> list:

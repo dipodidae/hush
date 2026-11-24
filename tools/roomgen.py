@@ -527,8 +527,11 @@ def light_lua() -> str:
     amber = ", ".join(str(row + i) for i in range(1, autotile.LIGHT_K))
     violet = ", ".join(str(row + autotile.LIGHT_K - 1 + i) for i in range(1, autotile.LIGHT_KV))
     tiles = ", ".join("{%d, %d, %d, %d, %d, %d}" % ((t["tile"], kinds[t["kind"]]) + tuple(t["corners"])) for t in autotile.light_tiles())
+    lut_a = ", ".join(str(v) for v in autotile.light_lut("amber"))      # design/lighting.md 4.5: BG1 word per corner tuple incl. substitutes
+    lut_v = ", ".join(str(v) for v in autotile.light_lut("violet"))
     return (f"light = {{ n = {autotile.LIGHT_N}, k = {autotile.LIGHT_K}, nv = {autotile.LIGHT_NV}, kv = {autotile.LIGHT_KV}, "
-            f"amber_cols = {{{amber}}}, violet_cols = {{{violet}}},\n    tiles = {{{tiles}}} }},")
+            f"amber_cols = {{{amber}}}, violet_cols = {{{violet}}},\n    tiles = {{{tiles}}},\n"
+            f"    lut_amber = {{{lut_a}}},\n    lut_violet = {{{lut_v}}} }},")
 
 
 def light_gen_asm() -> str:

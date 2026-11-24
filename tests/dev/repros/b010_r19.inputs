@@ -1,0 +1,4 @@
+# B-010 repro (docs/bugs.md): r19, post-new-game state + debug jump (tests/dev/b010_light_done.lua does the jump and waits 40 frames).
+# = smoke_lighting leg t=1 of r19: walk left 10 frames, then stand still. light_done ($7EE7F6) should become 1 within a few frames.
+10 left
+1200 -
