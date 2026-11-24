@@ -200,8 +200,29 @@ local function cu_tick(cu)
 end
 local function nearest(sorted, p) if #sorted == 0 then return nil end; return sorted[math.max(1, math.ceil(p * #sorted))] end
 
-local function vram_bg1(trow, tcol)    -- BG1 tilemap at VRAM word $1000, 2 x 2 screens of 32 x 32
-  local tx, ty = 16 + tcol, 18 + trow
+-- BG1 tilemap at VRAM word $1000, 2 x 2 screens of 32 x 32. The light window's tilemap origin is not fixed by the spec; two engine
+-- layouts exist (src/hooks/light.asm:106 !LIGHT_WIN0): 0 = tiles 16..47 x 18..45 (PPU BG1 scroll = mirrors $0120 / $0124),
+-- 1 = tiles 0..31 x 0..27 (PPU BG1 scroll = $0120 - 128 / $0124 - 144, src/hooks/bg1_window.asm:41-45). The layout is taken from the
+-- live PPU scroll vs the WRAM mirrors (what is on screen), once per frame; anything else fails loudly instead of guessing.
+local bg1_org = { f = -1 }
+local function bg1_origin()
+  local f = hush.frame()
+  if bg1_org.f == f then return bg1_org.x, bg1_org.y end
+  local s = emu.getState()
+  local ph, pv = s["ppu.layers[0].hscroll"] & 0x3FF, s["ppu.layers[0].vscroll"] & 0x3FF
+  local W = emu.memType.snesWorkRam
+  local mh, mv = emu.read16(0x0120, W, false) & 0x3FF, emu.read16(0x0124, W, false) & 0x3FF
+  local x, y
+  if ph == mh and pv == mv then x, y = 16, 18
+  elseif ph == (mh - 128) & 0x3FF and pv == (mv - 144) & 0x3FF then x, y = 0, 0
+  else error(string.format("BG1 light window layout unknown: PPU BG1 scroll (%d,%d), mirrors $0120/$0124 (%d,%d)", ph, pv, mh, mv)) end
+  if bg1_org.x ~= x then hush.log(string.format("BG1 light window at tilemap tiles %d.. x %d.. (LIGHT_WIN0 = %d)", x, y, x == 0 and 1 or 0)) end
+  bg1_org.f, bg1_org.x, bg1_org.y = f, x, y
+  return x, y
+end
+local function vram_bg1(trow, tcol)
+  local ox, oy = bg1_origin()
+  local tx, ty = ox + tcol, oy + trow
   local w = 0x1000 + (ty >= 32 and 0x800 or 0) + (tx >= 32 and 0x400 or 0) + (ty % 32) * 32 + (tx % 32)
   return emu.read16(w * 2, V, false)
 end

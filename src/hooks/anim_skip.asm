@@ -4,7 +4,7 @@
 ; Replaces: `LDX.w $0ADC : STX.w DMA0ADDRL`   (AE DC 0A 8E 02 43)   vendor/usdasm/bank_00.asm:1935-1937
 ;           (.no_update_swagduck: the first two instructions of the per-frame animated-tile upload, bank_00.asm:1935-1946:
 ;           $400 bytes from [$0ADC] to VRAM word [$0134] by DMA channel 0, every NMI with $0710 = 0)
-; Does:     `JML Hush_AnimGate : NOP : NOP`. In module 7 (a HUSH room) while light rows wait for the NMI (light_dirty != 0) the upload is
+; Does:     `JML Hush_AnimGate : NOP : NOP`. In module 7 (a HUSH room) while light rows wait for the NMI (step 5a: sa1_pubf = 1; was light_dirty != 0) the upload is
 ;           skipped (JML to .skip_sprite_updates, $008B67, bank_00.asm:1950); otherwise the two replaced instructions run and the upload
 ;           follows as before ($008B56). (Skipping it in every room frame left slot 7 different after a fast and a full room load:
 ;           tests/smoke/transition.lua compares all of VRAM; with the gate the upload resumes as soon as the light is idle.)
@@ -28,7 +28,7 @@ org $03EB80
 ; instructions load it: `LDA.b #$01` at $008B62, `LDA.b $16` at $008B67).
 Hush_AnimGate:
     LDA.b $10 : CMP.b #$07 : BNE .run    ; not a room: as vanilla
-    LDA.l !LB+!L_DIRTY : ORA.l !LB+!L_DIRTY+1 : BNE .skip  ; light rows wait for this NMI (light_dirty, bits 14 / 15 never set): no upload
+    LDA.l !SA1_PUBF : BNE .skip          ; step 5a: light rows are published for this NMI (sa1_pubf): no upload
 .run
     LDX.w $0ADC : STX.w $4302            ; the replaced instructions (DMA0ADDRL = $4302)
     JML $008B56                          ; `LDX.w $0134` ...

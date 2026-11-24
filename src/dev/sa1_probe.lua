@@ -9,12 +9,15 @@
 --                 job med / max = one job; cut = % of jobs that ended because the next frame was posted (work left, not "done").
 --   skip        = SNES frames that could not post (SA1_SKIP, I-RAM $3008: the previous frame not yet taken by the SA-1).
 --   glow re-render frames / lag px: as d4_probe.lua (regions = Hush_L3GRun_end / _same; BW-RAM light_l3car, carrier 8).
+--   step 5a: tile rows / uploading NMI = advance of sa1_pubt t0 per light NMI (published light_pub rows sent); FULL=1 forces a full
+--            28-row publication at every light NMI that finds none (the vblank budget test).
 -- @timeout 1500
 package.path = os.getenv("HUSH_ROOT") .. "/tests/lib/?.lua;" .. package.path
 local hush = require("hush")
 local bot = require("bot")
+local function cfg(k) local c = rawget(_G, "HUSH_PROBE_CFG"); return (c and c[k]) or os.getenv(k) end   -- step 5a: wrappers (nmi_full.lua) set it
 local SNES = emu.memType.snesMemory
-local LEG = tonumber(os.getenv("LEG") or "75")
+local LEG = tonumber(cfg("LEG") or "75")
 
 local symtab
 local function sym(name)
@@ -27,6 +30,9 @@ local function sym(name)
   end
   return symtab[name] or error("no symbol " .. name)
 end
+local function osym(name) sym("Hush_LightNmi"); return symtab[name] end
+local IRAM = emu.memType.sa1InternalRam
+local FULL = cfg("FULL") == "1"   -- step 5a: force a full published window (28 tile rows) at every light NMI that finds none
 local function rd(a) return emu.read(a, SNES, false) end
 local function rdw(a) return rd(a) + 256 * rd(a + 1) end
 local function sb(v) if v >= 128 then return v - 256 end return v end
@@ -44,7 +50,7 @@ local CELL, RDX, RDY, WDX, WDY = 0x41C708, 0x41C718, 0x41C728, 0x41C738, 0x41C74
 hush.test("sa1 probe", function()
   local JOB, JDONE = sym("Hush_LightJob"), sym("Hush_LightJob_done")
   local GEND, GSAME, GPICK = sym("Hush_L3GRun_end"), sym("Hush_L3GRun_same"), sym("Hush_L3GPick")
-  local UPROW, LNMI = sym("Hush_LightUpRow"), sym("Hush_LightNmi")
+  local UPROW, LNMI = osym("Hush_LightUpRow"), sym("Hush_LightNmi")
   local function clk() return emu.getState()["masterClock"] end
   local function line() return emu.getState()["ppu.scanline"] end
 
@@ -58,10 +64,26 @@ hush.test("sa1 probe", function()
   end
   -- SNES side
   on(0x00805D, function() if on_ then R.ends[#R.ends + 1] = line() end end)
-  local function nmi_end() if on_ then local l = line(); if l < 200 then l = l + 262 end; if l > R.nmimax then R.nmimax = l end end end
+  -- step 5a: tile rows uploaded by one light NMI = the advance of sa1_pubt's t0 (I-RAM $300B) between Hush_LightNmi and the NMI end
+  local t0in = nil
+  local function nmi_end()
+    if on_ then
+      local l = line(); if l < 200 then l = l + 262 end; if l > R.nmimax then R.nmimax = l end
+      if t0in then
+        local k = emu.read(0x0B, IRAM, false) - t0in
+        if k > R.trmax then R.trmax = k end
+        if k > 0 then R.tr[#R.tr + 1] = k; if l > R.nmiendup then R.nmiendup = l end end
+      end
+    end
+    t0in = nil
+  end
   on(0x00821D, nmi_end); on(0x0082BF, nmi_end)
   local rows, nl0, nl1 = 0, 0, 0
   on(LNMI, function()
+    if FULL and emu.read(0x0A, IRAM, false) == 0 and emu.read(0x7E0010, SNES, false) == 7 then
+      emu.write(0x0B, 0, IRAM); emu.write(0x0C, 28, IRAM); emu.write(0x0A, 1, IRAM)
+    end
+    t0in = emu.read(0x0A, IRAM, false) ~= 0 and emu.read(0x0B, IRAM, false) or nil
     if on_ then
       if rows > R.rowmax then R.rowmax = rows end
       local l = line(); if l < 200 then l = l + 262 end
@@ -71,13 +93,13 @@ hush.test("sa1 probe", function()
     rows = 0
   end)
   local upc, upd = nil, {}
-  on(UPROW, function()
+  if UPROW then on(UPROW, function()
     local l = line(); if l < 200 then l = l + 262 end
     if rows == 0 then nl0 = l; upc = nil end
     nl1 = l
     local c = clk(); if upc and #upd < 400 then upd[#upd + 1] = c - upc end; upc = c
     rows = rows + 1
-  end)
+  end) end
   -- SA-1 side
   local j0, jl0, posts, nlong = nil, 0, 0, 0
   on(sym("Hush_LightPost_stage"), function() posts = posts + 1 end)
@@ -116,14 +138,15 @@ hush.test("sa1 probe", function()
   local m = bot.rooms()
   bot.start_new_game()
   local out = {}
-  local only = os.getenv("ROOMS")
+  local only = cfg("ROOMS")
   for ri = 1, m.count do
     local id = m.rooms[ri].id
     if only and not ("," .. only .. ","):find("," .. (ri - 1) .. ",", 1, true) then goto skip end
     on_ = false
     bot.jump_to_room(ri - 1)
     hush.wait(30)
-    R = { ends = {}, nmimax = 0, nmient = 0, rowl = {}, rowmax = 0, jobs = {}, busy = {}, cut = 0, iv = {}, lag = {}, last = hush.frame(), moved = false }
+    R = { ends = {}, nmimax = 0, nmient = 0, rowl = {}, rowmax = 0, jobs = {}, busy = {}, cut = 0, iv = {}, lag = {}, last = hush.frame(), moved = false,
+          tr = {}, trmax = 0, nmiendup = 0 }
     do local c = rd(CELL); if c ~= 0xFF then R.drawn = { x = 16 * (c & 15) + sb(rd(RDX)), y = 16 * (c >> 4) + sb(rd(RDY)) } end end
     cur = nil
     local f0, skip0 = hush.frame(), rdw(0x003008)
@@ -144,8 +167,9 @@ hush.test("sa1 probe", function()
     local bl = {}
     for f = f0 + 1, f0 + nf do bl[#bl + 1] = R.busy[f] or 0 end
     local e, b, j, il = stats(R.ends), stats(bl), stats(R.jobs), stats(R.iv)
-    local row = string.format("| %s | %d/%d/%d | %d | %d / %d | %d (%.2f lines) | %.1f / %.1f | %.1f / %.1f | %d %% | %d | %d / %d / %d | %s |", id,
-      e.med, e.p90, e.max, nf - #R.ends, R.nmient, R.nmimax, R.rowmax, stats(R.rowl).med, b.mean, b.max, j.med, j.max,
+    local tr = stats(R.tr)
+    local row = string.format("| %s | %d/%d/%d | %d | %d / %d | %d (%.2f lines) | %d / %d / %d (%d) | %.1f / %.1f | %.1f / %.1f | %d %% | %d | %d / %d / %d | %s |", id,
+      e.med, e.p90, e.max, nf - #R.ends, R.nmient, R.nmimax, R.rowmax, stats(R.rowl).med, tr.med, tr.max, tr.n, R.nmiendup, b.mean, b.max, j.med, j.max,
       #R.jobs == 0 and 0 or math.floor(100 * R.cut / #R.jobs + 0.5), (rdw(0x003008) - skip0) & 0xFFFF,
       il.med, il.p90, il.max, #R.lag == 0 and "-" or string.format("%.1f", stats(R.lag).mean))
     out[#out + 1] = row
@@ -154,8 +178,8 @@ hush.test("sa1 probe", function()
   end
   local us = stats(upd)
   hush.log(string.format("master clocks between Hush_LightUpRow calls in one NMI: med %d p90 %d max %d (n %d)", us.med, us.p90, us.max, us.n))
-  hush.log("| room | logic end med/p90/max | lag | light NMI entry / NMI end max | rows / NMI max (lines per row med) | SA-1 busy lines / frame mean / max | job lines med / max | cut | skip | glow re-render frames med / p90 / max | glow lag px |")
-  hush.log("|---|---|---|---|---|---|---|---|---|---|---|")
+  hush.log("| room | logic end med/p90/max | lag | light NMI entry / NMI end max | rows / NMI max (lines per row med) | tile rows / uploading NMI med / max / n (NMI end max of those) | SA-1 busy lines / frame mean / max | job lines med / max | cut | skip | glow re-render frames med / p90 / max | glow lag px |")
+  hush.log("|---|---|---|---|---|---|---|---|---|---|---|---|")
   for _, r in ipairs(out) do hush.log(r) end
   for _, cb in ipairs(cbs) do
     if cb[3] then emu.removeMemoryCallback(cb[1], emu.callbackType.exec, cb[2], cb[2], emu.cpuType.sa1, emu.memType.sa1Memory)

@@ -61,8 +61,9 @@
 ; is I-RAM for the SNES, Sa1.cpp:43-44, and for the SA-1, Sa1.cpp:46-49).
 !SA1_CMDL  = $003000                ; command byte: $FF = "light frame" (Hush_LightPost), 0 = taken (Hush_LightJob)
 !SA1_STATL = $003001                ; status: 1 idle, 2 running the light worker
-!SA1_TROW  = $003004                ; byte: cell row whose light_tiles the SA-1 is writing ($FF none; Hush_L3Lock / Unlock)
-!SA1_NMIUP = $003005                ; byte: 1 while the SNES NMI uploads light rows (Hush_LightNmi)
+; ($003004 / $003005 sa1_trow / sa1_nmiup: the step 4 row lock, unused since step 5a)
+!SA1_PUBF  = $00300A                ; step 5a: byte, 1 = light_pub rows published, the NMI owns them; 0 = the SA-1 may write light_pub
+!SA1_PUBT  = $00300B                ; step 5a: byte first published tile row t0, byte $00300C = tile rows n (the NMI advances both)
 !SA1_RUNS  = $3006                  ; word: light commands run by the SA-1 (+1 per Hush_LightJob; probe counter)
 !SA1_SKIP  = $3008                  ; word: SNES frames whose inputs were not staged (the previous command not taken yet; probe counter)
 !SA1_DP    = $3100                  ; SA-1 direct page of the worker: $00-$0F scratch, $20-$23 / $E2-$E3 / $E8-$E9 input copies

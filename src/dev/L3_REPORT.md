@@ -86,6 +86,8 @@ Task: design/lighting.md rev 3, section 4.5 + section 5 contract, in `src/hooks/
 - D2: B-010 (guard light catch-up). Amber lattice merged into the commit path, no amber regions. Results under "## D2 B-010".
 - D3: director decision on B-010: L2's direct cell-to-tile amber renderer restored, L3 amber removed, scheduling fixed. Results under "## D3".
 - D4: glow update rate (fast glow path, same-picture skip, pattern table, guaranteed glow slice). Results under "## D4".
+- E rev5: design/lighting.md revision 5 on the SA-1 (guard carriers 0-7 displaced again, per-guard lattices, exact composite pass). Results
+  under "## E rev5".
 
 ## Space before the change
 - ROM: code row `$1FB780-$1FC3FF` ends `$1FC3BC` (68 B left); data row `$1FCA00-$1FFFFF` ends `$1FFB67` (1176 B left).
@@ -668,3 +670,81 @@ budget 21/21, must_not 122 + 9 pass.
 1. r12 / final catch-up: guard-job throughput (D3 open item 1), fails with the glow starved too. Needs a cheaper all-around job or a
    director / designer decision.
 2. Final glow p90 61: the Aura gate (V0 < 176) is often missed in final (spare 28 lines); a cheaper ring update (~8 of the 20 lines) would help.
+
+## E rev5
+
+Task: design/lighting.md revision 5 (SA-1 cartridge): 4.5 for every carrier again. Guard g: its own lattice l_g (4.1 of its committed map
+alone), its own d from its centre pixel (sprite origin + (8, 8), as Hush_LightSig), clamp +-16, **D = 1**; amber = max over guards of V_g;
+tiles via the complete LUTs (substitutes incl.); glow unchanged. Step 0 first: `!LIGHT_WIN0` = 1 (BG1 light window at tilemap tiles
+0..31 x 0..27, one DMA per row span): `make build` ok, `make test` **PASS=39 FAIL=0 SKIP=2**.
+
+### Design (simplest exact on the SA-1)
+1. **Lattice per guard** (`light_l3glat` `$41:0000`, 8 x 1292 B, pair-coded like the glow): at each job end (`Hush_LightCommit .end` ->
+   `Hush_L3GLat`, bank $03) lattice rows `2 JBY0 - 1 .. 2 JBY1 + 3`, cell columns `JBX0 .. JBX1 + 1` are rebuilt by the existing
+   `Hush_L3Row` from `light_scr` (the job-box clear now covers box rows +-1, so every cell read is the new light or 0). Then its bbox (non-zero
+   cells of GMAP[g] -> points `2cx .. 2cx + 2`), cell (the committed signature's, `$FF` class 0) and its RDM bit. A pass reads a lattice
+   only within bbox +-1, which the rebuild always covers; the whole amber RAM is zeroed by the SA-1 once per room load (`Hush_L3AZero`).
+2. **Pass** (`Hush_L3AStep`, a unit of `Hush_L3Unit` after a running job, before the tile pass): pick = WD refreshed (`Hush_L3Want`, now
+   all 9 carriers), every guard marked or with WD != RD takes RD := WD; its old drawn box and its new box N (exact support of V_g:
+   `[LB0 - 1 + ceil(d / 8), LB1 + ceil(d / 8)]` per axis) add their rows to per-row spans; drawn := N. Rows (one per unit): NEW := max over
+   all guards whose drawn box meets the row (RAM loops `Hush_L3GA` s > 0 / `Hush_L3PA` s = 0, the B2b LERP8 / LERP formula), then CA
+   compare; changed points rewrite the index words QH / QL (`98 (7a + b)`, `2 (7c + d)`) and mark their tiles (`light_tdirty`). Exact:
+   every point a dirty guard's old or new light touches is recomputed from all guards.
+3. **Tiles**: one tile loop for both kinds (`Hush_L3Tile`, single quadrant now): amber index `QH(tx, ty) + QL(tx, ty + 1)` (0 = no amber
+   corner -> violet word), word = `light_l3luta` (BW-RAM copy of Hush_LightLutA, the complete LUT incl. substitutes). L2 pair grids, LUTF,
+   Hush_LightBuild / Amb / AmbRow / MarkRow / LateC removed; the commit only keeps GMAP / COMP (logic) current.
+4. `light_done` also needs no pass running and WD = RD for all 9 carriers.
+
+Bugs found on the way (both fixed, both caught in the emulator): asar emits `MVN a,b` as `54 a b` (a = destination; the first LutA copy
+went to ROM, every amber tile word was 0); a 16-bit `STA $0E` in the pick overwrote its "span added" flag at `$0F` (passes never started).
+
+### Results (`src/dev/e5_probe.lua`, all 21 rooms: jump, 30 frames, walk left / up / right / down 75 frames each, then 24 x (10 frames of
+walking, wait for light_done <= 400 frames, full BG1 compare with the rev 5 oracle); 136 s)
+- **Rev 5 oracle** (amber = max over guards of V_g from GMAP[g] + rendered d, violet = displaced glow, LUT words, rendered d vs 4.5 item 2
+  for every carrier): **503 checks, 450688 tile words, 0 mismatches**.
+- "render frames" = frames from a carrier's first move after its last render to the next render (= frames between renders while it keeps
+  moving); "lag px" = mean |wanted centre - rendered centre| over frames x carriers with light; clamp = carrier-frames with |RD| = 16.
+  Catch-up = section 5 episodes with "drawn in VRAM" tracked per guard through pass end -> tiles derived -> published -> retired (uploaded).
+
+| room | guard render frames med/p90/max (n) | guard lag px | glow render med/p90/max | at clamp | lag frames | catch-up med/p90/max (n) |
+|---|---|---|---|---|---|---|
+| r01 / r03 / r07 / r11 | no moving lit guard | 0.0 | 1/1/33 .. 1/1/76 | 0 % | 0 | r03 2/3/3, r07 2/4/4 |
+| r02 / r04 / r05 / r06 | 0/1/60 (167) / 0/1/2 (175) / 0/0/0 (12) / 0/1/61 (272) | 0.0 / 0.7 / 0.0 / 0.0 | 1/1/32 / 1/60/64 / 1/1/54 / 1/1/139 | <= 0.2 % | 0 | 2/4/4 / 2/3/4 / 4/10/10 / 3/4/6 |
+| r08 / r09 / r10 | 0/1/60 (142) / 0/1/60 (128) / 0/1/56 (111) | 0.3 / 0.1 / 0.5 | 1/1/64 / 1/1/32 / 1/1/76 | <= 0.2 % | 0 | 3/4/6 / 3/5/7 / 1/2/3 |
+| r12 / r13 / r14 | 0/1/3 (18) / 0/1/60 (322) / 0/0/2 (143) | 0.0 / 0.0 / 0.2 | 1/1/22 / 1/1/43 / 1/1/43 | <= 0.2 % | 0 | 13/25/34 / 3/4/5 / 3/5/8 |
+| r15 / r16 / r17 | 0/1/137 (298) / 0/1/61 (200) / 0/1/2 (231) | 1.2 / 0.2 / 0.0 | 1/1/70 / 1/1/64 / 1/1/55 | 0.8 / 1.2 / 0 % | 0 | 3/5/7 / 4/23/39 / 3/5/9 |
+| r18 / r19 / r20 / final | 0/1/60 (119) / 0/0/2 (524) / 0/1/61 (169) / 0/0/5 (315) | 0.0 / 0.0 / 0.4 / 0.5 | 1/1/22 / 1/1/55 / 1/1/64 / 1/1/77 | 0 / 0 / 0.2 / 1.0 % | 0 | 4/20/28 / 3/7/33 / 3/5/9 / 3/6/25 |
+
+Reading: every carrier, in every room, is re-rendered with its current displacement in the frame after it moves (median 0-1, p90 <= 1
+frame, so ~0.75 px per update at patrol speed); maxes are single events (room start / a job running first). Catch-up per guard is within
+15 / 40 / 90 in all rooms. 0 lag frames (21 walks; solution replays below). SA-1 busy (job entry -> exit, lines per frame, mean / max):
+r19 176 / 544, final 164 / 528, r13 112 / 318 (runs over a frame are cut by the next post; no post was skipped). `src/dev/e5_nmi.lua`
+(sa1_probe on r13 / r15 / r19 / r20 / final): NMI end max line 255-257 (vblank ends 261, `LIGHT_NMIEND` 258 caps the rows: 8-10 tile rows
+per uploading NMI median, max 26), logic end max 207, lag 0, skip 0.
+
+### make test
+`make build`: `freespace: 106 region(s), 158 org(s) checked, 318809 changed byte(s) diffed: ok`, `built build/hush.sfc`.
+`make test`: `PASS=38 FAIL=1 TIMEOUT=0 SKIP=2`. FAIL = smoke_lighting, **expected**: its amber oracle is still rev 4 (undisplaced composite
+lattice); `22879 of 451584 tile words differ` (first: r02 t=2, amber shifted by the guard's d). Everything else in it passes on this build
+(GMAP vs rules, composite, glow cell / d, VRAM = light_tiles). Solutions 21/21 with lagged frames 0, meter budget 21/21, must_not 122 + 9.
+**For qa (catch-up rule):** the test's "shown" proxy is global (no tile row pending and `light_dirty` = 0). With every guard light moving
+every frame the pipeline is legitimately never idle in r19 / r12, so that proxy reports r19 20/68/134 and r12 12/53/67 although the
+per-guard measurement above (r19 3/7/33, r12 13/25/34) is within the limits. A per-guard "drawn" signal is needed in the test; the probe's
+definition (Hush_L3ARow_end / Hush_LightPub_publish / _retire, labels added for it) is one option.
+
+### Space / RAM
+New ROM row `$03EBA0-$03F370` (vanilla room object data of rooms $0100-$010C, rooms.asm:908-924; ends `$03F0A3`, 717 B left). Code row ends
+`$1FC32F` (208 B left), data row `$1FFE62` (413 B left), TRow row `$1FC999` (102 B left), RAM code 143 / 256 B. RAM (docs/ram_map.md):
+`light_l3glat` `$41:0000`, `light_l3ca` `$41:2860`, `light_l3qh` / `ql` `$41:2E00` / `$41:3540`, `light_l3ast` `$41:3D00`,
+`light_l3aspan` `$41:3D40`, `light_l3aconst` `$41:3D80`, `light_l3luta` `$41:9000` (was `light_lutf`), `light_l3new` used again;
+`$41:8000-$41:8FFF` (pair grids) free. Room load: the SNES no longer zeroes the 4 KB pair grids; the SA-1 zeroes 15.5 KB of amber RAM in
+its first light frame of the room.
+
+### Probes (src/dev)
+`e5_probe.lua` (all rooms, the numbers above), `e5_quick.lua` (5 rooms), `e5_out.lua` (render outliers), `e5_nmi.lua` (sa1_probe subset),
+`e5_prof.lua` (SA-1 lines per unit kind: r19 rows 85, pick 20, publish 22, tiles 18, glow 10, jobs 6, lattices 8 lines per frame),
+`e5_dbg.lua` (debug dump of the pass state).
+
+### Open
+1. smoke_lighting: amber rule rev 4 -> rev 5 and a per-guard catch-up signal (qa).
+2. If more SA-1 headroom is wanted: run the RAM loops from I-RAM (`$00:3540-$36FF` is free) instead of BW-RAM.
