@@ -8,14 +8,14 @@ hush.test("light probe", function()
   local room = tonumber(os.getenv("ROOM") or "20")
   bot.jump_to_room(room)
   hush.wait(tonumber(os.getenv("FRAMES") or "90"))
-  local function p(a) return bot.peek(0x7E0000 + a) end
+  local function p(a) return bot.peek(0x7E0000 + a) end             -- WRAM; light rows via hush.peek (SA-1 BW-RAM)
   hush.log(string.format("TM=%02X TS=%02X CGWSEL=%02X CGADSUB=%02X on=%d job=%02X dirty=%04X",
-    p(0x1C), p(0x1D), p(0x99), p(0x9A), p(0xE740), p(0xE770), p(0xE742) + 256 * p(0xE743)))
+    p(0x1C), p(0x1D), p(0x99), p(0x9A), hush.peek("light_on"), hush.peek("light_job", 8), hush.peek16("light_dirty")))
   for cy = 0, 13 do
     local t = {}
     for cx = 0, 15 do
       local i = cy * 16 + cx
-      local c, v, s = p(0xD880 + i), p(0xD960 + i), p(0xCA00 + (cy + 8) * 32 + cx + 8)
+      local c, v, s = hush.peek("light_comp", i), hush.peek("light_vio", i), hush.peek("light_sol", (cy + 8) * 32 + cx + 8)
       t[#t + 1] = c > 0 and tostring(c) or (v > 0 and "v" or (s & 1 == 1 and "#" or "."))
     end
     hush.log(table.concat(t))

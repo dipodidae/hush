@@ -20,9 +20,12 @@ local bot = require("bot")
 local W = emu.memType.snesWorkRam
 local function rd(a) return emu.read(a, W, false) end
 local function rd16(a) return rd(a) + 256 * rd(a + 1) end
+local LM = emu.memType.snesSaveRam       -- light rows: SA-1 BW-RAM since SA-1 step 3 (docs/ram_map.md "HUSH lighting")
+local function rl(a) return emu.read(a, LM, false) end
+local function rl16(a) return rl(a) + 256 * rl(a + 1) end
 local function ram(name)
   local e = hush.ram[name]
-  if not e then hush.fail("docs/ram_map.md has no row " .. name) end
+  if not e or e.mem ~= LM then hush.fail("docs/ram_map.md: " .. name .. " missing or not BW-RAM") end
   return e.addr
 end
 
@@ -44,7 +47,7 @@ end
 
 -- light engine (docs/ram_map.md rows light_comp, light_dirty, light_tdirty, light_job, light_sigc, light_on)
 local L
-local function comp(cx, cy) return rd(L.COMP + cy * 16 + cx) end
+local function comp(cx, cy) return rl(L.COMP + cy * 16 + cx) end
 local function live_sig(s)              -- same as tests/dev/light_latency.lua live_sig()
   local st, typ, aw = rd(0x0DD0 + s), rd(0x0E20 + s), rd(0x0D80 + s)
   if st ~= 9 or typ ~= 0x41 or aw >= 3 then return { 0, 0, 0 } end
@@ -55,12 +58,12 @@ local function live_sig(s)              -- same as tests/dev/light_latency.lua l
   return { cls, cls == 1 and (rd(0x0DE0 + s) & 3) or 0, (y // 16 + 8) * 32 + x // 16 + 8 }
 end
 local function sig_ok(s)
-  local a, b = live_sig(s), { rd(L.SIGC + 4 * s), rd(L.SIGC + 4 * s + 1), rd16(L.SIGC + 4 * s + 2) }
+  local a, b = live_sig(s), { rl(L.SIGC + 4 * s), rl(L.SIGC + 4 * s + 1), rl16(L.SIGC + 4 * s + 2) }
   return a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
 end
 local function light_idle()
-  if rd(L.ON) ~= 1 or rd16(L.DIRTY) ~= 0 or rd(L.JOB) ~= 0xFF then return false end
-  for i = 0, 111 do if rd(L.TDIRTY + i) ~= 0 then return false end end
+  if rl(L.ON) ~= 1 or rl16(L.DIRTY) ~= 0 or rl(L.JOB) ~= 0xFF then return false end
+  for i = 0, 111 do if rl(L.TDIRTY + i) ~= 0 then return false end end
   for s = 0, 7 do if not sig_ok(s) then return false end end
   return true
 end
@@ -80,7 +83,7 @@ local function status(r)
     local cx, cy = cell_of(r, k)
     t[#t + 1] = string.format("%s=%d@(%d,%d)", r.guards[k + 1].id, aware(k), cx, cy)
   end
-  return string.format("dirty=%04X job=%02X link=(%d,%d) aware[%s]", rd16(L.DIRTY), rd(L.JOB), hush.read("link_x"),
+  return string.format("dirty=%04X job=%02X link=(%d,%d) aware[%s]", rl16(L.DIRTY), rl(L.JOB), hush.read("link_x"),
     hush.read("link_y"), table.concat(t, " "))
 end
 

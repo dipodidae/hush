@@ -7,7 +7,7 @@ hush.test("nmi probe", function()
   bot.start_new_game()
   bot.jump_to_room(tonumber(os.getenv("ROOM") or "20"))
   hush.wait(30)
-  if (os.getenv("NOLIGHT") or "") ~= "" then bot.poke(0x7EE640, 0) end
+  if (os.getenv("NOLIGHT") or "") ~= "" then hush.poke("light_on", 0) end   -- SA-1 BW-RAM (was the stale $7EE640)
   local lines, ends = {}, {}
   local r1 = emu.addMemoryCallback(function() lines[#lines + 1] = emu.getState()["ppu.scanline"] end, emu.callbackType.exec, 0x07FFAA, 0x07FFAA)
   local r2 = emu.addMemoryCallback(function() ends[#ends + 1] = emu.getState()["ppu.scanline"] end, emu.callbackType.exec, 0x00805D, 0x00805D)

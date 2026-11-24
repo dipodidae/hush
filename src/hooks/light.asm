@@ -5,6 +5,7 @@
 ;   roomload.asm  Hush_AttrSet   end `STZ.w $0200 : RTL` -> `JML Hush_LightInit` (which does the STZ and the RTL): after the collision map is built,
 ;                                in the forced blank of Module06 -> light state reset, cell solidity from $7F2000, BG1 window := no light (VRAM upload)
 ;   meter.asm     Hush_MeterFrame `.out` -> `JSL Hush_LightWork` (end of every Module07 frame, after the guards and Link ran)
+;   sa1.asm       Hush_Sa1Entry idle loop -> `JSL Hush_LightJob` (SA-1 step 4: the worker runs on the SA-1, see "SA-1 light worker" below)
 ;   menu_ui.asm   Hush_NmiTM      -> `JSL Hush_LightNmi` first (NMI, before the TM / TS writes of the vanilla NMI)
 ;   transition.asm Hush_InitTilesets `JSL $00E19B` -> `JSL Hush_LightTilesets` (InitializeTilesets, then the light tiles again: it rewrites slots 0-7)
 ;   transition.asm submodule $0F hook -> `JSL Hush_LightWipe` (Hush_Wipe + the light palette)
@@ -51,6 +52,11 @@
 ;   (Hush_LightAura) is one step (old ring off, new ring on, the glow lattice copied from the 32-pattern table L3_GTAB), only when the frame's
 ;   light work starts before LIGHT_VMAX - L3_AGATE; then the glow region gets a guaranteed slice (Hush_L3GSlice) before the job units.
 ;   NMI uploads <= 6 dirty cell rows (= 12 tile rows, 768 bytes) per frame (measured: the NMI reaches here at line ~250; vblank ends at 261).
+;   SA-1 light worker (bring-up step 4): Hush_LightWork (SNES, end of frame) keeps the colour math, the palette check and Hush_LightPal (WRAM),
+;   then Hush_LightPost stages the inputs (sprite arrays, room, ink, Link / scroll; docs/ram_map.md sa1_stage) in I-RAM and posts the frame
+;   (sa1_cmd := $FF). The SA-1 (Hush_LightJob) copies them, clears sa1_cmd and runs the worker (Hush_LightRun, D = $3100). No V counter on
+;   the SA-1: Hush_LightV = sa1_cmd, so the units run until the work is done or the next frame is posted. The NMI time-gates its rows by the
+;   PPU V counter (LIGHT_NMIEND) and never reads a cell row the SA-1 is writing (Hush_L3Lock / Unlock, sa1_trow / sa1_nmiup).
 ;   light_job ($7EE770): slot 0-7 = a guard job runs, $FF = idle ($FE is no longer used).
 ;   light_dirty ($7EE742): bits 0-13 = cell rows to upload (none are set until B2); 0 = the BG1 VRAM window equals light_tiles.
 ;
@@ -58,10 +64,25 @@
 ;           old per-cell words, no longer read) and $1FCA00-$1FFFFF (build/light_gen.asm, the L3 tables and the code that did not fit the
 ;           code row: Hush_LightGrids / ZeroGrids / L3*; all bank $1F, so JSR works): vanilla room object data of rooms HUSH never
 ;           loads (rooms.asm:750-870) + the $FF tail NULL_1FFF4E, same evidence as the E1 room-data rows. C3: $1BB340-$1BB7FF (D4: Hush_L3GRun,
-;           Hush_L3GPick, Hush_L3GChg, Hush_L3Commit; JSL from bank $1F; the unclaimed tail of NULL_1BB1E0, bank_1B.asm:6-209).
-; RAM:      $7ECA00-$7EE7FF and $7F8000-$7FDBBF (docs/ram_map.md "HUSH lighting" / L3); direct page $00-$0F scratch (end of frame / Module06 only,
-;           never in the NMI). Vanilla $7E0134 (animated tile VRAM word, see above). DMA channel 5 + WMDATA (lattice reset; unused by vanilla).
+;           Hush_L3GPick, Hush_L3GChg, Hush_L3Commit; JSL from bank $1F; the unclaimed tail of NULL_1BB1E0, bank_1B.asm:6-209). SA-1 step 4:
+;           $03EB05-$03EB7F (Hush_LightPost; head of NULL_03EB05, bank_03.asm:4559-4581).
+; RAM:      SA-1 step 3: BW-RAM $40:CA00-$40:E7FF (light vars, was $7ECA00-$7EE7FF) and $41:8000-$41:DD7F (L3 caches, was $7F8000-$7FDD7F),
+;           same low 16 bits as before (docs/ram_map.md "HUSH lighting" / L3); the same long addresses for the SNES ($40-$4F, Sa1.cpp:68) and
+;           the SA-1 ($40-$5F, Sa1.cpp:69). SA-1 step 4: the worker runs on the SA-1, which cannot read WRAM: the sprite arrays, hush_room and
+;           the ink are read from the staged copy in I-RAM (!SA1_IN_*), Link / scroll from its direct page ($3100); the SNES-only parts
+;           (Hush_LightInit / Pal / Wipe / Nmi / Work) still read WRAM long ($7Exxxx).
+;           Direct page $00-$0F scratch (end of frame / Module06 only, never in the NMI; SA-1: its own page $3100). Vanilla $7E0134 (animated
+;           tile VRAM word, see above). I-RAM $3004-$3009, $3100-$353F (docs/ram_map.md "SA-1 memory"). DMA channel 5 + WMADD / WMDATA
+;           (Hush_LightPost; unused by vanilla).
+;           SNES access time is unchanged: banks $40-$7F are all 8 master clocks per access (MesenCE SnesMemoryManager.cpp:92-94).
 ; =============================================================================
+
+!L_BANK   = $40                  ; light vars (L_*): BW-RAM bank $40 (SA-1 step 3; was WRAM $7E)
+!L3_BANK  = $41                  ; L3 caches (L3_* / LP_*): BW-RAM bank $41 (was WRAM $7F)
+!LB       = $400000              ; long base of L_* (was $7E0000)
+!L3B      = $410000              ; long base of L3_* / LP_* (was $7F0000)
+!L_DBW    = $4040                ; PEA operand: DB := !L_BANK
+!L3_DBW   = $4141                ; PEA operand: DB := !L3_BANK
 
 !L_SOL    = $CA00        ; 960  padded solidity
 !L_SCR    = $CDC0        ; 960  padded scratch steps of the current job
@@ -103,7 +124,9 @@
 !L_JCX    = $E7FC        ; 1  commit: next cell column of row L_JROW
 !L_JRST   = $E7FF        ; 1  the running job was restarted once (Hush_LightStale) already
 
-; L3 glued light (design/lighting.md 4.5; src/dev/L3_REPORT.md "Step A1 RAM map"; docs/ram_map.md light_l3*), bank $7F, DB = $7F.
+; L3 glued light (design/lighting.md 4.5; src/dev/L3_REPORT.md "Step A1 RAM map"; docs/ram_map.md light_l3*), bank !L3_BANK, DB = !L3_BANK.
+; (Comments below that say "bank $7F" / "DB = $7F" / "$7Fxxxx" mean bank !L3_BANK = $41 since SA-1 step 3; "bank $7E" / "DB = $7E" for the
+; L_* variables mean !L_BANK = $40.)
 ; Lattice point (i, j), i = -2..35, j = -2..31: G(i,j) = (j + 2) * 38 + (i + 2); padding stays 0. Carriers 0-7 = guard slots, 8 = glow.
 ; L3_LAT takes the old L2 pair-grid / LUTF area ($7F8000-$7FB3F1; L2 removed in L3 B1).
 !L3_LATSZ = 1292                 ; bytes per padded lattice (34 rows x 38)
@@ -138,8 +161,9 @@
 !L3_LBX1  = $C7A0
 !L3_LBY0  = $C7B0
 !L3_LBY1  = $C7C0
-!L3_OK    = $C7D0                ; 2  $4C35 (D4; D3 $4C34) = LERP / LERP8 / L3_D tables, the RAM code, (D3) LUTF and (D4) L3_GTAB built (cleared by the intro WRAM clear,
-                                 ;    bank_0C.asm:110-112, which also zeroes LUTF's block: bank_0C.asm:88-113)
+!L3_OK    = $C7D0                ; 2  $4C35 (D4; D3 $4C34) = LERP / LERP8 / L3_D tables, the RAM code, (D3) LUTF and (D4) L3_GTAB built (SA-1 step 3:
+                                 ;    zeroed at every power-on / reset by Hush_Sa1Entry, sa1.asm; was the intro WRAM clear, bank_0C.asm:88-113)
+assert !L3B+!L3_OK == !SA1_L3OK
 !L3_REG   = $C7E0                ; 32 region / scheduler state (B2d, Hush_L3RegStep):
 !L3_RC    = !L3_REG+0            ;    carrier of the running region, $FF = none
 !L3_RKIND = !L3_REG+1            ;    its kind: 0 amber (carriers 0-7), 1 violet (8)
@@ -183,7 +207,10 @@
 !LIGHT_VMAX = 200        ; no new unit at or after this scanline; long units also stop at it (Hush_LightLate). After LightWork the frame still
                          ; runs HandleFloorIndicator + PrepareOAMForTransfer (bank_02.asm:1509, bank_00.asm:76). Measured (tests/dev/nmi_probe.lua,
                          ; final room): end of logic max 219 of 225, 0 lag frames (204: max 223, too close; 196: r19 light latency too long)
-!LIGHT_NMIROWS = 6       ; cell rows uploaded per NMI (768 bytes in 12 DMAs, ~7 lines from line ~250: ends before the vblank does at 261)
+!LIGHT_NMIROWS = 14      ; cell rows uploaded per NMI at most (SA-1 step 4: all 14; the real cap is LIGHT_NMIEND. Was 6: 768 bytes in 12 DMAs,
+                         ; ~7 lines from line ~250, with the vanilla animated-tile upload still in every NMI)
+!LIGHT_NMIEND = 258      ; SA-1 step 4: Hush_LightNmi starts a row (2 DMAs of 48 words, ~1 line) only below this PPU line (vblank ends at 261;
+                         ; src/dev/sa1_probe.lua "NMI end" = the NMI's INIDISP restore)
 !LIGHT_JOBQ = 4          ; D3 (B-010): guard job units run first until 3/4 of the frame's unit lines are used (L_VJOB), then the rotation
 assert !LIGHT_JOBQ == 4  ; Hush_LightWork divides by 4 with two LSR
 !L_VJOB   = $E7FD        ; 2  D3: V counter up to which Hush_L3Unit runs the guard job first (set by Hush_LightWork every light frame)
@@ -194,8 +221,6 @@ assert !LIGHT_JOBQ == 4  ; Hush_LightWork divides by 4 with two LSR
 org $1FCA00
 Hush_LightGfx:
 incsrc "!HUSH_LIGHT_GEN"
-Hush_LightZero:                          ; DMA fill source
-    db $00
 Hush_LightM98:                           ; [ab] 98 * ab (D3, as L2): the A98 pair value of code ab = 7C + W, and 686 k = [7k]
     dw 0*98, 1*98, 2*98, 3*98, 4*98, 5*98, 6*98, 7*98, 8*98, 9*98, 10*98, 11*98, 12*98, 13*98, 14*98, 15*98
     dw 16*98, 17*98, 18*98, 19*98, 20*98, 21*98, 22*98, 23*98, 24*98, 25*98, 26*98, 27*98, 28*98, 29*98, 30*98, 31*98
@@ -211,7 +236,7 @@ Hush_LightGrids:
     LDA.w #!L3_LAT+(8*!L3_LATSZ) : LDX.w #!L3_LATSZ : JSR Hush_LightZeroGrids   ; the glow lattice
     LDA.w #!L3_CV : LDX.w #(!L3_PVIO+960-!L3_CV) : JSR Hush_LightZeroGrids   ; CV (B2d: light_tiles is reset to empty) + light_pvio
     LDA.w #!L3_IV : LDX.w #2040 : JSR Hush_LightZeroGrids                   ; C4: violet tile indexes (= CV all 0)
-    PEA $7F7F : PLB : PLB
+    PEA !L3_DBW : PLB : PLB
     LDX.w #$000E
 -   LDA.w #$FFFF : STA.w !L3_CELL,X      ; CELL $FF (bytes 9-15 unused)
     LDA.w #$0101 : STA.w !L3_LBY0,X      ; empty bbox: LBY0 = 1 > LBY1 = 0
@@ -256,15 +281,15 @@ Hush_L3Row:
     INY
 .k  LDA.b ($00),Y : CLC : ADC.b ($03),Y : STA.b $07          ; c[k] (sums <= 24: C stays 0)
     ADC.b $06 : ADC.b #2 : STA.b $06                         ; c[k-1] + c[k] + 2
-    LSR A : LSR A : ORA.b $02 : STA.l $7F0000-1,X            ; P(2k - 1) = 8 O(k-1) + E(k)
+    LSR A : LSR A : ORA.b $02 : STA.l !L3B-1,X               ; P(2k - 1) = 8 O(k-1) + E(k)
     LDA.b $06 : AND.b #$FC : ASL A : STA.b $06               ; 8 E(k)
-    LDA.b $07 : INC A : LSR A : ORA.b $06 : STA.l $7F0000,X  ; P(2k) = 8 E(k) + O(k)
+    LDA.b $07 : INC A : LSR A : ORA.b $06 : STA.l !L3B,X     ; P(2k) = 8 E(k) + O(k)
     AND.b #$07 : ASL A : ASL A : ASL A : STA.b $02           ; 8 O(k)
     LDA.b $07 : STA.b $06
     INX : INX : INY
     DEC.b $0D : BNE .k
     LDA.b ($00),Y : CLC : ADC.b ($03),Y : ADC.b $06 : ADC.b #2 : LSR A : LSR A   ; E(k0 + n)
-    ORA.b $02 : STA.l $7F0000-1,X        ; P(2(k0 + n) - 1)
+    ORA.b $02 : STA.l !L3B-1,X           ; P(2(k0 + n) - 1)
     PLB
     RTS
 
@@ -279,7 +304,7 @@ Hush_L3Glow:
     PLA : AND.w #$000F : INC A           ; k0 + 2 = cx + 1
     SEP #$20
     STA.b $0B
-    LDA.b #$7F : STA.b $0A
+    LDA.b #!L3_BANK : STA.b $0A          ; light_pvio's bank
     LDA.b #7 : STA.b $0C                 ; rows left
 .r  LDA.b #4 : STA.b $0D                 ; columns cx - 1 .. cx + 2
     REP #$20
@@ -292,21 +317,20 @@ Hush_L3Glow:
     SEP #$20
     RTS
 
-; Hush_LightZeroGrids: JSR, M = X = 16 (P kept), A = bank $7F address, X = byte count: := 0 by DMA channel 5 from a fixed zero byte to
-; WMDATA ($2180). Channel 5 and WMADD/WMDATA are used nowhere in vanilla (grep of vendor/usdasm: no DMA5* / $435x operand, no WMADD /
-; $2181-$2183 operand) nor in src/.
+; Hush_LightZeroGrids: JSR, M = X = 16 (P, DB kept), A = bank !L3_BANK address, X = byte count (>= 2): := 0. SA-1 step 3: a CPU fill
+; (the old DMA channel 5 -> WMDATA fill only reaches WRAM, and A-bus -> A-bus DMA does not exist): the first byte := 0, then MVN copies it
+; forward over the next n - 1 bytes (source = dest - 1, 7 cycles per byte; ~9.7 KB per room load, forced blank).
 Hush_LightZeroGrids:
-    PHP
+    PHP : PHB
     REP #$30
-    STA.l $002181                        ; WMADDL / WMADDM
-    TXA : STA.l $004355
-    LDA.w #$8008 : STA.l $004350         ; DMAP5 $08 (A -> B, fixed source, 1 register), BBAD5 $80 (WMDATA)
-    LDA.w #Hush_LightZero : STA.l $004352
-    SEP #$20
-    LDA.b #$01 : STA.l $002183           ; WMADDH: bank $7F
-    LDA.b #Hush_LightZero>>16 : STA.l $004354
-    LDA.b #$20 : STA.l $00420B           ; channel 5
-    PLP
+    PHA                                  ; start
+    PEA !L3_DBW : PLB : PLB
+    TAY : INY                            ; Y = destination = start + 1
+    DEX : DEX : TXA                      ; A = n - 2: MVN moves A + 1 = n - 1 bytes
+    PLX                                  ; X = source = start
+    SEP #$20 : STZ.w $0000,X : REP #$20  ; the first byte
+    MVN !L3_BANK,!L3_BANK                ; (DB := the destination bank, restored below)
+    PLB : PLP
     RTS
 
 ; Hush_L3Tables: JSR from Hush_LightGrids, M = X = 16, DB = $7F; uses $00-$0C; returns M = X = 16. Writes only $7FC200-$7FC3FF,
@@ -460,7 +484,7 @@ Hush_LightAmb:
 ; defines: A98[G] = 98 (7C + W), A2[G] = 2 (7C + W), +2: the same with E; W / E = 0 outside the grid): every pair that reads a changed
 ; cell. Uses A, X, Y, $08-$0F (not $06 / $07). ~150 cycles per cell.
 Hush_LightAmbRow:
-    PHB : PEA $7F7F : PLB : PLB
+    PHB : PEA !L3_DBW : PLB : PLB
     LDA.b $06 : BEQ +
     DEC A
 +   STA.b $08                            ; x
@@ -468,16 +492,16 @@ Hush_LightAmbRow:
     INC A
 +   STA.b $09                            ; last x
     REP #$20
-    LDA.l $7E0000+!L_JROW : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : STA.b $0C    ; 16 cy
+    LDA.l !LB+!L_JROW : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : STA.b $0C    ; 16 cy
     ASL A : ASL A : ASL A : STA.b $0E                                                    ; 128 cy
     LDA.b $08 : AND.w #$00FF : CLC : ADC.b $0C : STA.b $0C                               ; i = 16 cy + x
     LDA.b $08 : AND.w #$00FF : ASL A : ASL A : CLC : ADC.b $0E : ADC.w #132 : STA.b $0E   ; G = (cy + 1) * 128 + (x + 1) * 4
     SEP #$20
 .x  LDX.b $0C
-    LDA.l $7E0000+!L_COMP,X : STA.b $0A                                                  ; C
+    LDA.l !LB+!L_COMP,X : STA.b $0A                                                  ; C
     ASL A : ASL A : ASL A : SEC : SBC.b $0A : STA.b $0B                                  ; 7C
     LDA.b $08 : BEQ +                    ; x = 0: W = 0 (A = 0)
-    LDA.l $7E0000+!L_COMP-1,X
+    LDA.l !LB+!L_COMP-1,X
 +   CLC : ADC.b $0B                      ; 7C + W
     REP #$20 : AND.w #$00FF : ASL A : TAX
     LDY.b $0E
@@ -485,7 +509,7 @@ Hush_LightAmbRow:
     LDX.b $0C
     SEP #$20
     LDA.b $08 : CMP.b #15 : LDA.b #$00 : BCS +   ; x = 15: E = 0
-    LDA.l $7E0000+!L_COMP+1,X
+    LDA.l !LB+!L_COMP+1,X
 +   CLC : ADC.b $0B                      ; 7C + E
     REP #$20 : AND.w #$00FF : ASL A : TAX
     LDA.l Hush_LightM98,X : STA.w !LP_A98+2,Y : TXA : STA.w !LP_A2+2,Y                  ; east pair
@@ -531,22 +555,22 @@ Hush_L3PVio:
     TYA : AND.w #$00F0 : ASL A : STA.b $0E
     TYA : AND.w #$000F : CLC : ADC.b $0E : TAX
     SEP #$20
-    LDA.w !L_VIO,Y : STA.l $7F0000+!L3_PVIO+(8*32+8),X
+    LDA.w !L_VIO,Y : STA.l !L3B+!L3_PVIO+(8*32+8),X
     PLX
     RTS
 
 ; Hush_L3TMark (D2; D3: inputs in $08 / $09): JSR from Hush_LightMarkRow (M = 8, X = 16, any DB), A = tile row ty (0..27), $08 = lo + 1,
 ; $09 = hi + 1 (tile columns): light_tdirty span of row ty grows to cover them, light_l3adb (pending tile rows) grows to cover ty. Uses X.
 Hush_L3TMark:
-    CMP.l $7F0000+!L3_ADB : BCS +
-    STA.l $7F0000+!L3_ADB
-+   CMP.l $7F0000+!L3_ADB+1 : BCC +
-    STA.l $7F0000+!L3_ADB+1
+    CMP.l !L3B+!L3_ADB : BCS +
+    STA.l !L3B+!L3_ADB
++   CMP.l !L3B+!L3_ADB+1 : BCC +
+    STA.l !L3B+!L3_ADB+1
 +   REP #$20 : AND.w #$00FF : ASL A : ASL A : TAX : SEP #$20
-    LDA.l $7E0000+!L_TD,X : BEQ + : CMP.b $08 : BCC ++
-+   LDA.b $08 : STA.l $7E0000+!L_TD,X
-++  LDA.l $7E0000+!L_TD+1,X : CMP.b $09 : BCS +
-    LDA.b $09 : STA.l $7E0000+!L_TD+1,X
+    LDA.l !LB+!L_TD,X : BEQ + : CMP.b $08 : BCC ++
++   LDA.b $08 : STA.l !LB+!L_TD,X
+++  LDA.l !LB+!L_TD+1,X : CMP.b $09 : BCS +
+    LDA.b $09 : STA.l !LB+!L_TD+1,X
 +   RTS
 
 ; (D3: Hush_L3TRow, the tile-row driver of both renderers, is in the $1FC916 row.)
@@ -561,7 +585,7 @@ Hush_L3TMark:
 ; scratch := 0 inside the box (the wedges write only there; the commit reads only there). Uses $00-$0B. (Data row: the code row is full.)
 Hush_LightBox:
     REP #$20
-    LDA.w $C900 : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : ASL A : TAX
+    LDA.l !SA1_IN_ROOM : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : ASL A : TAX     ; hush_room (staged, SA-1 step 4)
     LDA.l Hush_RoomTable+19,X
     SEP #$20
     LSR A
@@ -702,15 +726,15 @@ Hush_L3Want:
     SEP #$20
     RTS
 .cell                                    ; M = 16, X = carrier: C = 1 no lattice; else $00 = 16cx, $02 = 16cy
-    LDA.l $7F0000+!L3_CELL,X : AND.w #$00FF : CMP.w #$00FF : BCS +
+    LDA.l !L3B+!L3_CELL,X : AND.w #$00FF : CMP.w #$00FF : BCS +
     PHA : AND.w #$000F : ASL A : ASL A : ASL A : ASL A : STA.b $00
     PLA : AND.w #$00F0 : STA.b $02
     CLC
 +   RTS
 .store                                   ; M = 16: A = dy, $04 = dx, X = carrier -> bank $7F bytes; M = 16 on return
     SEP #$20
-    STA.l $7F0000+!L3_WDY,X
-    LDA.b $04 : STA.l $7F0000+!L3_WDX,X
+    STA.l !L3B+!L3_WDY,X
+    LDA.b $04 : STA.l !L3B+!L3_WDX,X
     REP #$20
     RTS
 .clamp                                   ; M = 16: A (signed) := clamp(A, -16, 16)
@@ -740,7 +764,7 @@ Hush_L3GStep:
 .max
     LDA.w #!LIGHT_VMAX-!L3_GMARGIN
 .run
-    STA.l $7F0000+!L3_GLIM
+    STA.l !L3B+!L3_GLIM
     SEP #$20
     JSL Hush_L3GRun
     BCS +
@@ -756,7 +780,7 @@ Hush_L3Bit:                              ; [2r] light_dirty bit of cell row r
 ; time). Returns by RTL. Operands patched by Hush_L3GPick (tables, once per region) and Hush_L3Commit (rows, end). Table rows are 64-byte
 ; aligned and the index is <= 63. Cycles per unchanged point (65816 timings, 8-bit index): GF 34, PF 22.
 Hush_L3Code:
-base $7F0000+!L3_CODE
+base !L3B+!L3_CODE
 Hush_L3GF:                               ; s > 0: V = LERP_s[LERP8_t[P0] | LERP_t[P1]]
 Hush_L3GF_P0:
     LDY.w $0000,X                        ; 4  P0 = P(i + e, j0)
@@ -808,10 +832,10 @@ Hush_L3Tile_B0:
 Hush_L3Tile_F0:
     EOR.w #$0000                         ; 3  flip (V for odd ty)
 Hush_L3Tile_C0:
-    CMP.l $7E0000,X                      ; 6  light_tiles
+    CMP.l !LB,X                          ; 6  light_tiles
     BEQ Hush_L3Tile_N0                   ; 3
 Hush_L3Tile_S0:
-    STA.l $7E0000,X                      ; 6
+    STA.l !LB,X                          ; 6
     STA.b $0C                            ; 4  changed
 Hush_L3Tile_N0:
     INX : INX                            ; 4
@@ -829,10 +853,10 @@ Hush_L3Tile_B1:
 Hush_L3Tile_F1:
     EOR.w #$0000
 Hush_L3Tile_C1:
-    CMP.l $7E0000,X
+    CMP.l !LB,X
     BEQ Hush_L3Tile_N1
 Hush_L3Tile_S1:
-    STA.l $7E0000,X
+    STA.l !LB,X
     STA.b $0C
 Hush_L3Tile_N1:
     INX : INX
@@ -868,7 +892,7 @@ Hush_L3RegInit:
     STA.w !L3_ADB : STA.w !L3_ADB+2      ; D2: no amber tile row pending (+0 $FF, +1 0; +2 / +3 unused)
     STA.w !L3_LPR                        ; D3: constant $FF / 0 (no amber lattice)
     LDA.w #$FFFF : STA.w !L3_STAMP       ; D2: stamp and light_l3pk +0 unused, kept $FF ("no parked region" for tests/dev/b010_light_done.lua)
-    LDA.w #$0000 : STA.l $7E0000+!L_RDONE  ; + the free byte after it
+    LDA.w #$0000 : STA.l !LB+!L_RDONE  ; + the free byte after it
     RTS
 
 ; Hush_L3Mark: JSR (bank $1F), any M / X (P, X kept), X = carrier 0..8: L3_RDM |= 1 << c (its lattice changed).
@@ -877,7 +901,7 @@ Hush_L3Mark:
     REP #$30
     PHX
     TXA : AND.w #$000F : ASL A : TAX
-    LDA.l Hush_L3Bit,X : ORA.l $7F0000+!L3_RDM : STA.l $7F0000+!L3_RDM
+    LDA.l Hush_L3Bit,X : ORA.l !L3B+!L3_RDM : STA.l !L3B+!L3_RDM
     PLX
     PLP
     RTS
@@ -892,7 +916,7 @@ Hush_L3GZero:
     JSR Hush_L3GAdr
     LDY.w #$0007
 -   LDA.w #$0000
-    STA.l $7F0000,X : STA.l $7F0002,X : STA.l $7F0004,X : STA.l $7F0006,X : STA.l $7F0008,X
+    STA.l !L3B,X : STA.l !L3B+2,X : STA.l !L3B+4,X : STA.l !L3B+6,X : STA.l !L3B+8,X
     TXA : CLC : ADC.w #38 : TAX
     DEY : BNE -
     RTS
@@ -912,15 +936,15 @@ Hush_L3GSet:
     AND.w #$00F0 : ASL A : STA.b $0E     ; 32cy
     LDA $01,S : AND.w #$000F : CLC : ADC.b $0E : TAX                     ; p0 - (8 * 32 + 8)
     SEP #$20
-    LDA.l $7F0000+!L3_PVIO+(8*32+8)+1,X : ASL A : ASL A : ASL A : ASL A : STA.b $0E   ; east (0 / 1) << 4
-    LDA.l $7F0000+!L3_PVIO+(8*32+8)-1,X : ASL A : ASL A : ASL A : TSB.b $0E           ; west << 3
-    LDA.l $7F0000+!L3_PVIO+(8*32+8)+32,X : ASL A : ASL A : TSB.b $0E                 ; south << 2
-    LDA.l $7F0000+!L3_PVIO+(8*32+8)-32,X : ASL A : TSB.b $0E                         ; north << 1
-    LDA.l $7F0000+!L3_PVIO+(8*32+8),X : LSR A : ORA.b $0E                             ; centre 2 -> bit 0
+    LDA.l !L3B+!L3_PVIO+(8*32+8)+1,X : ASL A : ASL A : ASL A : ASL A : STA.b $0E   ; east (0 / 1) << 4
+    LDA.l !L3B+!L3_PVIO+(8*32+8)-1,X : ASL A : ASL A : ASL A : TSB.b $0E           ; west << 3
+    LDA.l !L3B+!L3_PVIO+(8*32+8)+32,X : ASL A : ASL A : TSB.b $0E                 ; south << 2
+    LDA.l !L3B+!L3_PVIO+(8*32+8)-32,X : ASL A : TSB.b $0E                         ; north << 1
+    LDA.l !L3B+!L3_PVIO+(8*32+8),X : LSR A : ORA.b $0E                             ; centre 2 -> bit 0
     REP #$20
     AND.w #$001F : JSR Hush_L3GOff : TAY
     PLA : JSR Hush_L3GAdr
-    PHB : PEA $7F7F : PLB : PLB
+    PHB : PEA !L3_DBW : PLB : PLB
     LDA.w #$0007 : STA.b $0E
 -   LDA.w !L3_GTAB,Y : STA.w $0000,X
     LDA.w !L3_GTAB+2,Y : STA.w $0002,X
@@ -944,15 +968,52 @@ Hush_L3GSet:
 
 ; (D1a: Hush_L3ARow, Hush_L3AAdr and Hush_L3ACopy are at the end of the code row: the data row is full.)
 
-; V counter -> A (M = 16 on return). The latch / flip-flop sequence of the vanilla scanline wait (bank_00.asm:15152).
-; (Moved here from the code row in C2, unchanged; same bank $1F as its callers.)
-Hush_LightV:
+; Hush_LightPpuV: PPU V counter -> A (M = 16 on return). The latch / flip-flop sequence of the vanilla scanline wait (bank_00.asm:15152).
+; SNES only (SA-1 step 4: Hush_LightWork's palette gate; was Hush_LightV, the worker's time base).
+Hush_LightPpuV:
     SEP #$20
     LDA.l $002137
     LDA.l $00213F
     LDA.l $00213D : XBA
     LDA.l $00213D : AND.b #$01 : XBA
     REP #$20
+    RTS
+
+; Hush_LightV (SA-1 step 4: the worker runs on the SA-1, which cannot read the PPU, and MesenCE's SA-1 H/V counter read registers
+; $2302-$2305 return nothing, Sa1.cpp:430-434): the worker's "time" -> A (M = 16 on return) = the mailbox command byte: 0 while no new
+; frame is posted ("early": every LIGHT_VMAX / GLIM / VJOB gate passes; L_V0 = 0), $FF (>= LIGHT_VMAX) once the SNES posted the next
+; frame (Hush_LightPost): every unit stops as it did at LIGHT_VMAX, the worker returns, the SA-1 takes the new inputs.
+Hush_LightV:
+    REP #$20
+    LDA.l !SA1_CMDL : AND.w #$00FF
+    RTS
+
+; Hush_L3Lock / Hush_L3Unlock (SA-1 step 4): JSR from Hush_L3TRow (SA-1), M = 16, A = tile row ty (kept). The SA-1 writes the light_tiles
+; of cell row ty >> 1 and its light_dirty bit only between Lock and Unlock; Hush_LightNmi never uploads that row then, nor writes
+; light_dirty while the SA-1 is inside (Dekker: each side sets its own flag, then reads the other's; MesenCE runs both CPUs on one
+; sequentially consistent memory). Lock: SA1_TROW := ty >> 1; if the NMI is uploading (SA1_NMIUP), back off (TROW := $FF, so the NMI's
+; wait for "TROW != its row" ends), wait for it to finish, retry. Unlock: TROW := $FF (keeps A, P).
+Hush_L3Lock:
+    PHA
+    LSR A
+    SEP #$20
+.try
+    STA.l !SA1_TROW
+    LDA.l !SA1_NMIUP : BEQ .in
+    LDA.b #$FF : STA.l !SA1_TROW
+-   LDA.l !SA1_NMIUP : BNE -
+    LDA $01,S : LSR A
+    BRA .try
+.in REP #$20
+    PLA
+    RTS
+Hush_L3Unlock:
+    PHP
+    SEP #$20
+    PHA
+    LDA.b #$FF : STA.l !SA1_TROW
+    PLA
+    PLP
     RTS
 Hush_LightGfx_End:
 assert !HUSH_LIGHT_LN == 7               ; the index arithmetic below (x 7, x 3) and the Q formulas assume these
@@ -966,9 +1027,13 @@ org $1FB780
 ; Hush_LightInit: JML from the end of Hush_AttrSet (Module06, forced blank), M = X = 8. Does the replaced `STZ.w $0200 : RTL`.
 Hush_LightInit:
     STZ.w $0200
+-   LDA.l !SA1_CMDL : BNE -              ; SA-1 step 4: no light frame posted or running (nothing posts one before this returns: only
+    LDA.l !SA1_STATL : CMP.b #$02 : BEQ - ; Hush_LightWork in module 7 does), so the SA-1 does not touch the light state reset below
+    LDA.b #$FF : STA.l !SA1_TROW         ; the NMI / SA-1 row lock (Hush_L3Lock): free
+    LDA.b #$00 : STA.l !SA1_NMIUP
     PHB : PHP
     REP #$30
-    PEA $7E7E : PLB : PLB
+    PEA !L_DBW : PLB : PLB
     LDX.w #$0000
 -   LDA.l Hush_LightTab,X : STA.w !L_DELTA,X
     INX : INX : CPX.w #!L_TABLEN : BCC -
@@ -1034,42 +1099,41 @@ Hush_LightInit:
     LDA.w #$0000
 -   PHA
     JSR Hush_LightUpRow
-    PLA : INC A : CMP.w #28 : BCC -
+    PLA : INC A : CMP.w #14 : BCC -      ; 14 cell rows = 28 tile rows
     PLP : PLB
     RTL
 
 ; -----------------------------------------------------------------------------
-; Hush_LightDmaSetup / Hush_LightUpRow: DB = $00, M = X = 16. UpRow: A = tile row 0..27 (window row; tilemap row 18 + A), 2 DMAs of 16 words
-; (left screen: tiles 16..31, right screen: tiles 32..47; BG1 tilemap at VRAM word $1000, 2 x 2 screens of 32 x 32, as Hush_BuildRoom .layer).
+; Hush_LightDmaSetup / Hush_LightUpRow: DB = $00, M = X = 16. UpRow (SA-1 step 4: one cell row per call, was one tile row): A = cell row
+; 0..13 = tile rows t = 2A, 2A + 1 (window rows; tilemap rows 18 + t; BG1 tilemap at VRAM word $1000, 2 x 2 screens of 32 x 32, as
+; Hush_BuildRoom .layer). 2 DMAs of 48 words instead of 4 of 16: left screen from (row 18 + t, column 16): light_tiles row t left half ->
+; columns 16-31, its right half -> row 19 + t columns 0-15 (left of the window: never shown, the camera is fixed at tilemap x 16..47,
+; docs/gfx/art_map.md), row t + 1 left half -> columns 16-31; right screen from (row 18 + t, column 0): row t right half, row t + 1 left
+; half -> columns 16-31 (right of the window), row t + 1 right half. Tile rows 2A and 2A + 1 are always on the same screen row (18 + 2A
+; is even, the top / bottom screens split at tilemap row 32 = window row 14).
 Hush_LightDmaSetup:
     SEP #$20
     LDA.b #$80 : STA.w $2115             ; VMAIN: increment after the high byte
-    LDA.b #$7E : STA.w $4304             ; DMA0 source bank
+    LDA.b #!L_BANK : STA.w $4304         ; DMA0 source bank: light_tiles (BW-RAM, SA-1 step 3)
     REP #$20
     LDA.w #$1801 : STA.w $4300           ; DMA0: mode 1 to VMDATA
     RTS
 
 Hush_LightUpRow:
-    PHA
-    ASL A : ASL A : ASL A : ASL A : ASL A : ASL A
+    ASL A : PHA                          ; t = 2A
+    XBA : LSR A : LSR A                  ; 64 t (bytes per light_tiles row)
     CLC : ADC.w #!L_TILES : STA.w $4302
-    PLA
-    CLC : ADC.w #18
-    CMP.w #32 : BCS .bottom
-    ASL A : ASL A : ASL A : ASL A : ASL A
-    CLC : ADC.w #($1000+16)
-    BRA .addr
-.bottom
-    SBC.w #32                            ; C = 1 here
-    ASL A : ASL A : ASL A : ASL A : ASL A
-    CLC : ADC.w #($1800+16)
-.addr
-    STA.w $2116
+    PLA : CLC : ADC.w #18                ; tilemap row
+    CMP.w #32 : BCC +
+    ADC.w #31                            ; C = 1: + 32 (the bottom screens start at $1800 = $1000 + 64 rows)
++   ASL A : ASL A : ASL A : ASL A : ASL A
+    CLC : ADC.w #($1000+16) : STA.w $2116
     PHA
-    LDA.w #32 : STA.w $4305
+    LDA.w #96 : STA.w $4305
     SEP #$20 : LDA.b #$01 : STA.w $420B : REP #$20
-    PLA : CLC : ADC.w #($0400-16) : STA.w $2116      ; the right screen, column 0 (the DMA source has advanced by 32)
-    LDA.w #32 : STA.w $4305
+    PLA : CLC : ADC.w #($0400-16) : STA.w $2116                  ; the right screen, column 0
+    LDA.w $4302 : SEC : SBC.w #64 : STA.w $4302                  ; the source advanced by 96: back to the row's right half (+32)
+    LDA.w #96 : STA.w $4305
     SEP #$20 : LDA.b #$01 : STA.w $420B : REP #$20
     RTS
 
@@ -1108,36 +1172,70 @@ Hush_LightTilesets:
 Hush_LightNmi:
     PHP : PHB
     SEP #$20
-    LDA.l $7E0000+!L_ON : BEQ .out
+    LDA.l !LB+!L_ON : BEQ .out
     LDA.b $10 : CMP.b #$07 : BEQ .room
     CMP.b #$0E : BNE .out
     LDA.b $11 : CMP.b #$01 : BNE .out
     STZ.b $1D
-    BRA .out
+.out
+    PLB : PLP
+    RTL
 .room
     REP #$30
     PHX : PHY
-    LDA.l $7E0000+!L_DIRTY : AND.w #$3FFF : BEQ .done        ; bit 15 (render pending) is not an upload
+    PEA $0000 : PLB : PLB                ; DB = $00 (PPU / DMA registers; light_dirty is read long)
+    ; SA-1 step 4: the SA-1 writes light_tiles / light_dirty concurrently (Hush_L3Lock / Unlock). Flag first, then read its row t: rows
+    ; != t are stable while the flag is set (a new SA-1 row backs off); row t is not uploaded and light_dirty is changed only after the
+    ; SA-1 has left t (its next Lock sees the flag and waits). Stack: 1,S rows uploaded (bits), 3,S rows to scan, 5,S t.
+    SEP #$20
+    LDA.b #$01 : STA.l !SA1_NMIUP
+    REP #$20
+    LDA.l !SA1_TROW : AND.w #$00FF : PHA
+    LDX.w #$0000
+    CMP.w #14 : BCS +
+    ASL A : TAX : LDA.l Hush_LightBit,X : TAX                ; X = the bit of row t (0: none)
++   TXA : EOR.w #$FFFF : AND.l !LB+!L_DIRTY : AND.w #$3FFF   ; bit 15 (render pending) is not an upload
+    PHA
+    PEA $0000
+    BEQ .wait
     JSR Hush_LightDmaSetup
     LDY.w #!LIGHT_NMIROWS
     LDX.w #$0000                         ; X = 2 * cell row = the first of its two tile rows
 .scan
-    LDA.l Hush_LightBit,X
-    PEA $7E7E : PLB : PLB
-    BIT.w !L_DIRTY : BEQ .skip
-    TRB.w !L_DIRTY
-    PEA $0000 : PLB : PLB
-    TXA : JSR Hush_LightUpRow
-    TXA : INC A : JSR Hush_LightUpRow
-    DEY : BEQ .done
+    LDA.l Hush_LightBit,X : AND $03,S : BEQ .skip
+    JSR .vlate : BCS .wait               ; step 4: a row only while it ends inside vblank (the PPU V counter, not a fixed count)
+    LDA.l Hush_LightBit,X : ORA $01,S : STA $01,S
+    TXA : LSR A : JSR Hush_LightUpRow    ; cell row X / 2 (both tile rows)
+    DEY : BEQ .wait
 .skip
-    PEA $0000 : PLB : PLB
     INX : INX : CPX.w #28 : BCC .scan
+.wait
+    LDA $05,S : CMP.w #14 : BCS .clr     ; no SA-1 row ($FF)
+-   SEP #$20
+    LDA.l !SA1_TROW : CMP $05,S : BNE .clr                   ; the SA-1 has left row t (it cannot enter another row now)
+    JSR .vlate : BCC -                   ; M = 16
+    BRA .keep                            ; vblank is over: light_dirty untouched (the uploaded rows go again next NMI)
+.clr
+    REP #$20
+    LDA $01,S : BEQ .keep
+    PEA !L_DBW : PLB : PLB
+    TRB.w !L_DIRTY                       ; the uploaded rows
+.keep
+    REP #$20
+    PLA : PLA : PLA
+    SEP #$20
+    LDA.b #$00 : STA.l !SA1_NMIUP
 .done
     PLY : PLX
-.out
     PLB : PLP
     RTL
+.vlate                                   ; M = 16 on return: C = 1 when the PPU is at / past line LIGHT_NMIEND or already in the next frame
+    JSR Hush_LightPpuV
+    CMP.w #225 : BCC +
+    CMP.w #!LIGHT_NMIEND
+    RTS
++   SEC
+    RTS
 
 Hush_LightBit:
     dw $0001, $0002, $0004, $0008, $0010, $0020, $0040, $0080, $0100, $0200, $0400, $0800, $1000, $2000
@@ -1151,7 +1249,7 @@ Hush_LightWipe:
     REP #$30
     PHA : PHX : PHY
     PHB
-    PEA $7E7E : PLB : PLB
+    PEA !L_DBW : PLB : PLB
     SEP #$20
     LDA.w !L_ON : BEQ +
     LDA.w !L_PALREQ : BEQ +
@@ -1163,37 +1261,81 @@ Hush_LightWipe:
     RTL
 
 ; -----------------------------------------------------------------------------
-; Hush_LightWork: JSL from Hush_MeterFrame (end of the Module07 frame), any M/X, keeps P.
+; Hush_LightWork: JSL from Hush_MeterFrame (end of the Module07 frame), any M/X, keeps P. SA-1 step 4: the SNES part only: the colour-math
+; shadows, the palette check / Hush_LightPal (WRAM: the SA-1 cannot write it), then Hush_LightPost stages the worker's inputs and posts
+; the frame to the SA-1 (Hush_LightJob / Hush_LightRun run the worker there) and returns at once.
 Hush_LightWork:
     PHP : PHB
     SEP #$20 : REP #$10
-    PEA $7E7E : PLB : PLB
-    LDA.b $10 : CMP.b #$07 : BNE .out0
-    LDA.w !L_ON : BNE +
-.out0
-    JMP .out
-+   LDA.w $C903 : BNE +                  ; hush_flash ($7EC903): the caught flash owns the colour-math registers (feedback.asm)
+    PEA !L_DBW : PLB : PLB
+    LDA.b $10 : CMP.b #$07 : BNE .out
+    LDA.w !L_ON : BEQ .out
+    LDA.l $7EC903 : BNE +                ; hush_flash ($7EC903): the caught flash owns the colour-math registers (feedback.asm)
     LDA.b #$02 : STA.b $99               ; CGWSEL: the sub screen is the addend
     LDA.b #$22 : STA.b $9A               ; CGADSUB: add to BG2 and the backdrop
     LDA.b $1D : ORA.b #$01 : STA.b $1D   ; TS: BG1 (the light) on the sub screen
 +   REP #$20
-    LDA.w $C558 : CMP.l Hush_LightRamp+22 : SEP #$20 : BEQ +  ; row 2 colour 12 (the amber core)
+    LDA.l $7EC558 : CMP.l Hush_LightRamp+22 : SEP #$20 : BEQ +  ; row 2 colour 12 (the amber core)
     LDA.b #$01 : STA.w !L_PALREQ         ; the palette buffer was reloaded (room load, menu): light colours + soft shadow again
-+   JSR Hush_L3Want                      ; L3: wanted displacement per carrier (~3 lines)
++   LDA.w !L_PALREQ : BEQ +
+    JSR Hush_LightPpuV : CMP.w #150 : SEP #$20 : BCS +       ; ~20 lines of work: only early in the frame
+    JSR Hush_LightPal
++   JSL Hush_LightPost                   ; bank $03 (M = 8, X = 16; DB kept)
+.out
+    PLB : PLP
+    RTL
+
+; Hush_LightJob (SA-1 step 4): JSL from the SA-1 idle loop (Hush_Sa1Entry, sa1.asm) when the command byte is non-zero: M = X = 16,
+; D = $3000, DB = $00; returns the same (P, D, DB kept). Status := 2, the staged inputs (SA1_STAGE, written by Hush_LightPost) -> SA1_IN
+; (MVN), the DP inputs -> the worker's direct page SA1_DP ($20-$23 Link y / x, $E2 / $E8 BG2 scroll: Hush_L3Want / Aura / Ink / Sig
+; read them as `.b`), command := 0 (the SNES may stage the next frame), D := SA1_DP, one worker frame (Hush_LightRun), status := 1.
+Hush_LightJob:
+    PHP : PHD : PHB
+    PEA $0000 : PLB : PLB                ; DB = $00 (I-RAM)
+    SEP #$20
+    LDA.b #$02 : STA.w !SA1_STATL&$FFFF
+    REP #$30
+    LDA.w #!SA1_INLEN-1 : LDX.w #!SA1_STAGE : LDY.w #!SA1_IN
+    MVN $00,$00                          ; DB := $00 (already)
+    LDA.w !SA1_IN_DP+0 : STA.w !SA1_DP+$20
+    LDA.w !SA1_IN_DP+2 : STA.w !SA1_DP+$22
+    LDA.w !SA1_IN_DP+4 : STA.w !SA1_DP+$E2
+    LDA.w !SA1_IN_DP+6 : STA.w !SA1_DP+$E8
+    INC.w !SA1_RUNS
+    SEP #$20
+    STZ.w !SA1_CMDL&$FFFF                ; taken
+    REP #$20
+    LDA.w #!SA1_DP : TCD
+    SEP #$20
+    JSR Hush_LightRun
+.done
+    SEP #$20
+    LDA.b #$01 : STA.l !SA1_STATL
+    PLB : PLD : PLP
+    RTL
+
+; Hush_LightRun (SA-1 step 4; the worker part of the old Hush_LightWork): JSR from Hush_LightJob, M = 8, X = 16, D = SA1_DP; sets DB.
+; No PPU V counter on the SA-1: Hush_LightV is the mailbox (0 until the SNES posts the next frame, then $FF), so the units run until the
+; work is done or the next frame is posted; L_V0 = 0. light_done := 0 first, so it never stays 1 from the last run while this one
+; changes the light (it is 1 only between a complete run and the next).
+Hush_LightRun:
+    PEA !L_DBW : PLB : PLB
+    STZ.w !L_RDONE
+    LDA.w !L_ON : BEQ .out
+    LDA.l !L3B+!L3_OK : CMP.b #$35 : BNE .out                  ; no room loaded since this power-on (BW-RAM keeps a stale light_on; the
+                                                                ; SA-1 zeroes light_l3ok at its start, Hush_LightInit sets it, $4C35)
+    JSR Hush_L3Want                      ; L3: wanted displacement per carrier
     STZ.w !L_RIDLE                       ; C2: the idle job scan may run again this frame
     JSR Hush_LightV : STA.w !L_V0
-    CMP.w #!LIGHT_VMAX : BCS .exit       ; no spare time this frame: everything waits (the colour-math shadows above are set every frame)
+    CMP.w #!LIGHT_VMAX : BCS .exit       ; already posted again: everything waits
     SEP #$20
-    LDA.w !L_PALREQ : BEQ +
-    REP #$20 : LDA.w !L_V0 : CMP.w #150 : SEP #$20 : BCS +   ; ~20 lines of work: only early in the frame
-    JSR Hush_LightPal
-+   JSR Hush_LightInk
-    REP #$20 : LDA.w !L_V0 : CMP.w #(!LIGHT_VMAX-!L3_AGATE) : SEP #$20 : BCS +   ; the glow cell update (D4: one step, ring off + on + lattice) only with room left
+    JSR Hush_LightInk
+    REP #$20 : LDA.w !L_V0 : CMP.w #(!LIGHT_VMAX-!L3_AGATE) : SEP #$20 : BCS +   ; the glow cell update (D4: one step, ring off + on + lattice)
     JSR Hush_LightAura
-+   JSR Hush_L3GSlice                    ; D4: the glow region's guaranteed slice, before the guard jobs
++   JSR Hush_L3GSlice                    ; D4: the glow region (step 4: to its end unless the next frame is posted), before the guard jobs
     JSR Hush_LightV
     CMP.w #!LIGHT_VMAX : BCS .exit
-    CLC : ADC.w #(!LIGHT_JOBQ-1)*!LIGHT_VMAX : LSR A : LSR A : STA.w !L_VJOB   ; D3: job units first until V >= (V + 3 VMAX) / 4
+    CLC : ADC.w #(!LIGHT_JOBQ-1)*!LIGHT_VMAX : LSR A : LSR A : STA.w !L_VJOB   ; D3: job units first until V >= (V + 3 VMAX) / 4 (step 4: always)
 .unit
     SEP #$20
     JSR Hush_L3Unit : BCC .exit          ; B2d: guard job unit and region row alternately
@@ -1203,8 +1345,7 @@ Hush_LightWork:
 .exit
     JSR Hush_L3Done                      ; light_done
 .out
-    PLB : PLP
-    RTL
+    RTS
 
 ; (Hush_LightV moved to the data row in C2, after Hush_L3Done: the code row is full.)
 
@@ -1213,9 +1354,9 @@ Hush_LightPal:                           ; M = 8, X = 16. Light colours (BG row 
     REP #$20
     LDX.w #$0000
 -   LDA.l Hush_LightRamp,X
-    STA.w $C542,X : STA.w $C342,X        ; $7EC500 / $7EC300 + row 2 * 32 + colour 1 * 2
+    STA.l $7EC542,X : STA.l $7EC342,X    ; $7EC500 / $7EC300 + row 2 * 32 + colour 1 * 2
     INX : INX : CPX.w #30 : BCC -
-    LDA.w $C900 : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : ASL A : TAX
+    LDA.l $7EC900 : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : ASL A : TAX
     LDA.l Hush_RoomTable+19,X : LSR A    ; bit 0: lit room
     LDA.w #Hush_DimDark : BCC +
     LDA.w #Hush_DimLit
@@ -1223,14 +1364,14 @@ Hush_LightPal:                           ; M = 8, X = 16. Light colours (BG row 
     LDA.w #(Hush_DimDark>>16) : STA.b $06
     LDX.w #(3*32+2)                      ; rows 3..7, colours 1..15 (the room tiles; rows 0-1 are the HUD, row 2 the light)
 .col
-    LDA.w $C500,X : STA.b $00
+    LDA.l $7EC500,X : STA.b $00
     AND.w #$001F : TAY
     LDA.b [$04],Y : AND.w #$001F : STA.b $02
     LDA.b $00 : LSR A : LSR A : LSR A : LSR A : LSR A : AND.w #$001F : TAY
     LDA.b [$04],Y : AND.w #$001F : ASL A : ASL A : ASL A : ASL A : ASL A : TSB.b $02
     LDA.b $00 : XBA : LSR A : LSR A : AND.w #$001F : TAY
     LDA.b [$04],Y : AND.w #$001F : XBA : ASL A : ASL A : TSB.b $02
-    LDA.b $02 : STA.w $C500,X : STA.w $C300,X
+    LDA.b $02 : STA.l $7EC500,X : STA.l $7EC300,X
     INX : INX
     TXA : AND.w #$001F : BNE +
     INX : INX                            ; skip colour 0 of the next row
@@ -1250,10 +1391,10 @@ Hush_DimLit:                             ; v * 13 / 16: lit rooms are brighter
 Hush_LightInk:
     REP #$20
     LDA.w #$0000 : STA.b $04             ; new centre p (0 = none)
-    LDA.w $C90C : BEQ .have              ; hush_ink_t
-    LDA.w $C908 : SEC : SBC.b $E2 : CMP.w #$0100 : BCS .have
+    LDA.l !SA1_IN_INK+4 : BEQ .have      ; hush_ink_t (SA-1 step 4: the staged copy of $7EC90C / $7EC908 / $7EC90A)
+    LDA.l !SA1_IN_INK : SEC : SBC.b $E2 : CMP.w #$0100 : BCS .have
     LSR A : LSR A : LSR A : LSR A : STA.b $00
-    LDA.w $C90A : SEC : SBC.b $E8 : CMP.w #$00E0 : BCS .have
+    LDA.l !SA1_IN_INK+2 : SEC : SBC.b $E8 : CMP.w #$00E0 : BCS .have
     AND.w #$00F0 : ASL A : CLC : ADC.b $00 : CLC : ADC.w #(8*32+8) : STA.b $04
 .have
     LDA.b $04 : CMP.w !L_INKP : BEQ .same
@@ -1316,11 +1457,11 @@ Hush_LightAura:
     JSR Hush_L3PVio
 +   REP #$20
     LDA.w !L_LCELL : JSR Hush_L3GSet     ; D4: glow lattice (carrier 8) from the pattern table (marks carrier 8); M = 8 on return
-    LDA.w !L_LCELL : STA.l $7F0000+!L3_CELL+8                ; its lattice cell
+    LDA.w !L_LCELL : STA.l !L3B+!L3_CELL+8                ; its lattice cell
     JMP Hush_L3Want                      ; D4: d against the new cell in this frame (RTS there)
 .none
     SEP #$20
-    LDA.b #$FF : STA.l $7F0000+!L3_CELL+8                    ; no glow
+    LDA.b #$FF : STA.l !L3B+!L3_CELL+8                    ; no glow
     LDX.w #$0008 : JSR Hush_L3Mark
 .same
     SEP #$20
@@ -1381,23 +1522,23 @@ Hush_LightSig:
     REP #$20
     STZ.w !L_TSIG : STZ.w !L_TSIG+2
     SEP #$20
-    LDA.w $0DD0,X : CMP.b #$09 : BNE .none
-    LDA.w $0E20,X : CMP.b #$41 : BNE .none
-    LDA.w $0D80,X : CMP.b #$03 : BCS .none                 ; asleep (3) or anything else: no light
+    LDA.l !SA1_IN_SPR+$0DD0,X : CMP.b #$09 : BNE .none     ; SA-1 step 4: the sprite arrays are the staged copy (I-RAM, !SA1_IN_SPR)
+    LDA.l !SA1_IN_SPR+$0E20,X : CMP.b #$41 : BNE .none
+    LDA.l !SA1_IN_SPR+$0D80,X : CMP.b #$03 : BCS .none     ; asleep (3) or anything else: no light
     INC A : STA.b $08
-    LDA.w $0D30,X : XBA : LDA.w $0D10,X
+    LDA.l !SA1_IN_SPR+$0D30,X : XBA : LDA.l !SA1_IN_SPR+$0D10,X
     REP #$20
     CLC : ADC.w #8 : SEC : SBC.b $E2 : CMP.w #$0100 : BCS .none16
     LSR A : LSR A : LSR A : LSR A : STA.b $00
     SEP #$20
-    LDA.w $0D20,X : XBA : LDA.w $0D00,X
+    LDA.l !SA1_IN_SPR+$0D20,X : XBA : LDA.l !SA1_IN_SPR+$0D00,X
     REP #$20
     CLC : ADC.w #8 : SEC : SBC.b $E8 : CMP.w #$00E0 : BCS .none16
     AND.w #$00F0 : ASL A : CLC : ADC.b $00 : CLC : ADC.w #(8*32+8) : STA.w !L_TSIG+2
     SEP #$20
     LDA.b $08 : STA.w !L_TSIG
     CMP.b #$01 : BNE .none
-    LDA.w $0DE0,X : AND.b #$03 : STA.w !L_TSIG+1
+    LDA.l !SA1_IN_SPR+$0DE0,X : AND.b #$03 : STA.w !L_TSIG+1
 .none
     RTS
 .none16
@@ -1414,13 +1555,13 @@ Hush_LightStep:
     ; commit or in Hush_LightInk before the units); the time check once per scan (8 slots <= ~1300 cycles) instead of per slot; a slot
     ; with $0DD0 != 9 has signature 0 (Hush_LightSig .none), so it is current iff its committed SIGC is 0 / 0, tested before Hush_LightSig.
     LDA.w !L_RIDLE : BNE .none
-    LDA.l $7F0000+!L3_ADB : INC A : BNE .none   ; D3: no new job while amber tiles are pending (a job's tiles reach VRAM before the next commit)
+    LDA.l !L3B+!L3_ADB : INC A : BNE .none   ; D3: no new job while amber tiles are pending (a job's tiles reach VRAM before the next commit)
     JSR Hush_LightLate : BCS .ret        ; out of time: the round robin goes on from L_RR next frame
     LDA.b #$08 : STA.b $0A
     LDA.w !L_RR : AND.b #$07 : STA.b $0B
 .pick
     REP #$20 : LDA.b $0B : AND.w #$0007 : TAX : ASL A : ASL A : TAY : SEP #$20   ; X = slot, Y = 4 * slot
-    LDA.w $0DD0,X : CMP.b #$09 : BEQ .sig
+    LDA.l !SA1_IN_SPR+$0DD0,X : CMP.b #$09 : BEQ .sig
     REP #$20 : LDA.w !L_SIGC,Y : ORA.w !L_SIGC+2,Y : BEQ .same                 ; no sprite, no committed light: current
 .sig
     JSR Hush_LightSig                    ; keeps Y
@@ -1467,7 +1608,7 @@ Hush_LightStep:
     LDA.w !L_SOL,X : AND.b #$C0 : BNE .done                 ; the guard stands in the ink cloud: no light
     ; range: lit room = hush_range >= 128 (R = 8: 80 entries), dark (R = 5: 35 entries)
     REP #$20
-    LDA.w $C900 : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : ASL A : TAX     ; hush_room -> ROOM TABLE record (not hush_range: Hush_Tick
+    LDA.l !SA1_IN_ROOM : AND.w #$00FF : ASL A : ASL A : ASL A : ASL A : ASL A : TAX   ; hush_room (staged, SA-1 step 4) -> ROOM TABLE record (not hush_range: Hush_Tick
     LDA.l Hush_RoomTable+19,X : LSR A                                         ; only updates it in submodule 0; the worker also runs in the fade-in)
     LDA.w #96 : LDY.w #$0000             ; dark: d <= 6 (R = 5 + the fringe) = 48 entries
     BCC +
@@ -1521,7 +1662,8 @@ Hush_LightWedge:
     LDA.w !L_DELTA,Y : CLC : ADC.b $00 : TAY
     STY.b $06
     SEP #$20
-    TDC                                  ; C := 0 (D = $0000): B must be 0 for the TAY below (X = 16)
+    LDA.b #$00 : XBA                     ; B := 0 for the TAY below (X = 16). SA-1 step 4: was TDC (D = $0000 on the SNES; the SA-1's
+                                         ; worker D is $3100)
     LDA.w !L_SOL,Y : BIT.b #$C0 : BNE .hide
     AND.b #$01 : EOR.b #$01 : STA.w !L_VIS,X                ; floor: the ray goes on; solid: it stops here
     BNE .lit
@@ -1650,9 +1792,9 @@ Hush_L3Unit:
     JSR Hush_L3TPass : BCS .y
 .jb JSR Hush_LightStep : BCS .y
 .rot
-    LDA.l $7F0000+!L3_RTURN : INC A : CMP.b #3 : BCC +
+    LDA.l !L3B+!L3_RTURN : INC A : CMP.b #3 : BCC +
     LDA.b #0
-+   STA.l $7F0000+!L3_RTURN
++   STA.l !L3B+!L3_RTURN
     BEQ .j
     DEC A : BEQ .t
     JSR Hush_L3GStep : BCS .y
@@ -1680,7 +1822,7 @@ Hush_L3TPass:
     STZ.b $0F
 .top
     LDA.b $0F : CMP.b #(2*!L3_TROWS) : BCS .fin                          ; at most L3_TROWS rows per unit ($0F: 2 per row derived)
-    LDA.l $7F0000+!L3_ADB : CMP.b #$FF : BEQ .fin
+    LDA.l !L3B+!L3_ADB : CMP.b #$FF : BEQ .fin
     STA.b $09
     LDA.w !L_JOB : BMI +                 ; D3: during a commit only the tile rows it can no longer mark (ty < 2 JROW - 1): the rest of
     LDA.w !L_JPH : CMP.b #$02 : BNE +    ; a job's tiles are derived while it commits, not all after it (and none twice)
@@ -1716,7 +1858,7 @@ Hush_L3TPass:
 .go
     PHA
     PHB
-    PEA $7F7F : PLB : PLB
+    PEA !L3_DBW : PLB : PLB
     REP #$30
     LDA.b $09 : JSL Hush_L3TRow          ; (masks ty itself)
     SEP #$20
@@ -1725,12 +1867,12 @@ Hush_L3TPass:
     CMP.b #$01 : BNE .fin                ; row not done: it stays first, the unit ends
 .adv
     INC.b $0F
-    LDA.l $7F0000+!L3_ADB : INC A : CMP.l $7F0000+!L3_ADB+1 : BEQ + : BCS .empty
-+   STA.l $7F0000+!L3_ADB
+    LDA.l !L3B+!L3_ADB : INC A : CMP.l !L3B+!L3_ADB+1 : BEQ + : BCS .empty
++   STA.l !L3B+!L3_ADB
     JMP .top
 .empty
-    LDA.b #$FF : STA.l $7F0000+!L3_ADB
-    LDA.b #$00 : STA.l $7F0000+!L3_ADB+1
+    LDA.b #$FF : STA.l !L3B+!L3_ADB
+    LDA.b #$00 : STA.l !L3B+!L3_ADB+1
     BRA .fin
 
 ; Hush_L3Done (D2: moved here from the data row): JSR from Hush_LightWork's exit (any M, X = 16, DB = $7E; returns M = 8). light_done
@@ -1739,14 +1881,14 @@ Hush_L3TPass:
 Hush_L3Done:
     SEP #$20
     STZ.w !L_RDONE
-    LDA.l $7F0000+!L3_RC : BPL .no
-    LDA.l $7F0000+!L3_ADB : INC A : BNE .no
+    LDA.l !L3B+!L3_RC : BPL .no
+    LDA.l !L3B+!L3_ADB : INC A : BNE .no
     LDA.w !L_JOB : BPL .no
     REP #$20
-    LDA.l $7F0000+!L3_RDM : ORA.w !L_DIRTY
+    LDA.l !L3B+!L3_RDM : ORA.w !L_DIRTY
     SEP #$20 : BNE .no
-    LDA.l $7F0000+!L3_WDX+8 : CMP.l $7F0000+!L3_RDX+8 : BNE .no         ; D2: only the glow is displaced
-    LDA.l $7F0000+!L3_WDY+8 : CMP.l $7F0000+!L3_RDY+8 : BNE .no
+    LDA.l !L3B+!L3_WDX+8 : CMP.l !L3B+!L3_RDX+8 : BNE .no         ; D2: only the glow is displaced
+    LDA.l !L3B+!L3_WDY+8 : CMP.l !L3B+!L3_RDY+8 : BNE .no
     INC.w !L_RDONE
 .no
     RTS
@@ -1772,13 +1914,9 @@ Hush_L3GChg:
     LDA.w !L3_IV-2,X : CLC : ADC.w !L3_D+2,Y : STA.w !L3_IV-2,X           ; tile (i - 1, j): b
     LDA.w !L3_IV-68,X : CLC : ADC.w !L3_D+4,Y : STA.w !L3_IV-68,X         ; tile (i, j - 1): c
     LDA.w !L3_IV-70,X : CLC : ADC.w !L3_D+6,Y : STA.w !L3_IV-70,X         ; tile (i - 1, j - 1): d
-    SEP #$30
-    LDA.l $002137                        ; V counter (as Hush_LightV)
-    LDA.l $00213F
-    LDA.l $00213D : XBA
-    LDA.l $00213D : AND.b #$01 : XBA
-    REP #$20
-    CMP.l $7E0000+!L_V0 : BCC .stop      ; wrapped into the next frame
+    SEP #$10                             ; X = 8 (M = 16 for the time compare)
+    LDA.l !SA1_CMDL : AND.w #$00FF       ; the worker's time (SA-1 step 4, as Hush_LightV; was the PPU V counter)
+    CMP.l !LB+!L_V0 : BCC .stop      ; wrapped into the next frame
     CMP.w #!LIGHT_VMAX-!L3_GMARGIN : BCS .stop   ; the hard limit only: a row started before GLIM ends (fewer split rows)
     SEP #$20
     LDX.b $06
@@ -1803,7 +1941,9 @@ assert Hush_LightData_End <= $1FC916     ; the generated light tables must end b
 ; operands patched here: A98 row cy, A2 row cy -/+ 1, the quadrant flips, light_tiles row, IV row, end) and sets the light_dirty bit of
 ; cell row ty >> 1 if a word changed. Uses $06-$08 (LutV pointer), $0C-$0D (changed word), A, X, Y. Returns M = X = 16.
 Hush_L3TRow:
-    AND.w #$00FF : PHA                   ; ty
+    AND.w #$00FF
+    JSR Hush_L3Lock                      ; SA-1 step 4: the NMI keeps off this cell row until Hush_L3Unlock (keeps A)
+    PHA                                  ; ty
     XBA : LSR A : LSR A : CLC : ADC.w #!L_TILES                          ; light_tiles row ty (bank $7E)
     STA.w (Hush_L3Tile_C0+1)&$FFFF : STA.w (Hush_L3Tile_S0+1)&$FFFF
     STA.w (Hush_L3Tile_C1+1)&$FFFF : STA.w (Hush_L3Tile_S1+1)&$FFFF
@@ -1835,8 +1975,9 @@ Hush_L3TRow:
     PLA                                  ; ty
     LDX.b $0C : BEQ +
     AND.w #$00FE : TAX                   ; 2 (ty >> 1)
-    LDA.l Hush_L3Bit,X : ORA.l $7E0000+!L_DIRTY : STA.l $7E0000+!L_DIRTY
-+   RTL
+    LDA.l Hush_L3Bit,X : ORA.l !LB+!L_DIRTY : STA.l !LB+!L_DIRTY
++   JSR Hush_L3Unlock
+    RTL
 Hush_L3TRow_End:
 assert pc() <= $1FCA00                   ; src/FREESPACE.md row $1FC916-$1FC9FF
 
@@ -1861,7 +2002,7 @@ Hush_L3GRun:
     PHB
     SEP #$20
     REP #$10
-    PEA $7F7F : PLB : PLB
+    PEA !L3_DBW : PLB : PLB
     STZ.w !L3_GDID
 .top
     JSR .late : BCC +
@@ -1914,12 +2055,9 @@ Hush_L3GRun:
     LDA.b #$FF : STA.w !L3_RC            ; the region ends
 .t2 JMP .top
 .late                                    ; M = 8 (kept): C = 1 when V >= GLIM or V < L_V0 (wrapped into the next frame)
-    LDA.l $002137                        ; the V counter read of Hush_LightV (bank_00.asm:15152)
-    LDA.l $00213F
-    LDA.l $00213D : XBA
-    LDA.l $00213D : AND.b #$01 : XBA
     REP #$20
-    CMP.l $7E0000+!L_V0 : BCC +
+    LDA.l !SA1_CMDL : AND.w #$00FF       ; the worker's time (SA-1 step 4, as Hush_LightV; was the PPU V counter, bank_00.asm:15152)
+    CMP.l !LB+!L_V0 : BCC +
     CMP.w !L3_GLIM
     SEP #$20
     RTS
@@ -2161,3 +2299,49 @@ Hush_L3Commit:
     RTL
 Hush_L3Bank1B_End:
 assert pc() <= $1BB800                   ; src/FREESPACE.md row $1BB340-$1BB7FF
+
+; =============================================================================
+; SA-1 step 4: src/FREESPACE.md row $03EB05-$03EB7F (head of NULL_03EB05, bank_03.asm:4559-4581: all $FF in the vanilla listing, no
+; reference in vendor/usdasm; the code / data rows of bank $1F are full).
+org $03EB05
+; Hush_LightPost: JSL from Hush_LightWork (SNES, end of the Module07 frame), M = 8, X = 16, any DB (kept; P kept). Stages the inputs the
+; SA-1 worker reads (it cannot read WRAM) and posts the frame: only when the command byte is 0 (the SA-1 has taken the previous frame;
+; else the staged inputs stay and SA1_SKIP counts the frame). SA1_STAGE (I-RAM, docs/ram_map.md "SA-1 memory"): +$000 = WRAM
+; $7E0D00-$7E0E2F (the sprite arrays Hush_LightSig / Step read for slots 0-7: $0D00 / $0D10 / $0D20 / $0D30 y / x, $0D80 awareness, $0DD0
+; state, $0DE0 facing, $0E20 type; 304 B by DMA channel 5 B -> A from WMDATA, ~2 lines), +$130 hush_room ($7EC900), +$132 ink x / y /
+; timer ($7EC908-$7EC90D), +$138 DP $20 / $22 (Link y / x), $E2 / $E8 (BG2 scroll). Then command := $FF. DMA channel 5 and WMADD /
+; WMDATA are used nowhere in vanilla (grep of vendor/usdasm: no DMA5 / $435x / WMADD / WMDATA / $2180-$2183 operand) nor elsewhere in src/.
+Hush_LightPost:
+    PHB : PHP
+    PEA $0000 : PLB : PLB                ; DB = $00: I-RAM, DMA / WRAM registers
+    SEP #$20 : REP #$10
+    LDA.w !SA1_CMDL&$FFFF : BEQ .stage
+    REP #$20
+    INC.w !SA1_SKIP
+    BRA .out
+.stage
+    REP #$20
+    LDA.w #$0D00 : STA.w $2181           ; WMADDL / WMADDM ($2183 below: bank $7E)
+    LDA.w #$8080 : STA.w $4350           ; DMAP5 $80: B -> A, one register, A address increments; BBAD5 $80: WMDATA
+    LDA.w #!SA1_STAGE : STA.w $4352
+    LDA.w #$0130 : STA.w $4355
+    LDA.l $7EC900 : STA.w !SA1_STAGE+$130
+    LDA.l $7EC908 : STA.w !SA1_STAGE+$132
+    LDA.l $7EC90A : STA.w !SA1_STAGE+$134
+    LDA.l $7EC90C : STA.w !SA1_STAGE+$136
+    LDA.b $20 : STA.w !SA1_STAGE+$138
+    LDA.b $22 : STA.w !SA1_STAGE+$13A
+    LDA.b $E2 : STA.w !SA1_STAGE+$13C
+    LDA.b $E8 : STA.w !SA1_STAGE+$13E
+    SEP #$20
+    STZ.w $2183                          ; WMADDH: bank $7E
+    STZ.w $4354                          ; A bus bank $00
+    LDA.b #$20 : STA.w $420B             ; MDMAEN: channel 5
+    LDA.b #$FF : STA.w !SA1_CMDL&$FFFF   ; post: the SA-1 stops its units (Hush_LightV), then takes these inputs
+.out
+    PLP : PLB
+    RTL
+Hush_LightPost_End:
+assert pc() <= $03EB80                   ; src/FREESPACE.md row $03EB05-$03EB7F
+assert !SA1_STAGE+!SA1_INLEN <= !SA1_IN
+assert !SA1_IN_DP+8 == !SA1_IN+!SA1_INLEN

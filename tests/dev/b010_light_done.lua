@@ -1,4 +1,4 @@
--- B-010 probe (docs/bugs.md): how long light_done ($7EE7F6) stays 0 while Link stands still, and which of its conditions holds it at 0.
+-- B-010 probe (docs/bugs.md): how long light_done ($40:E7F6, BW-RAM; was $7EE7F6) stays 0 while Link stands still, and which of its conditions holds it at 0.
 -- Usage: .venv/bin/python tools/run_test.py tests/dev/b010_light_done.lua        (room: HUSH_ROOM, default r19)
 -- Post-new-game state + debug jump, then tests/dev/repros/b010_r19.inputs (walk left 10 frames, stand still 1200), frame by frame.
 -- Conditions (docs/ram_map.md light_done row, Hush_L3Done): region running (light_l3reg +0 != $FF), parked amber region (light_l3pk +0
@@ -10,11 +10,17 @@ local bot = require("bot")
 
 local W = emu.memType.snesWorkRam
 local function rd(a) return emu.read(a, W, false) end
-local function rd16(a) return rd(a) + 256 * rd(a + 1) end
+local LM = emu.memType.snesSaveRam       -- light rows: SA-1 BW-RAM since SA-1 step 3 (docs/ram_map.md "HUSH lighting")
+local function rl(a) return emu.read(a, LM, false) end
+local function rl16(a) return rl(a) + 256 * rl(a + 1) end
 
 hush.test("dev: B-010 light_done liveness probe", function()
   local m = bot.rooms()
-  local function ram(n) return hush.ram[n].addr end
+  local function ram(n)
+    local e = hush.ram[n]
+    hush.assert(e and e.mem == LM, "docs/ram_map.md: " .. n .. " missing or not BW-RAM")
+    return e.addr
+  end
   local DONE, JOB, DIRTY = ram("light_done"), ram("light_job") + 8, ram("light_dirty")
   local REG, PK, ADB, CAR = ram("light_l3reg"), ram("light_l3pk"), ram("light_l3adb"), ram("light_l3car")
   local SIGC = ram("light_sigc")
@@ -36,26 +42,26 @@ hush.test("dev: B-010 light_done liveness probe", function()
     if rd(0x10) ~= 7 or rd(0x11) ~= 0 then hush.log("frame " .. f .. ": left gameplay (module " .. rd(0x10) .. ")"); break end
     if rd(0x1A) == prev1a then lag = lag + 1 end
     prev1a = rd(0x1A)
-    local d = rd(DONE)
+    local d = rl(DONE)
     if d == 1 then
       done_frames = done_frames + 1
       if not first_done then first_done = f end
       run = 0
     else
       run = run + 1; if run > maxrun then maxrun = run end
-      if rd(REG) ~= 0xFF then cnt.region = cnt.region + 1 end
-      if rd(PK) ~= 0xFF then cnt.parked = cnt.parked + 1 end
-      if rd(ADB) ~= 0xFF then cnt.adb = cnt.adb + 1 end
-      if rd(JOB) ~= 0xFF then cnt.job = cnt.job + 1 end
-      if rd16(REG + 8) ~= 0 then cnt.marked = cnt.marked + 1 end
-      if rd(CAR + 48 + 8) ~= rd(CAR + 16 + 8) or rd(CAR + 64 + 8) ~= rd(CAR + 32 + 8) then cnt.glow = cnt.glow + 1 end
-      if rd16(DIRTY) ~= 0 then cnt.dirty = cnt.dirty + 1 end
+      if rl(REG) ~= 0xFF then cnt.region = cnt.region + 1 end
+      if rl(PK) ~= 0xFF then cnt.parked = cnt.parked + 1 end
+      if rl(ADB) ~= 0xFF then cnt.adb = cnt.adb + 1 end
+      if rl(JOB) ~= 0xFF then cnt.job = cnt.job + 1 end
+      if rl16(REG + 8) ~= 0 then cnt.marked = cnt.marked + 1 end
+      if rl(CAR + 48 + 8) ~= rl(CAR + 16 + 8) or rl(CAR + 64 + 8) ~= rl(CAR + 32 + 8) then cnt.glow = cnt.glow + 1 end
+      if rl16(DIRTY) ~= 0 then cnt.dirty = cnt.dirty + 1 end
     end
-    local j = rd(JOB)
+    local j = rl(JOB)
     if prevjob == 0xFF and j ~= 0xFF then jobs = jobs + 1 end
     prevjob = j
     local s = {}
-    for k = 0, 31 do s[#s + 1] = rd(SIGC + k) end
+    for k = 0, 31 do s[#s + 1] = rl(SIGC + k) end
     s = table.concat(s, ",")
     if prevsig and s ~= prevsig then sigchg = sigchg + 1 end
     prevsig = s

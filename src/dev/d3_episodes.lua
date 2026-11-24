@@ -10,6 +10,10 @@ local bot = require("bot")
 local W = emu.memType.snesWorkRam
 local function rd(a) return emu.read(a, W, false) end
 local function rd16(a) return rd(a) + 256 * rd(a + 1) end
+-- light state: SA-1 BW-RAM since SA-1 step 3 (offset = (bank - $40) * $10000 + addr: $40:E770 -> $E770, $41:DBC0 -> $1DBC0)
+local B = emu.memType.snesSaveRam
+local function rl(a) return emu.read(a, B, false) end
+local function rl16(a) return rl(a) + 256 * rl(a + 1) end
 local LONG = tonumber(os.getenv("HUSH_PROBE_LONG") or "40")
 local WANT = {}
 for id in (os.getenv("HUSH_PROBE_ROOMS") or ""):gmatch("%S+") do WANT[id] = true end
@@ -23,8 +27,8 @@ local function live_sig(s)
   local cls = aw + 1
   return string.format("%d/%d/%d", cls, cls == 1 and (rd(0x0DE0 + s) & 3) or 0, (y // 16 + 8) * 32 + x // 16 + 8)
 end
-local function sigc(s) local b = 0xE748 + 4 * s; return string.format("%d/%d/%d", rd(b), rd(b + 1), rd16(b + 2)) end
-local function jsig() return string.format("%d/%d/%d", rd(0xE76C), rd(0xE76D), rd16(0xE76E)) end
+local function sigc(s) local b = 0xE748 + 4 * s; return string.format("%d/%d/%d", rl(b), rl(b + 1), rl16(b + 2)) end
+local function jsig() return string.format("%d/%d/%d", rl(0xE76C), rl(0xE76D), rl16(0xE76E)) end
 
 hush.test("D3 catch-up episode probe (smoke_lighting replay)", function()
   local m = bot.rooms()
@@ -38,34 +42,34 @@ hush.test("D3 catch-up episode probe (smoke_lighting replay)", function()
     local jobs, cur = {}, nil          -- job records
     local last, open = {}, {}
     local frames, busy, phf = 0, 0, {}
-    local long = {}
+    local long, eps = {}, {}
     local function tick(buttons, n)
       for _ = 1, n do
         hush.hold(buttons, 1)
         local now = hush.frame()
-        if rd(0x10) ~= 7 or rd(0x11) ~= 0 or rd(0xE740) ~= 1 then
+        if rd(0x10) ~= 7 or rd(0x11) ~= 0 or rl(0xE740) ~= 1 then
           for s = 0, 7 do open[s] = nil; last[s] = nil end
           cur = nil
         else
           frames = frames + 1
-          local j, ph = rd(0xE770), rd(0xE771)
+          local j, ph = rl(0xE770), rl(0xE771)
           if j ~= 0xFF then busy = busy + 1; phf[ph] = (phf[ph] or 0) + 1 end
           -- job tracking
           local js = jsig()
-          if cur and not cur.t1 and (j ~= cur.slot or (js ~= cur.sig0 and rd(0xE7FF) == 0)) then
+          if cur and not cur.t1 and (j ~= cur.slot or (js ~= cur.sig0 and rl(0xE7FF) == 0)) then
             cur.t1 = now                       -- ended (a new job may already run in the same frame)
             cur.stale = (sigc(cur.slot) ~= live_sig(cur.slot))
           end
           if j ~= 0xFF and (not cur or cur.t1) then
-            cur = { slot = j, sig0 = js, t0 = now, ph = {}, rst = 0, cls = rd(0xE76C) }
+            cur = { slot = j, sig0 = js, t0 = now, ph = {}, rst = 0, cls = rl(0xE76C) }
             jobs[#jobs + 1] = cur
           end
           if cur and not cur.t1 then
             cur.ph[ph] = (cur.ph[ph] or 0) + 1
-            if rd(0xE7FF) == 1 then cur.rst = 1; cur.sig0 = js end
+            if rl(0xE7FF) == 1 then cur.rst = 1; cur.sig0 = js end
           end
-          local shown = rd(0x1DC18) == 0xFF and rd(0x1DBC0) == 0xFF and (rd16(0xE742) & 0x3FFF) == 0
-          local amb, dirty = rd(0x1DBC0) ~= 0xFF, (rd16(0xE742) & 0x3FFF) ~= 0
+          local shown = rl(0x1DC18) == 0xFF and rl(0x1DBC0) == 0xFF and (rl16(0xE742) & 0x3FFF) == 0
+          local amb, dirty = rl(0x1DBC0) ~= 0xFF, (rl16(0xE742) & 0x3FFF) ~= 0
           local gch = (amb and dirty) and "B" or (amb and "A") or (dirty and "D") or ((j ~= 0xFF and ph == 2) and "c") or (j ~= 0xFF and "w") or "_"
           for s = 0, 7 do
             local lv = live_sig(s)
@@ -85,6 +89,7 @@ hush.test("D3 catch-up episode probe (smoke_lighting replay)", function()
             end
             if o and o.tc then
               if shown then
+                eps[#eps + 1] = now - o.t0
                 if o.tc - o.t0 > LONG then long[#long + 1] = { s = s, t0 = o.t0, tc = o.tc, t1 = now, n = o.n, tl = table.concat(o.tl), gl = table.concat(o.gl) } end
                 open[s] = nil
               end
@@ -104,7 +109,7 @@ hush.test("D3 catch-up episode probe (smoke_lighting replay)", function()
         tick({}, 2)
       end
       local w0 = hush.frame()
-      while not (rd(0x10) == 7 and rd(0x11) == 0 and rd(0xE7F6) == 1) do
+      while not (rd(0x10) == 7 and rd(0x11) == 0 and rl(0xE7F6) == 1) do
         if rd(0x10) ~= 7 or rd(0x11) ~= 0 then w0 = hush.frame() end
         if hush.frame() - w0 > 1200 then break end
         tick({}, 1)
@@ -125,8 +130,10 @@ hush.test("D3 catch-up episode probe (smoke_lighting replay)", function()
     local cs = {}
     for c, n in pairs(byc) do cs[#cs + 1] = c .. ":" .. n end
     table.sort(cs)
-    summary[#summary + 1] = string.format("%s jobs %d (class %s) frames/job med %d p90 %d max %d, stale at commit %d, busy %d/%d frames, ph0/1/2 %d/%d/%d",
-      r.id, cnt, table.concat(cs, " "), q(0.5), q(0.9), q(1), stale, busy, frames, phf[0] or 0, phf[1] or 0, phf[2] or 0)
+    table.sort(eps)
+    local function qe(p) return #eps > 0 and eps[math.max(1, math.ceil(p * #eps))] or 0 end
+    summary[#summary + 1] = string.format("%s catch-up (change -> shown) med %d p90 %d max %d over %d episodes; jobs %d (class %s) frames/job med %d p90 %d max %d, stale at commit %d, busy %d/%d frames, ph0/1/2 %d/%d/%d",
+      r.id, qe(0.5), qe(0.9), qe(1), #eps, cnt, table.concat(cs, " "), q(0.5), q(0.9), q(1), stale, busy, frames, phf[0] or 0, phf[1] or 0, phf[2] or 0)
     if log then
       for _, e in ipairs(long) do
         local parts = {}

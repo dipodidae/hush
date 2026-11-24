@@ -7,6 +7,10 @@
 ;           SA-1 reset vector at Hush_Sa1Entry and releases the SA-1, then runs
 ;           InitializeMemoryAndSRAM as before; the SA-1 counts a heartbeat in
 ;           I-RAM and acknowledges (clears) any command byte; no light work yet.
+;           Step 3: the SA-1 also zeroes light_l3ok (BW-RAM) once at its start.
+;           Step 4: a command no longer is just acknowledged: the idle loop JSLs
+;           Hush_LightJob (light.asm), which takes the staged inputs, clears the
+;           command and runs one frame of the light worker on the SA-1.
 ; Space:    src/FREESPACE.md rows $00802C-$00802E (hook), $0089C2-$0089DF
 ;           (Hush_Sa1Boot), $00CF46-$00CF7F (Hush_Sa1Entry)
 ; =============================================================================
@@ -52,6 +56,23 @@
 !SA1_STAT  = $3001                  ; byte: 0 not started, 1 idle
 !SA1_BEAT  = $3002                  ; word: heartbeat
 !SA1_STACK = $37FF                  ; SA-1 stack top (I-RAM)
+!SA1_L3OK  = $41C7D0                ; light_l3ok (BW-RAM, light.asm !L3B+!L3_OK; asserted there): := 0 at every SA-1 start
+; Step 4 (light.asm "SA-1 light worker"; docs/ram_map.md "SA-1 memory"): long addresses of the mailbox for both CPUs ($00:3000-$37FF
+; is I-RAM for the SNES, Sa1.cpp:43-44, and for the SA-1, Sa1.cpp:46-49).
+!SA1_CMDL  = $003000                ; command byte: $FF = "light frame" (Hush_LightPost), 0 = taken (Hush_LightJob)
+!SA1_STATL = $003001                ; status: 1 idle, 2 running the light worker
+!SA1_TROW  = $003004                ; byte: cell row whose light_tiles the SA-1 is writing ($FF none; Hush_L3Lock / Unlock)
+!SA1_NMIUP = $003005                ; byte: 1 while the SNES NMI uploads light rows (Hush_LightNmi)
+!SA1_RUNS  = $3006                  ; word: light commands run by the SA-1 (+1 per Hush_LightJob; probe counter)
+!SA1_SKIP  = $3008                  ; word: SNES frames whose inputs were not staged (the previous command not taken yet; probe counter)
+!SA1_DP    = $3100                  ; SA-1 direct page of the worker: $00-$0F scratch, $20-$23 / $E2-$E3 / $E8-$E9 input copies
+!SA1_STAGE = $3200                  ; 320 B: inputs staged by the SNES (Hush_LightPost), layout !SA1_IN_*
+!SA1_IN    = $3400                  ; 320 B: the SA-1's copy for the running command (Hush_LightJob)
+!SA1_INLEN = $0140
+!SA1_IN_SPR  = !SA1_IN-$0D00        ; + $0D00..$0E2F: WRAM $7E0D00-$7E0E2F (sprite arrays)
+!SA1_IN_ROOM = !SA1_IN+$0130        ; word: $7EC900 (hush_room)
+!SA1_IN_INK  = !SA1_IN+$0132        ; 6: $7EC908-$7EC90D (ink x, y, timer)
+!SA1_IN_DP   = !SA1_IN+$0138        ; 8: DP $20-$23 (Link y, x), $E2-$E3, $E8-$E9 (BG2 scroll)
 
 ; --- hook site: Reset `JSR InitializeMemoryAndSRAM` -> `JSR Hush_Sa1Boot` ----
 org $00802C
@@ -95,14 +116,16 @@ Hush_Sa1Entry:
     LDA.b #$01 : STA.b !SA1_STAT-$3000  ; status: idle
     REP #$20
     STZ.b !SA1_BEAT-$3000
+    LDA.b !SA1_BEAT-$3000               ; A = 0
+    STA.l !SA1_L3OK                     ; step 3: light_l3ok := 0, so the SNES rebuilds the light tables / RAM code at the first room
+                                        ; load after every power-on / reset (BW-RAM is battery-backed and, unlike WRAM bank $7F, not
+                                        ; zeroed by the intro clear, bank_0C.asm:88-113; a stale copy of an older build must not pass)
 .loop                                   ; M = 0, X = 0
     INC.b !SA1_BEAT-$3000
     LDA.b !SA1_CMD-$3000
     AND.w #$00FF
     BEQ .loop
-    SEP #$20                            ; no commands yet: acknowledge (clear) it
-    STZ.b !SA1_CMD-$3000
-    REP #$20
+    JSL Hush_LightJob                   ; step 4: any command = one light frame (light.asm; acknowledges the command itself)
     BRA .loop
 Hush_Sa1Entry_End:
 assert pc() <= $00CF80

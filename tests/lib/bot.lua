@@ -11,8 +11,9 @@ local hush = require("hush")
 local bot = {}
 local W = emu.memType.snesWorkRam
 
-function bot.poke(addr, v) emu.write(addr - 0x7E0000, v, W) end
-function bot.peek(addr) return emu.read(addr - 0x7E0000, W, false) end
+-- 24-bit CPU address, routed by hush.locate: $7E/$7F WRAM, $40-$4F SA-1 BW-RAM, $xx:3000-3FFF SA-1 I-RAM
+function bot.poke(addr, v) hush.poke_addr(addr, v) end
+function bot.peek(addr) return hush.peek_addr(addr) end
 
 -- Wait until the game is in the underworld module with no submodule running (Link controllable).
 function bot.wait_control(max)

@@ -208,7 +208,8 @@ local FREE_LO, FREE_HI = 0xC900, 0xE7FF
 function Run:load_owned()
   local owned = {}
   for _, e in pairs(hush.ram) do
-    if e.addr >= FREE_LO and e.addr <= FREE_HI then
+    -- WRAM rows only: SA-1 rows ($40:xxxx BW-RAM, $00:3xxx I-RAM) have offsets in another memory (hush.lua load_ram_map)
+    if e.mem == hush.WRAM and e.addr >= FREE_LO and e.addr <= FREE_HI then
       for k = 0, e.bytes - 1 do owned[e.addr + k] = true end
     end
   end

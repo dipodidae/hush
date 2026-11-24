@@ -33,7 +33,7 @@
 --   light = { n, k, nv, kv, amber_cols = {...}, violet_cols = {...}, tiles = { { tile_id, kind 0/1/2, a, b, c, d }, ... },
 --             lut_amber = { word per ((a*n + b)*n + c)*n + d }, lut_violet = { word per ((a*nv + b)*nv + c)*nv + d } }   (section 5)
 -- RAM (docs/ram_map.md names via hush.ram): light_tiles, light_comp, light_vio, light_gmap, light_dirty, light_sigc, light_job (+8 job
--- slot, +22 Link's glow cell), light_done, light_l3car. BG1 tilemap at VRAM word $1000 (2 x 2 screens).
+-- slot, +22 Link's glow cell), light_done, light_l3car, all in SA-1 BW-RAM (read via rl / rl16). BG1 tilemap at VRAM word $1000 (2 x 2 screens).
 package.path = os.getenv("HUSH_ROOT") .. "/tests/lib/?.lua;" .. package.path
 local hush = require("hush")
 local bot = require("bot")
@@ -41,9 +41,20 @@ local bot = require("bot")
 local W, V = emu.memType.snesWorkRam, emu.memType.snesVideoRam
 local function rd(a) return emu.read(a, W, false) end            -- WRAM offset (bank $7E = 0..$FFFF, $7F = +$10000)
 local function rd16(a) return rd(a) + 256 * rd(a + 1) end
+-- light state (SA-1 step 3): every light_* row is in BW-RAM ($40:xxxx / $41:xxxx, docs/ram_map.md "HUSH lighting"); L holds offsets in
+-- the rows' memory LM (hush.ram[...].mem, set by init_L; all light rows must share it)
+local LM
+local function rl(a) return emu.read(a, LM, false) end
+local function rl16(a) return rl(a) + 256 * rl(a + 1) end
 local L = {}   -- filled by init_L() inside the test (hush.test loads docs/ram_map.md)
 local function init_L()
-  local function ram(name) local e = hush.ram[name]; if not e then hush.fail("docs/ram_map.md has no row " .. name) end; return e.addr end
+  local function ram(name)
+    local e = hush.ram[name]
+    if not e then error({ hush_fail = "docs/ram_map.md has no row " .. name }) end
+    LM = LM or e.mem
+    if e.mem ~= LM then error({ hush_fail = "docs/ram_map.md: light rows in different memories (" .. name .. ")" }) end
+    return e.addr
+  end
   L = { GMAP = ram("light_gmap"), COMP = ram("light_comp"), VIO = ram("light_vio"), TILES = ram("light_tiles"), ON = ram("light_on"),
         DIRTY = ram("light_dirty"), SIGC = ram("light_sigc"), JOB = ram("light_job") + 8, LCELL = ram("light_job") + 22,
         DONE = ram("light_done"), LPR = ram("light_l3lpr"), ADB = ram("light_l3adb"),
@@ -133,7 +144,7 @@ local function live_sig(s)
   local cls = aw + 1
   return { cls, cls == 1 and (rd(0x0DE0 + s) & 3) or 0, (y // 16 + 8) * 32 + x // 16 + 8 }
 end
-local function sigc(s) return { rd(L.SIGC + 4 * s), rd(L.SIGC + 4 * s + 1), rd16(L.SIGC + 4 * s + 2) } end
+local function sigc(s) return { rl(L.SIGC + 4 * s), rl(L.SIGC + 4 * s + 1), rl16(L.SIGC + 4 * s + 2) } end
 local function same(a, b) return a[1] == b[1] and a[2] == b[2] and a[3] == b[3] end
 
 -- 7. catch-up tracker (section 5 "Catch-up": an episode for signature S runs from the frame the guard's signature changes to S to the
@@ -148,15 +159,15 @@ local function new_cu()
   return cu
 end
 local function amber_shown()
-  return rd(L.LPR) == 0xFF and rd(L.ADB) == 0xFF and (rd16(L.DIRTY) & 0x3FFF) == 0
+  return rl(L.LPR) == 0xFF and rl(L.ADB) == 0xFF and (rl16(L.DIRTY) & 0x3FFF) == 0
 end
 local function cu_tick(cu)
-  if rd(0x10) ~= 7 or rd(0x11) ~= 0 or rd(L.ON) ~= 1 then
+  if rd(0x10) ~= 7 or rd(0x11) ~= 0 or rl(L.ON) ~= 1 then
     for s = 0, 7 do cu.drops = cu.drops + #cu.open[s]; cu.open[s] = {}; cu.last[s] = { -1, -1, -1 } end
     return
   end
   cu.frames = cu.frames + 1
-  local now, shown, job = hush.frame(), amber_shown(), rd(L.JOB)
+  local now, shown, job = hush.frame(), amber_shown(), rl(L.JOB)
   for s = 0, 7 do
     local lv = live_sig(s)
     local list = cu.open[s]
@@ -296,6 +307,7 @@ end
 hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", function()
   local m = bot.rooms()
   init_L()
+  hush.assert(LM == hush.BWRAM, "light rows must be SA-1 BW-RAM ($40:/$41:, design/pillars.md Platform, docs/ram_map.md HUSH lighting)")
   local lt = m.light
   hush.assert(lt and lt.tiles and lt.lut_amber and lt.lut_violet,
     "build/rooms_gen.lua has no `light` table with tiles / lut_amber / lut_violet (section 5 'exported corner LUTs')")
@@ -318,7 +330,7 @@ hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", fu
       for _ = 1, n do hush.hold(buttons, 1); cu_tick(cu) end
     end
     tick({}, 40)
-    hush.assert_eq(rd(L.ON), 1, r.id .. ": light on")
+    hush.assert_eq(rl(L.ON), 1, r.id .. ": light on")
     check_ramp(r.id, lt)                     -- 8. ramp colours (uploaded before the first fade-in frame)
     local rmax = 0
     for t = 1, 24 do
@@ -334,11 +346,11 @@ hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", fu
       -- wait for light_done == 1 (Link stands still; gameplay frames only, a restart / transition restarts the count). Not a liveness
       -- bound (section 5 "Catch-up"); fails only past WAIT_HARD (the light never settles).
       local w0 = hush.frame()
-      while not (rd(0x10) == 7 and rd(0x11) == 0 and rd(L.DONE) == 1) do
+      while not (rd(0x10) == 7 and rd(0x11) == 0 and rl(L.DONE) == 1) do
         if rd(0x10) ~= 7 or rd(0x11) ~= 0 then w0 = hush.frame() end
         if hush.frame() - w0 > WAIT_HARD then
           hush.fail(string.format("%s t=%d: light_done never became 1 within %d gameplay frames of Link stopping (job slot $%02X, dirty $%04X, glow cell %d, rendered d (%d,%d)); the light never settles",
-            r.id, t, WAIT_HARD, rd(L.JOB), rd16(L.DIRTY), rd(L.CELL8), s8(rd(L.RDX8)), s8(rd(L.RDY8))))
+            r.id, t, WAIT_HARD, rl(L.JOB), rl16(L.DIRTY), rl(L.CELL8), s8(rl(L.RDX8)), s8(rl(L.RDY8))))
           return
         end
         tick({}, 1)
@@ -353,8 +365,8 @@ hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", fu
         if rd(0xC903) == 0 then
           hush.assert_eq(rd(0x99), 0x02, r.id .. ": CGWSEL"); hush.assert_eq(rd(0x9A), 0x22, r.id .. ": CGADSUB")
         end
-        hush.assert_eq(rd(L.JOB), 0xFF, r.id .. ": light_done = 1 but a guard job runs (ram_map light_done)")
-        hush.assert_eq(rd16(L.DIRTY), 0, r.id .. ": light_done = 1 but light_dirty != 0 (ram_map light_done)")
+        hush.assert_eq(rl(L.JOB), 0xFF, r.id .. ": light_done = 1 but a guard job runs (ram_map light_done)")
+        hush.assert_eq(rl16(L.DIRTY), 0, r.id .. ": light_done = 1 but light_dirty != 0 (ram_map light_done)")
         local solid, ink = world()
         if next(ink) then ink_checks = ink_checks + 1 end
         local R = rd16(0xC906) >= 128 and 8 or 5
@@ -365,7 +377,7 @@ hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", fu
           if sg[1] ~= 0xFF then
             local exp = oracle(sg, solid, ink, R)
             for i = 0, 223 do
-              local got = rd(L.GMAP + s * 224 + i)
+              local got = rl(L.GMAP + s * 224 + i)
               if got ~= exp[i] then
                 hush.fail(string.format("%s t=%d slot %d sig (%d,%d,%d) cell (%d,%d): light %d, rules say %d", r.id, t, s, sg[1], sg[2], sg[3], i % 16, i // 16, got, exp[i]))
               end
@@ -373,25 +385,25 @@ hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", fu
               cells = cells + 1
             end
           else
-            for i = 0, 223 do local got = rd(L.GMAP + s * 224 + i); if got > comp[i] then comp[i] = got end end
+            for i = 0, 223 do local got = rl(L.GMAP + s * 224 + i); if got > comp[i] then comp[i] = got end end
           end
         end
         -- 2. composite + glow
-        local lc = rd16(L.LCELL)
+        local lc = rl16(L.LCELL)
         local vio = {}
         for i = 0, 223 do
-          hush.assert_eq(rd(L.COMP + i), comp[i], string.format("%s: composite of cell (%d,%d)", r.id, i % 16, i // 16))
+          hush.assert_eq(rl(L.COMP + i), comp[i], string.format("%s: composite of cell (%d,%d)", r.id, i % 16, i // 16))
           if comp[i] > 0 then lit_cells = lit_cells + 1 end
           local ev = 0
           if lc < 224 and not solid[i] then
             if i == lc then ev = 2
             elseif (math.abs(i % 16 - lc % 16) + math.abs(i // 16 - lc // 16)) == 1 then ev = 1 end
           end
-          hush.assert_eq(rd(L.VIO + i), ev, string.format("%s: player glow of cell (%d,%d), Link cell %d", r.id, i % 16, i // 16, lc))
+          hush.assert_eq(rl(L.VIO + i), ev, string.format("%s: player glow of cell (%d,%d), Link cell %d", r.id, i % 16, i // 16, lc))
           vio[i] = ev
         end
         -- 5. displacement of the glow carrier (4.5 item 2; section 5 "qa also checks that displacement follows 4.5 item 2")
-        local c8, rdx, rdy = rd(L.CELL8), s8(rd(L.RDX8)), s8(rd(L.RDY8))
+        local c8, rdx, rdy = rl(L.CELL8), s8(rl(L.RDX8)), s8(rl(L.RDY8))
         hush.assert_eq(c8, lc < 224 and lc or 0xFF, string.format("%s t=%d: glow carrier 8 cell vs Link's glow cell (light_job+22)", r.id, t))
         local px, py = rd16(0x22) + 8 - rd16(0xE2), rd16(0x20) + 16 - rd16(0xE8)
         if px >= 0 and px < 256 and py >= 0 and py < 224 then
@@ -416,7 +428,7 @@ hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", fu
         local vlt = displace(lattice(vio, 2, n_violet), rdx, rdy)
         local LA, LV = lt.lut_amber, lt.lut_violet
         for ty = 0, 27 do for tx = 0, 31 do
-          local w = rd16(L.TILES + ty * 64 + tx * 2)
+          local w = rl16(L.TILES + ty * 64 + tx * 2)
           local p = ty * 33 + tx
           local wa, wb, wc, wd, want_kind = amb[p], amb[p + 1], amb[p + 33], amb[p + 34], 1
           local ew
@@ -453,7 +465,7 @@ hush.test("lighting: lantern light = guard sight (design/lighting.md rev 4)", fu
         end end
         -- 6. VRAM = buffer (light_dirty = 0 asserted above)
         for trow = 0, 27 do for tcol = 0, 31 do
-          hush.assert_eq(vram_bg1(trow, tcol), rd16(L.TILES + trow * 64 + tcol * 2), string.format("%s: BG1 VRAM tile (%d,%d)", r.id, tcol, trow))
+          hush.assert_eq(vram_bg1(trow, tcol), rl16(L.TILES + trow * 64 + tcol * 2), string.format("%s: BG1 VRAM tile (%d,%d)", r.id, tcol, trow))
         end end
         vram_checks = vram_checks + 1
         checks = checks + 1

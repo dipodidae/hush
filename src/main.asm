@@ -39,3 +39,4 @@ incsrc "hooks/feedback.asm"        ; E6: sound effects, caught flash, room music
 incsrc "hooks/ending.asm"          ; E6: ending screen, stats
 incsrc "hooks/meter.asm"           ; M5: stealth meter (hits, refill, HUD bar), vanilla damage ignored
 incsrc "hooks/light.asm"           ; L1: lantern light = guard sight (BG1 light layer added by colour math), design/lighting.md
+incsrc "hooks/anim_skip.asm"       ; SA-1 step 4: no animated-tile NMI upload in module 7 (vblank for the light rows)

@@ -23,7 +23,8 @@ The hook site and any freespace routine must both have rows in
 | File | Hook | Sites |
 |---|---|---|
 | `sa1_header.asm` | SA-1 step 1: cartridge header (map mode `$23`, type `$35`, 128 KB BW-RAM); checksum fixed by `tools/build.py` | `$00FFD5`, `$00FFD8` (+ `$00FFDC` build.py) |
-| `sa1.asm` | SA-1 step 2: at boot, I-RAM / BW-RAM writes on, SA-1 reset vector, SA-1 released; the SA-1 idles (heartbeat, I-RAM mailbox) | `$00802C`, blocks `$0089C2`, `$00CF46` |
+| `sa1.asm` | SA-1 step 2: at boot, I-RAM / BW-RAM writes on, SA-1 reset vector, SA-1 released; the SA-1 idles (heartbeat, I-RAM mailbox); step 4: a command runs one light worker frame (`Hush_LightJob`, light.asm) | `$00802C`, blocks `$0089C2`, `$00CF46` |
+| `anim_skip.asm` | SA-1 step 4: no animated-tile NMI upload in module 7 (slot 7 is never drawn by a room): vblank for the light rows | `$008B50`, block `$03EB80` |
 | `intro_skip.asm` | A0: boot to the title, no triforce/sword intro; owns `Hush_TitleStart` | `$0CC120`, `$0CC151`, block `$0CC10C` |
 | `camera_lock.asm` | E1: camera never scrolls, no edge transitions | `$02BA31`, `$02885E` |
 | `room_ctrl.asm` | E1: per-frame controller (health, exits, room loads, restart, tools) | `$0287BA` |

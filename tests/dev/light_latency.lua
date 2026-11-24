@@ -26,9 +26,16 @@ local FRAMES = 600
 local W = emu.memType.snesWorkRam
 local function rd(a) return emu.read(a, W, false) end
 local function rd16(a) return rd(a) + 256 * rd(a + 1) end
+local LM = emu.memType.snesSaveRam       -- light rows: SA-1 BW-RAM since SA-1 step 3 (docs/ram_map.md "HUSH lighting")
+local function rl(a) return emu.read(a, LM, false) end
+local function rl16(a) return rl(a) + 256 * rl(a + 1) end
 local L = {}
 local function init_L()
-  local function ram(name) local e = hush.ram[name]; if not e then hush.fail("docs/ram_map.md has no row " .. name) end; return e.addr end
+  local function ram(name)
+    local e = hush.ram[name]
+    if not e or e.mem ~= LM then error({ hush_fail = "docs/ram_map.md: " .. name .. " missing or not BW-RAM" }) end
+    return e.addr
+  end
   L = { SIGC = ram("light_sigc"), DIRTY = ram("light_dirty"), JOB = ram("light_job") + 8, TDIRTY = ram("light_tdirty"), ON = ram("light_on") }
 end
 
@@ -42,13 +49,13 @@ local function live_sig(s)
   local cls = aw + 1
   return { cls, cls == 1 and (rd(0x0DE0 + s) & 3) or 0, (y // 16 + 8) * 32 + x // 16 + 8 }
 end
-local function sigc(s) return { rd(L.SIGC + 4 * s), rd(L.SIGC + 4 * s + 1), rd16(L.SIGC + 4 * s + 2) } end
+local function sigc(s) return { rl(L.SIGC + 4 * s), rl(L.SIGC + 4 * s + 1), rl16(L.SIGC + 4 * s + 2) } end
 local function same(a, b) return a[1] == b[1] and a[2] == b[2] and a[3] == b[3] end
 
 local function render_idle()
-  if rd16(L.DIRTY) ~= 0 then return false end
-  for i = 0, 111 do if rd(L.TDIRTY + i) ~= 0 then return false end end
-  return rd(L.JOB) ~= 0xFE
+  if rl16(L.DIRTY) ~= 0 then return false end
+  for i = 0, 111 do if rl(L.TDIRTY + i) ~= 0 then return false end end
+  return rl(L.JOB) ~= 0xFE
 end
 
 local function pct(sorted, p)            -- nearest rank
@@ -72,13 +79,13 @@ local function measure(id, idx)
   end
   for _ = 1, FRAMES do
     hush.wait(1)
-    if rd(0x10) ~= 7 or rd(0x11) ~= 0 or rd(L.ON) ~= 1 then
+    if rd(0x10) ~= 7 or rd(0x11) ~= 0 or rl(L.ON) ~= 1 then
       skipped = skipped + 1
       for s = 0, 7 do if open[s] then drops = drops + 1; open[s] = nil end; last[s] = { -1, -1, -1 } end
       goto continue
     end
     do
-      local now, idle, job = hush.frame(), render_idle(), rd(L.JOB)
+      local now, idle, job = hush.frame(), render_idle(), rl(L.JOB)
       local any = false
       for s = 0, 7 do
         local lv = live_sig(s)

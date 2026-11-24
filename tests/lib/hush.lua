@@ -39,19 +39,45 @@ local WRAM_SIZE = 0x20000
 
 hush.ram = {}
 
+-- Memory types (MesenCE LuaDocumentation.json:607 snesWorkRam, :608 snesSaveRam, :617 sa1InternalRam).
+-- SA-1 BW-RAM is the cartridge save RAM (Sa1BwRamHandler.h:52 IMemoryHandler(MemoryType::SnesSaveRam)); the SNES sees it at
+-- $40-$4F:0000-FFFF (Sa1.cpp:68), so offset = (bank - $40) * $10000 + addr (docs/ram_map.md "SA-1 memory").
+-- I-RAM (2 KB) at $00-$3F/$80-$BF:3000-3FFF (Sa1.cpp:43-44), offset = addr & $7FF.
+hush.WRAM, hush.BWRAM, hush.IRAM = WRAM, emu.memType.snesSaveRam, emu.memType.sa1InternalRam
+
+-- 24-bit SNES CPU address -> memType, offset (errors on anything not WRAM / BW-RAM / I-RAM)
+function hush.locate(a)
+  local bank, lo = a >> 16, a & 0xFFFF
+  if bank == 0x7E or bank == 0x7F then return WRAM, a - 0x7E0000 end
+  if bank >= 0x40 and bank <= 0x4F then return hush.BWRAM, (bank - 0x40) * 0x10000 + lo end
+  if ((bank <= 0x3F) or (bank >= 0x80 and bank <= 0xBF)) and lo >= 0x3000 and lo <= 0x3FFF then return hush.IRAM, lo & 0x7FF end
+  error(string.format("address $%06X is not WRAM ($7E-$7F), BW-RAM ($40-$4F) or I-RAM ($xx:3000-3FFF)", a), 2)
+end
+
 local function load_ram_map()
   local path = hush.ROOT .. "/docs/ram_map.md"
   local f, err = io.open(path, "r")
   if not f then error("cannot open " .. path .. ": " .. tostring(err)) end
   local n = 0
   for line in f:lines() do
+    -- WRAM rows: | `name` | `$7Exxxx` | bytes |   (backticked: must be WRAM)
     local name, addr, bytes = line:match("^|%s*`([%w_]+)`%s*|%s*`%$(%x+)`%s*|%s*(%d+)%s*|")
+    local a
     if name then
-      local a = tonumber(addr, 16)
+      a = tonumber(addr, 16)
       if a < 0x7E0000 or a > 0x7FFFFF then
         error("ram_map.md: " .. name .. " is not in WRAM ($7E0000-$7FFFFF): $" .. addr)
       end
-      hush.ram[name] = { addr = a - 0x7E0000, bytes = tonumber(bytes) }
+    else
+      -- SA-1 rows (ram_map.md "HUSH lighting" / "SA-1 memory"): | `name` | $bb:aaaa | bytes |   (unbackticked)
+      local bk, lo
+      name, bk, lo, bytes = line:match("^|%s*`([%w_]+)`%s*|%s*%$(%x%x):(%x%x%x%x)%s*|%s*(%d+)%s*|")
+      if name then a = tonumber(bk, 16) * 0x10000 + tonumber(lo, 16) end
+    end
+    if name then
+      local ok, mem, off = pcall(hush.locate, a)
+      if not ok then error("ram_map.md: " .. name .. ": " .. tostring(mem)) end
+      hush.ram[name] = { addr = off, bytes = tonumber(bytes), mem = mem, cpu = a }
       n = n + 1
     end
   end
@@ -59,20 +85,33 @@ local function load_ram_map()
   if n == 0 then error("no RAM entries parsed from " .. path) end
 end
 
+-- Raw access by RAM-map name + byte offset, routed to the row's memory (WRAM / BW-RAM / I-RAM):
+--   hush.peek("light_done")  hush.peek16("light_dirty")  hush.peek("light_gmap", s * 224 + i)  hush.poke("light_on", 0)
+local function entry(name, lvl)
+  local e = hush.ram[name]
+  if not e then error("unknown RAM name '" .. tostring(name) .. "' (see docs/ram_map.md)", lvl + 1) end
+  return e
+end
+function hush.peek(name, off)   local e = entry(name, 2); return emu.read(e.addr + (off or 0), e.mem, false) end
+function hush.peek16(name, off) local e = entry(name, 2); local a = e.addr + (off or 0); return emu.read(a, e.mem, false) + 256 * emu.read(a + 1, e.mem, false) end
+function hush.poke(name, v, off) local e = entry(name, 2); emu.write(e.addr + (off or 0), v & 0xFF, e.mem) end
+-- by 24-bit CPU address ($7E/$7F WRAM, $40-$4F BW-RAM, $xx:3000 I-RAM)
+function hush.peek_addr(a) local m, o = hush.locate(a); return emu.read(o, m, false) end
+function hush.poke_addr(a, v) local m, o = hush.locate(a); emu.write(o, v & 0xFF, m) end
+
 -- hush.read("link_x")          -> 16-bit value
 -- hush.read("health")          -> 8-bit value
 -- hush.read("spr_type", slot)  -> byte of a 16-slot array (slot 0..15)
 function hush.read(name, index)
-  local e = hush.ram[name]
-  if not e then error("unknown RAM name '" .. tostring(name) .. "' (see docs/ram_map.md)", 2) end
+  local e = entry(name, 2)
   if e.bytes == 16 then
     if index == nil or index < 0 or index > 15 then
       error("RAM array '" .. name .. "' needs a slot index 0..15", 2)
     end
-    return emu.read(e.addr + index, WRAM, false)
+    return emu.read(e.addr + index, e.mem, false)
   end
-  if e.bytes == 2 then return emu.read16(e.addr, WRAM, false) end
-  if e.bytes == 1 then return emu.read(e.addr, WRAM, false) end
+  if e.bytes == 2 then return emu.read(e.addr, e.mem, false) + 256 * emu.read(e.addr + 1, e.mem, false) end
+  if e.bytes == 1 then return emu.read(e.addr, e.mem, false) end
   error("unsupported size " .. e.bytes .. " for '" .. name .. "'", 2)
 end
 
@@ -80,17 +119,16 @@ end
 -- hush.write("spr_aware", 1, slot)     -> poke one slot of a 16-slot array
 -- (2-byte names are written little endian.) Test-only: forcing states the spec says are RAM-observable.
 function hush.write(name, v, index)
-  local e = hush.ram[name]
-  if not e then error("unknown RAM name '" .. tostring(name) .. "' (see docs/ram_map.md)", 2) end
+  local e = entry(name, 2)
   if e.bytes == 16 then
     if index == nil or index < 0 or index > 15 then
       error("RAM array '" .. name .. "' needs a slot index 0..15", 2)
     end
-    emu.write(e.addr + index, v & 0xFF, WRAM)
+    emu.write(e.addr + index, v & 0xFF, e.mem)
   elseif e.bytes == 2 then
-    emu.write(e.addr, v & 0xFF, WRAM); emu.write(e.addr + 1, (v >> 8) & 0xFF, WRAM)
+    emu.write(e.addr, v & 0xFF, e.mem); emu.write(e.addr + 1, (v >> 8) & 0xFF, e.mem)
   elseif e.bytes == 1 then
-    emu.write(e.addr, v & 0xFF, WRAM)
+    emu.write(e.addr, v & 0xFF, e.mem)
   else
     error("unsupported size " .. e.bytes .. " for '" .. name .. "'", 2)
   end
