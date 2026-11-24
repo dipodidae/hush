@@ -149,6 +149,11 @@ assumes a tool it did not give.
 - Violet never appears on guards or hazards; amber never appears on the player.
   `tools/gfx_convert.py` enforces this by file-name role prefix.
 
+## Platform
+
+HUSH ships as an **SA-1 enhanced cartridge** (human-approved 2026-11-24, for the lantern lighting of `design/lighting.md` only).
+The SA-1 runs the light work; no mechanic, rule, room or number in this file changes because of it.
+
 ## Scope (MVP)
 
 In: awareness states, conditional damage, instant restart, stealth meter

@@ -60,6 +60,25 @@ def insert_graphics(rom: Path) -> None:
         die(f"graphics insertion failed (see above). Build failed; {rom.relative_to(ROOT)} removed.")
 
 
+HEADER_CHECKSUM_PC = 0x7FDC   # $00FFDC-$00FFDF: complement word, checksum word (vendor/usdasm/bank_00.asm:17017-17018)
+
+
+def fix_checksum(rom: Path) -> None:
+    """SA-1 step 1: correct internal header checksum, computed after asar AND gfx_insert.py
+    (asar's own fix-up runs before the graphics insertion, so it stays off).
+    1 MiB is a power of two: checksum = sum of all bytes & $FFFF, with the 4 checksum bytes
+    counted as complement $FFFF + checksum $0000 (any valid pair sums to $1FE)."""
+    data = bytearray(rom.read_bytes())
+    if len(data) != 0x100000:
+        die(f"{rom.name}: expected a 1 MiB ROM for the checksum fix-up, got {len(data)} bytes")
+    data[HEADER_CHECKSUM_PC:HEADER_CHECKSUM_PC + 4] = b"\xff\xff\x00\x00"
+    s = sum(data) & 0xFFFF
+    c = s ^ 0xFFFF
+    data[HEADER_CHECKSUM_PC:HEADER_CHECKSUM_PC + 4] = bytes((c & 0xFF, c >> 8, s & 0xFF, s >> 8))
+    rom.write_bytes(bytes(data))
+    print(f"header checksum ${s:04X} (complement ${c:04X})")
+
+
 def build(dev: bool = False) -> None:
     verify_vanilla()
     print("ROM ok: headerless, 1 MiB, CRC32 777AAC2F")
@@ -94,6 +113,7 @@ def build(dev: bool = False) -> None:
         die(f"asar reported problems (exit {r.returncode}). Build failed; {out_rom.relative_to(ROOT)} removed.")
 
     insert_graphics(out_rom)
+    fix_checksum(out_rom)
     run_freespace_check(rom_check=True, rom=out_rom)  # actual bytes written (asar + graphics) must be in the ledger
     print(f"built {out_rom.relative_to(ROOT)}")
 

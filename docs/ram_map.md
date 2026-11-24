@@ -197,6 +197,24 @@ Still free after D4: `$7FA2C2-$7FA85F` (D4: `Hush_L3GZero` may write 0 to `$7FA8
 
 Vanilla byte the smooth light changes: `$7E0134` (word) = VRAM word address of the per-frame animated-tile upload in the NMI (`bank_00.asm:1936-1946`, $400 bytes from `[$0ADC]`; set to `$3B00` by `DecompressAnimatedUnderworldTiles`, `bank_00.asm:9365`). `Hush_LightChrUp` sets it to `$3C00` (BG tiles `$1C0-$1DF`, slot 7, never drawn by a room) so the upload no longer overwrites the light tiles `$1B0-$1BF`.
 
+## SA-1 memory (SA-1 bring-up step 2, `src/hooks/sa1.asm`; design/pillars.md "Platform")
+
+Not WRAM, so the address column uses `$bank:addr` and the test parser (`tests/lib/hush.lua:48`, backticked `$hex` only) skips these rows.
+Lua (MesenCE): I-RAM is `emu.memType.sa1InternalRam`, offset = SNES address - `$3000` (`Core/Shared/MemoryType.h:33`, `UI/Debugger/Documentation/LuaDocumentation.json:617`);
+BW-RAM is `emu.memType.snesSaveRam` (`LuaDocumentation.json:608`; the SA-1 BW-RAM handlers wrap the cartridge save-RAM handlers, `Sa1.cpp:64-68`).
+Mapping (MesenCE `.tools/src/MesenCE/Core/SNES/Coprocessors/SA1/Sa1.cpp`): I-RAM (2 KB) at `$00-$3F/$80-$BF:3000-37FF` for the SNES (`:43-44`) and the SA-1 (`:46-47`), also `$0000-$07FF` for the SA-1 (`:48-49`);
+BW-RAM (128 KB, header `$00FFD8` = `$07`) at `$40-$4F:0000-FFFF` for the SNES (`:68`) and `$40-$5F` for the SA-1 (`:69`).
+Free for HUSH: on a plain LoROM SNES `$3000-$37FF` (banks `$00-$3F`) and banks `$40-$4F` are unmapped; grep of `vendor/usdasm/` finds no `.w $30xx-$37xx` operand
+(`(LD|ST|INC|...).w $3[0-7]xx`: no match) and HUSH's `src/` has no `$3xxx` absolute operand outside DB = `$7E/$7F` code (grep). Nothing in vanilla addresses banks `$40-$4F` (1 MiB LoROM, `$00-$1F` only).
+
+| Name | Address | Bytes | Meaning | Source |
+|---|---|---|---|---|
+| `sa1_cmd` | $00:3000 | 1 | Mailbox command: the SNES writes non-zero, the SA-1 clears it when done (step 2: no commands, cleared at once). Zeroed by `Hush_Sa1Boot` before the release | step 2 `src/hooks/sa1.asm` |
+| `sa1_status` | $00:3001 | 1 | SA-1 status: 0 not started, 1 idle (set by `Hush_Sa1Entry`) | step 2 `src/hooks/sa1.asm` |
+| `sa1_beat` | $00:3002 | 2 | SA-1 heartbeat: +1 per idle-loop pass (wraps) | step 2 `src/hooks/sa1.asm` |
+| (free) | $00:3004 | 2044 | I-RAM, reserved for the SA-1 light work (later steps); the SA-1 stack grows down from `$00:37FF` (SA-1 DP = `$3000`) | step 2 `src/hooks/sa1.asm` |
+| (claimed) | $40:0000 | 131072 | BW-RAM `$40:0000-$41:FFFF`, claimed for the SA-1 light work; unused in step 2 (SNES SBWE and SA-1 CBWE writes enabled at boot) | step 2 `src/hooks/sa1.asm` |
+
 ## Sprite slot arrays (16 slots each, index 0 to 15)
 
 Read slot `i` at `base + i`.

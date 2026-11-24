@@ -113,6 +113,12 @@ LoROM SNES addresses (inclusive range). Type is `free` or `hook`.
 | $1FC916 | $1FC9FF | hook | src/hooks/light.asm | D2 (B-010): Hush_L3LRow (amber lattice rows from light_pcomp; ends `$1FC9B2`). D3: Hush_L3LRow removed; Hush_L3TRow (tile-row driver of the amber pass and the glow commit; ends `$1FC9C9`). The unused tail of the Hush_LightTab row above (build/rooms_gen.asm ends at `$1FC916`, `assert Hush_LightData_End <= $1FC916` in light.asm): same vanilla room object data of rooms HUSH never loads (rooms.asm:750-870), same evidence as the E1 room-data row `$1F8780` |
 | $1FCA00 | $1FFFFF | hook | src/hooks/light.asm | L1 smooth light (design/lighting.md 4): `incsrc` of build/light_gen.asm (Hush_LightRamp, Hush_LightLutA/V, Hush_LightChr: ~11.1 KB, data only) + Hush_L3Base + overflow code of light.asm (Hush_LightGrids, Hush_LightZeroGrids, Hush_LightBox, Hush_LightLate, Hush_LightStale, L3: Hush_L3Tables, Hush_L3Row, Hush_L3Glow, Hush_L3PVio, Hush_L3Lat, Hush_L3Want, Hush_L3Bit, Hush_L3Code (ROM image of the L3 RAM code, copied to $7FCA00; C4: + Hush_L3Tile), B2d: Hush_L3RegInit, Hush_L3Mark, Hush_L3Done, C2: Hush_LightV, C3: Hush_L3Pick (Hush_L3Compose / Hush_L3Commit moved to `$1BB340`); C4: L3_D table build in Hush_L3Tables, IA / IV zeroing in Hush_LightGrids (ends `$1FFF19`, 230 B left); D1: Hush_L3AmbC, Hush_L3GlowC, Hush_L3Preempt, Hush_L3ADirty, Pick rewritten; D1a: Hush_L3Lat builds the amber lattice (ends `$1FFFD0`, 47 B left); D2 (B-010): Hush_L3Lat, Hush_L3AmbC, Hush_L3Preempt removed, Hush_L3ADirty rewritten, + Hush_L3TMark, Hush_L3Amb, Hush_L3LPass, Hush_L3LGate, Hush_L3LSpan, Hush_L3LPtr, Hush_L3LMark (ends `$1FFF5C`, 163 B left); D3 (B-010): L2 amber restored: Hush_LightM98, Hush_LightBuild (LUTF), Hush_LightAmb / AmbRow / MarkRow, Hush_LightLateC, Hush_L3GStep, new Hush_L3Tile RAM loop; Hush_L3ADirty / Amb / LPass / LGate / LSpan / LPtr / LMark and the PH / PL build removed (ends `$1FFFDF`, 32 B left); D4: Hush_L3Base, Hush_L3Pick, Hush_L3GlowC removed, Hush_L3GStep rewritten, + Hush_L3GSlice, Hush_L3GTab, Hush_L3GOff, Hush_L3GZero, Hush_L3GAdr, Hush_L3GSet, RAM loops Hush_L3GF / PF replace Hush_L3ComposeG / P (ends `$1FFF87`, 120 B left); the L2 tables / LUTF build / pair-grid code were removed in L3 B1). Vanilla room object data of rooms HUSH never loads (RoomDataTiles_00BE tail .. RoomDataTiles_00A6, rooms.asm:790-870) and the `$FF` fill NULL_1FFF4E (rooms.asm:875); same evidence as the E1 room-data row `$1F8780` (HUSH never loads a vanilla room; the only pointers to these bytes are vanilla RoomData_ObjectDataPointers entries of vanilla rooms) |
 | $1BD218 | $1BEBB3 | hook | tools/gfx_insert.py | A0: PaletteData colour words (bank_1B.asm:4646-5879) replaced in place; no pointer changes |
+| $00FFD5 | $00FFD6 | hook | src/hooks/sa1_header.asm | SA-1 step 1: InternalROMHeader map mode `db $20` + cartridge type `db $02` (bank_00.asm:17008-17009) -> `db $23, $35` (SA-1, SA-1 + RAM + battery) |
+| $00FFD8 | $00FFD8 | hook | src/hooks/sa1_header.asm | SA-1 step 1: InternalROMHeader RAM size `db $03` (8 KB, bank_00.asm:17011) -> `db $07` (128 KB BW-RAM) |
+| $00FFDC | $00FFDF | hook | tools/build.py | SA-1 step 1: header complement / checksum `dw $50F2, $AF0D` (bank_00.asm:17017-17018) -> the correct values of the built ROM, written by `fix_checksum()` after asar and gfx_insert.py |
+| $00802C | $00802E | hook | src/hooks/sa1.asm | SA-1 step 2: Reset `JSR InitializeMemoryAndSRAM` (bank_00.asm:34, `20 C0 87`) -> `JSR Hush_Sa1Boot` (same call, then SA-1 set-up + release) |
+| $0089C2 | $0089DF | free | src/hooks/sa1.asm | SA-1 step 2: Hush_Sa1Boot (30 of 30 bytes). NULL_0089C2 "FREE ROM: 0x1E" (bank_00.asm:1735-1741); all `$FF` in the listing; grep of vendor/usdasm for `NULL_0089C2`, `$0089Cx/Dx` and `$89Cx/Dx` finds only the label and `dw` tile words of tilemap data (bank_00.asm:5196-5632), no operand |
+| $00CF46 | $00CF7F | free | src/hooks/sa1.asm | SA-1 step 2: Hush_Sa1Entry (SA-1 reset target: stack / DP in I-RAM, heartbeat + mailbox idle loop; must be in bank $00, the CRV vector is 16-bit). NULL_00CF46 "FREE ROM: 0x3A" (bank_00.asm:8369-8379); all `$FF` in the listing; grep of vendor/usdasm for `NULL_00CF46`, `$00CF4x-7x`, `$CF4x-7x` finds only the label |
 
 ## Notes
 
@@ -122,8 +128,12 @@ LoROM SNES addresses (inclusive range). Type is `free` or `hook`.
   Purpose column or a note below.
 - Hook rows: put the original bytes/instructions in the hook file's header
   comment (see `src/hooks/README.md`).
-- The header checksum is not fixed up (`--fix-checksum=off`). If a release
-  needs it, add `$00FFDC-$00FFDF` as a `hook` row at M5.
+- The header checksum is fixed up by `tools/build.py` (`fix_checksum()`, after
+  asar and the graphics insertion; asar keeps `--fix-checksum=off`). Row
+  `$00FFDC-$00FFDF` (SA-1 step 1).
+- SA-1 step 1 keeps asar `lorom`: the SA-1 MMC defaults (banks 0,1,2,3) map the
+  1 MiB ROM at `$00-$1F:8000-FFFF` exactly like LoROM, and every `org` and
+  ledger address is in `$00-$1F`; `sa1rom` would change nothing for them.
 
 ## E1 notes (room data regions)
 
